@@ -138,19 +138,96 @@ _LIVESTOCK_SPECIES: dict = {
     "Cattle, Beef Cows":  {"commodity_desc": "CATTLE",        "class_desc": "COWS, BEEF"},
     "Cattle, Milk Cows":  {"commodity_desc": "CATTLE",        "class_desc": "COWS, MILK"},
     "Hogs & Pigs":        {"commodity_desc": "HOGS"},
-    "Sheep & Lambs":      {"commodity_desc": "SHEEP & LAMBS"},
+    # "SHEEP & LAMBS" is not a NASS commodity - the commodity is SHEEP and
+    # the lamb inclusion is a class. The class is required: without it all 12
+    # sheep classes come back mixed together and inventory double-counts.
+    "Sheep & Lambs":      {"commodity_desc": "SHEEP", "class_desc": "INCL LAMBS"},
     # Dairy production
+    # County milk production was discontinued after 2009, so the county
+    # drill-down has no modern data; state history still reaches back.
     "Milk Production":    {"commodity_desc": "MILK",
-                           "_stat": "PRODUCTION", "_unit": "LB"},
+                           "_stat": "PRODUCTION", "_unit": "LB",
+                           "_stale_agg": ("COUNTY",)},
     # Poultry inventory / production — use _stat/_unit to override defaults
-    "Chickens, Layers":   {"commodity_desc": "CHICKENS", "class_desc": "LAYERS - INCL PULLETS"},
+    # "LAYERS - INCL PULLETS" is not a CHICKENS class; replacement pullets are
+    # their own class and there is no combined one. NATIONAL layers is MONTHLY
+    # (12 rows a year) while STATE and COUNTY are annual.
+    "Chickens, Layers":   {"commodity_desc": "CHICKENS", "class_desc": "LAYERS"},
     "Chickens, Broilers": {"commodity_desc": "CHICKENS", "class_desc": "BROILERS",
                            "_stat": "PRODUCTION"},
+    # County table-egg production does not exist under any source or year. A
+    # county EGGS series exists under CENSUS + ALL CLASSES, but every row is
+    # prodn_practice_desc PRODUCTION CONTRACT - contract eggs, a different
+    # series. Do not substitute it.
     "Eggs, Table":        {"commodity_desc": "EGGS",     "class_desc": "TABLE",
-                           "_stat": "PRODUCTION", "_unit": "DOZEN"},
-    "Turkeys":            {"commodity_desc": "TURKEYS"},
+                           "_stat": "PRODUCTION", "_unit": "DOZEN",
+                           "_no_agg": ("COUNTY",)},
+    # Turkey INVENTORY is Census-only, so the SURVEY default can never satisfy
+    # it. domain_desc is required: without it NATIONAL returns 49 rows across
+    # AREA OPERATED / ECONOMIC CLASS / FARM SALES / NAICS / TOTAL, and summing
+    # them multiplies the flock fivefold.
+    "Turkeys":            {"commodity_desc": "TURKEYS",
+                           "_source": "CENSUS", "_domain": "TOTAL",
+                           "_years": ("2017", "2022")},
 }
 # Standard survey reference period per species for consistent year-over-year comparison
+
+def _livestock_spec(species_key: str) -> tuple:
+    """Split a _LIVESTOCK_SPECIES entry into (NASS query params, local flags).
+
+    Every underscore key is a LOCAL CONTROL FLAG and must never reach NASS:
+        _stat/_unit  override the INVENTORY/HEAD defaults
+        _source      override source_desc (turkeys are Census-only)
+        _domain      pin domain_desc (Census fans out across five domains)
+        _years       the only years that can return rows (Census cadence)
+        _no_agg      agg levels NASS never publishes for this species
+        _stale_agg   agg levels whose series ended before the year picker starts
+
+    Popping only _stat/_unit - as this code used to - leaves the rest in the
+    dict, and the later params.update(spec) sends them to NASS as bogus fields.
+    """
+    raw = _LIVESTOCK_SPECIES[species_key]
+    return ({k: v for k, v in raw.items() if not k.startswith("_")},
+            {k: v for k, v in raw.items() if k.startswith("_")})
+
+
+def _livestock_base_params(species_key: str) -> tuple:
+    """The shared NASS params for one species, plus its local flags."""
+    spec, over = _livestock_spec(species_key)
+    params = {
+        "key":               NASS_API_KEY,
+        "source_desc":       over.get("_source", "SURVEY"),
+        "sector_desc":       "ANIMALS & PRODUCTS",
+        "statisticcat_desc": over.get("_stat", "INVENTORY"),
+        "unit_desc":         over.get("_unit", "HEAD"),
+        "format":            "JSON",
+    }
+    if "_domain" in over:
+        params["domain_desc"] = over["_domain"]
+    params.update(spec)
+    return params, over
+
+
+def livestock_coverage_note(species_key: str, agg_level: str, year=None) -> str:
+    """Why this species/level/year has no data, or "" if it should have data.
+
+    Lets the UI say what is actually true instead of "try an earlier year",
+    which was wrong for every species whose series does not exist at all.
+    """
+    _, over = _livestock_spec(species_key)
+    if agg_level in over.get("_no_agg", ()):
+        return (f"NASS does not publish {species_key} at {agg_level.lower()} "
+                f"level in any year. National and state figures are available.")
+    if agg_level in over.get("_stale_agg", ()):
+        return (f"NASS discontinued {species_key} at {agg_level.lower()} level; "
+                f"only historical years are available, not recent ones.")
+    years = over.get("_years")
+    if years and year is not None and str(year) not in years:
+        return (f"{species_key} inventory comes from the Census of Agriculture, "
+                f"published only in {' and '.join(years)}.")
+    return ""
+
+
 _LIVESTOCK_PERIOD: dict = {
     "Cattle, All":        "JAN 1",
     "Cattle, Beef Cows":  "JAN 1",
@@ -2117,20 +2194,9 @@ def load_livestock(agg_level: str, species_key: str, year: int,
                    state_alpha: str = "",
                    cache_ver: str = _CACHE_VERSION) -> pd.DataFrame:
     """Fetch NASS livestock inventory at STATE, AG DISTRICT, or COUNTY level."""
-    _spec = dict(_LIVESTOCK_SPECIES[species_key])
-    _stat_cat  = _spec.pop("_stat", "INVENTORY")
-    _unit_desc = _spec.pop("_unit", "HEAD")
-    params: dict = {
-        "key":               NASS_API_KEY,
-        "source_desc":       "SURVEY",
-        "sector_desc":       "ANIMALS & PRODUCTS",
-        "statisticcat_desc": _stat_cat,
-        "unit_desc":         _unit_desc,
-        "agg_level_desc":    agg_level,
-        "year":              str(year),
-        "format":            "JSON",
-    }
-    params.update(_spec)
+    params, _ = _livestock_base_params(species_key)
+    params["agg_level_desc"] = agg_level
+    params["year"] = str(year)
     if state_alpha:
         params["state_alpha"] = state_alpha
     try:
@@ -2162,21 +2228,9 @@ def load_livestock_hist(species_key: str,
     without the period filter to capture whatever periods exist.
     """
     period = _LIVESTOCK_PERIOD.get(species_key, "JAN 1")
-    _spec = dict(_LIVESTOCK_SPECIES[species_key])
-    _stat_cat  = _spec.pop("_stat", "INVENTORY")
-    _unit_desc = _spec.pop("_unit", "HEAD")
-
-    base_params: dict = {
-        "key":               NASS_API_KEY,
-        "source_desc":       "SURVEY",
-        "sector_desc":       "ANIMALS & PRODUCTS",
-        "statisticcat_desc": _stat_cat,
-        "unit_desc":         _unit_desc,
-        "agg_level_desc":    "STATE",
-        "year__GE":          "2000",
-        "format":            "JSON",
-    }
-    base_params.update(_spec)
+    base_params, _ = _livestock_base_params(species_key)
+    base_params["agg_level_desc"] = "STATE"
+    base_params["year__GE"] = "2000"
 
     def _fetch(params: dict) -> pd.DataFrame:
         try:
@@ -2221,21 +2275,10 @@ def load_livestock_hist(species_key: str,
 def load_livestock_county_hist(species_key: str, state_alpha: str,
                                cache_ver: str = _CACHE_VERSION) -> pd.DataFrame:
     """Fetch all-years county-level livestock data for one state (2000-present)."""
-    _spec = dict(_LIVESTOCK_SPECIES[species_key])
-    _stat_cat  = _spec.pop("_stat", "INVENTORY")
-    _unit_desc = _spec.pop("_unit", "HEAD")
-    params: dict = {
-        "key":               NASS_API_KEY,
-        "source_desc":       "SURVEY",
-        "sector_desc":       "ANIMALS & PRODUCTS",
-        "statisticcat_desc": _stat_cat,
-        "unit_desc":         _unit_desc,
-        "agg_level_desc":    "COUNTY",
-        "state_alpha":       state_alpha,
-        "year__GE":          "2000",
-        "format":            "JSON",
-    }
-    params.update(_spec)
+    params, _ = _livestock_base_params(species_key)
+    params["agg_level_desc"] = "COUNTY"
+    params["state_alpha"] = state_alpha
+    params["year__GE"] = "2000"
     try:
         url = NASS_BASE_URL + "?" + urllib.parse.urlencode(params)
         with urllib.request.urlopen(url, timeout=30) as r:
@@ -6015,10 +6058,11 @@ def main():
             )
 
         if _lv_st_df.empty:
-            st.warning(
+            _lv_note = livestock_coverage_note(_lv_species, "STATE", _lv_year)
+            st.warning(_lv_note or (
                 f"No {_lv_species} inventory returned for {_lv_year}. "
                 "Try an earlier year."
-            )
+            ))
         else:
             _lv_st_agg = (
                 _lv_st_df
@@ -6131,12 +6175,14 @@ def main():
                         state_alpha=_lv_state_abbr, cache_ver=_CACHE_VERSION
                     )
                 if _lv_co_df.empty:
-                    st.info(
+                    _lv_co_note = livestock_coverage_note(
+                        _lv_species, "COUNTY", _lv_year)
+                    st.info(_lv_co_note or (
                         f"No county-level data for {_lv_species} in "
                         f"{_lv_state_abbr} ({_lv_year}). NASS may have withheld "
                         "values due to disclosure rules, or this species/year "
                         "combination was not surveyed at the county level."
-                    )
+                    ))
                 else:
                     _lv_co_df["fips"] = (
                         _lv_co_df["state_fips_code"].astype(str).str.zfill(2)
