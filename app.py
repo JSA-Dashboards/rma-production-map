@@ -1,3 +1,4 @@
+import os
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -29,11 +30,19 @@ LOGO_TRANS = HERE / "assets" / "Transparent Smal logo.png"
 LOGO_FULL  = HERE / "assets" / "logo-full.png"
 
 # ── NASS API ───────────────────────────────────────────────────────────────────
-NASS_API_KEY  = "9A6D1EB8-4D94-3221-BA0C-ADD4533EA0C1"
+try:
+    NASS_API_KEY = st.secrets.get("NASS_API_KEY", "")
+except Exception:
+    NASS_API_KEY = ""
+NASS_API_KEY  = NASS_API_KEY or os.environ.get("NASS_API_KEY", "")
 NASS_BASE_URL = "https://quickstats.nass.usda.gov/api/api_GET/"
 
 # ── EIA API ────────────────────────────────────────────────────────────────────
-EIA_API_KEY   = "byhccqGIo65WWSSfpry5n3o3tMA66Z4Wf4oOwHpk"
+try:
+    EIA_API_KEY = st.secrets.get("EIA_API_KEY", "")
+except Exception:
+    EIA_API_KEY = ""
+EIA_API_KEY   = EIA_API_KEY or os.environ.get("EIA_API_KEY", "")
 EIA_BASE_URL  = "https://api.eia.gov/v2/"
 NASS_YEARS             = list(range(2026, 2014, -1))   # 2026 → 2015
 _NASS_BENCHMARK_YEAR   = 2023   # most-complete county year — used for % reporting KPI
