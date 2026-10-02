@@ -26,7 +26,7 @@ CRUSH_XLSX = (
     r"\JSA - Documents\Research Analyst\Misc\Crush\Crush Downtime Calculator.xlsx"
 )
 DATA_DIR = Path(__file__).parent
-NASS_KEY = "9A6D1EB8-4D94-3221-BA0C-ADD4533EA0C1"
+NASS_KEY = os.environ["NASS_API_KEY"]  # one-off build script; never commit the key
 NASS_BASE = "https://quickstats.nass.usda.gov/api/api_GET/"
 
 # Ethanol conversion constants

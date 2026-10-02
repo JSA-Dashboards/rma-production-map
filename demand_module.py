@@ -15,18 +15,14 @@ Usage:
 
 import json
 import re
-import time
-import urllib.error
-import urllib.request
-import urllib.parse
 from pathlib import Path
 
 import pandas as pd
 import streamlit as st
 
+from nass_cache_client import _cache_key, _sf_connect, _use_sf
+
 DATA_DIR = Path(__file__).parent / "data"
-NASS_KEY  = "9A6D1EB8-4D94-3221-BA0C-ADD4533EA0C1"
-NASS_BASE = "https://quickstats.nass.usda.gov/api/api_GET/"
 
 # ── Feed conversion factors (net of current DDGS inclusion) ─────────────────
 # Corn bu/head/yr, SBM lbs/head/yr
@@ -53,23 +49,33 @@ LBS_PER_BU_SBM  = 2000   # SBM stays in lbs; convert to short tons where needed
 
 # ── NASS helpers ─────────────────────────────────────────────────────────────
 
-def _nass_get(params: dict, timeout: int = 60, retries: int = 4) -> list[dict]:
-    """NASS 400 = zero rows (returns []). Throttling/network errors retry, then raise
-    so a failed pull is never cached as an empty result."""
-    url = NASS_BASE + "?" + urllib.parse.urlencode({**params, "key": NASS_KEY, "format": "json"})
-    last = None
-    for attempt in range(retries):
-        try:
-            with urllib.request.urlopen(url, timeout=timeout) as r:
-                return json.load(r).get("data", [])
-        except urllib.error.HTTPError as e:
-            if e.code == 400:
-                return []
-            last = e
-        except Exception as e:
-            last = e
-        time.sleep(2 * (attempt + 1))
-    raise RuntimeError(f"NASS request failed after {retries} tries: {last}")
+def _cached_rows(params_list: list[dict]) -> list[list[dict]]:
+    """Read NASS query results from the shared Snowflake cache (usda-nass-etl is the
+    only process that calls NASS). One connection, batched lookup. Raises if the
+    cache backend is unconfigured or a query was never cached, so a gap is loud and
+    never cached as an empty table."""
+    if not _use_sf():
+        raise RuntimeError("NASS cache not configured: set USE_SNOWFLAKE=1 and SNOWFLAKE_* credentials")
+    keys = [_cache_key("api_GET", p) for p in params_list]
+    found: dict = {}
+    conn = _sf_connect()
+    try:
+        cur = conn.cursor()
+        for i in range(0, len(keys), 150):
+            chunk = keys[i:i + 150]
+            cur.execute(
+                "SELECT cache_key, data FROM nass_cache WHERE cache_key IN (%s)"
+                % ",".join(["%s"] * len(chunk)), chunk)
+            for k, d in cur.fetchall():
+                found[k] = d if isinstance(d, (dict, list)) else json.loads(d)
+    finally:
+        conn.close()
+    missing = [p for p, k in zip(params_list, keys) if k not in found]
+    if missing:
+        raise RuntimeError(
+            f"{len(missing)} of {len(keys)} NASS queries are not in the cache yet "
+            f"(first: {missing[0]}). Run usda-nass-etl's rma-production-map job list.")
+    return [found[k].get("data", []) for k in keys]
 
 
 def _parse_value(v: str) -> float:
@@ -94,13 +100,24 @@ _SPECIES_RULES = [
 ]
 
 
+# Census county data reports broilers/turkeys as inventory (state survey reports
+# annual production), so shares use these rules instead.
+_CENSUS_EXTRA_RULES = [
+    ("CHICKENS", "CHICKENSBROILERSINVENTORY", True, "BROILERS"),
+    ("TURKEYS",  "TURKEYSINVENTORY",          True, "TURKEYS"),
+]
+
+
 def _norm(sd: str) -> str:
     return re.sub(r"[^A-Z]", "", sd.upper())
 
 
-def _species_for(commodity: str, short_desc: str) -> str | None:
+def _species_for(commodity: str, short_desc: str, census: bool = False) -> str | None:
     n = _norm(short_desc)
-    for com, pat, exact, key in _SPECIES_RULES:
+    rules = [r for r in _SPECIES_RULES if not (census and r[3] in ("BROILERS", "TURKEYS"))]
+    if census:
+        rules += _CENSUS_EXTRA_RULES
+    for com, pat, exact, key in rules:
         if com == commodity and (n == pat if exact else n.startswith(pat)):
             return key
     return None
@@ -115,32 +132,31 @@ def _load_census_asd_shares(cache_ver: str) -> pd.DataFrame:
         state_alpha, asd_code, species, head
     Used as spatial allocation weights. Raises if NASS is unreachable (not cached).
     """
+    combos = [(c, st_) for c in ("CATTLE", "HOGS", "CHICKENS", "TURKEYS") for st_ in DEMAND_STATES]
+    results = _cached_rows([{
+        "commodity_desc":    c,
+        "statisticcat_desc": "INVENTORY",
+        "source_desc":       "CENSUS",
+        "year":              "2022",
+        "agg_level_desc":    "COUNTY",
+        "state_alpha":       st_,
+        "domain_desc":       "TOTAL",
+    } for c, st_ in combos])
     records = []
-    for commodity in ("CATTLE", "HOGS", "CHICKENS"):
-        for state in DEMAND_STATES:
-            rows = _nass_get({
-                "commodity_desc":    commodity,
-                "statisticcat_desc": "INVENTORY",
-                "source_desc":       "CENSUS",
-                "year":              "2022",
-                "agg_level_desc":    "COUNTY",
-                "state_alpha":       state,
-                "domain_desc":       "TOTAL",
+    for (commodity, _), rows in zip(combos, results):
+        for row in rows:
+            key = _species_for(commodity, row.get("short_desc", ""), census=True)
+            if not key:
+                continue
+            val = _parse_value(row.get("Value", "0"))
+            if val <= 0:
+                continue
+            records.append({
+                "state_alpha": row["state_alpha"],
+                "asd_code":    row.get("asd_code", ""),
+                "species":     key,
+                "head":        val,
             })
-            time.sleep(0.3)
-            for row in rows:
-                key = _species_for(commodity, row.get("short_desc", ""))
-                if not key:
-                    continue
-                val = _parse_value(row.get("Value", "0"))
-                if val <= 0:
-                    continue
-                records.append({
-                    "state_alpha": row["state_alpha"],
-                    "asd_code":    row.get("asd_code", ""),
-                    "species":     key,
-                    "head":        val,
-                })
 
     df = pd.DataFrame(records)
     if df.empty:
@@ -164,18 +180,17 @@ def _load_state_livestock(year: int, cache_ver: str) -> pd.DataFrame:
         ("CHICKENS", "PRODUCTION"),
         ("TURKEYS",  "PRODUCTION"),
     ]
+    results = _cached_rows([{
+        "commodity_desc":    commodity,
+        "statisticcat_desc": statcat,
+        "source_desc":       "SURVEY",
+        "year":              str(year),
+        "agg_level_desc":    "STATE",
+        "domain_desc":       "TOTAL",
+        "unit_desc":         "HEAD",
+    } for commodity, statcat in queries])
     records = []
-    for commodity, statcat in queries:
-        rows = _nass_get({
-            "commodity_desc":    commodity,
-            "statisticcat_desc": statcat,
-            "source_desc":       "SURVEY",
-            "year":              str(year),
-            "agg_level_desc":    "STATE",
-            "domain_desc":       "TOTAL",
-            "unit_desc":         "HEAD",
-        })
-        time.sleep(0.3)
+    for (commodity, _), rows in zip(queries, results):
         for row in rows:
             key = _species_for(commodity, row.get("short_desc", ""))
             if not key:
@@ -210,22 +225,31 @@ def _allocate_to_asd(
     if shares_df.empty or state_df.empty:
         return pd.DataFrame()
 
+    # State-level fallback: a (state, species) with a current state total but no
+    # Census ASD shares (none published / all suppressed) is split equally across
+    # that state's ASDs.
+    state_asds = shares_df[["state_alpha", "asd_code"]].drop_duplicates()
+    have = shares_df[["state_alpha", "species"]].drop_duplicates()
+    missing = state_df[["state_alpha", "species"]].merge(
+        have, on=["state_alpha", "species"], how="left", indicator=True
+    ).query("_merge == 'left_only'")[["state_alpha", "species"]]
+    fallback = missing.merge(state_asds, on="state_alpha")
+    if not fallback.empty:
+        fallback["head"] = 1.0
+        shares_df = pd.concat([shares_df, fallback], ignore_index=True)
+
     # Compute each ASD's share of state total per species
     state_totals = shares_df.groupby(["state_alpha", "species"])["head"].sum().reset_index()
     state_totals = state_totals.rename(columns={"head": "state_census_total"})
     shares = shares_df.merge(state_totals, on=["state_alpha", "species"])
     shares["asd_share"] = shares["head"] / shares["state_census_total"].clip(lower=1)
 
-    # Merge with current state totals
     merged = shares.merge(
         state_df.rename(columns={"head": "state_current"}),
         on=["state_alpha", "species"],
         how="left",
     )
     merged["state_current"] = merged["state_current"].fillna(0)
-
-    # Map census cattle_all → cattle_other (all cattle - COF - dairy)
-    # We'll handle this after assembling per-species columns
     merged["head_est"] = merged["asd_share"] * merged["state_current"]
 
     return merged[["state_alpha", "asd_code", "species", "head_est"]].copy()
