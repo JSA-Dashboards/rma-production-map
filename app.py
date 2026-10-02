@@ -4,6 +4,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import json
+import urllib.error
 import urllib.request
 import urllib.parse
 import numpy as np
@@ -1124,14 +1125,33 @@ def load_wasde_ending_stocks(crop: str, market_year: int, cache_ver: str) -> flo
     return 0.0
 
 
-@st.cache_data
+_NASS_COUNTY_ERR: dict = {}
+
+
 def load_nass_county(crop: str, year: int = 2025,
                      cache_ver: str = _CACHE_VERSION) -> pd.DataFrame:
+    """County production, or an empty frame. A failed NASS call (throttle, timeout,
+    missing key) is NOT cached — the cached inner function raises — and its reason
+    is kept in _NASS_COUNTY_ERR so the UI can say why instead of blaming publication."""
+    try:
+        df = _load_nass_county_cached(crop, year, cache_ver)
+        _NASS_COUNTY_ERR.pop((crop, year), None)
+        return df
+    except Exception as e:
+        _NASS_COUNTY_ERR[(crop, year)] = f"{type(e).__name__}: {e}"
+        return pd.DataFrame(columns=["State", "County", "fips", "Production"])
+
+
+@st.cache_data
+def _load_nass_county_cached(crop: str, year: int = 2025,
+                             cache_ver: str = _CACHE_VERSION) -> pd.DataFrame:
     """Load county-level production data.  Kept as a standalone function
     (not delegating to load_nass_stat) to avoid Streamlit cache-within-cache
     issues that can cause stale or incorrect return values.
-    Returns [State, County, fips, Production].
+    Returns [State, County, fips, Production]. Raises on NASS failure (never cached).
     """
+    if not NASS_API_KEY:
+        raise RuntimeError("NASS_API_KEY is not set")
     params = {
         "key":               NASS_API_KEY,
         "source_desc":       "SURVEY",
@@ -1149,9 +1169,10 @@ def load_nass_county(crop: str, year: int = 2025,
     try:
         with urllib.request.urlopen(url, timeout=45) as r:
             raw = json.load(r)
-    except Exception as e:
-        return pd.DataFrame(columns=["State", "County", "fips", "Production"])
-        return pd.DataFrame(columns=["State", "County", "fips", "Production"])
+    except urllib.error.HTTPError as e:
+        if e.code != 400:          # NASS 400 = zero rows (not published); anything else is a failure
+            raise
+        raw = {"data": []}
 
     records = raw.get("data", [])
     if not records:
@@ -3935,10 +3956,17 @@ def main():
                 )
 
         if nass_df.empty and nass_year != FORECAST_YEAR:
-            st.warning(
-                f"No NASS {nass_year} county-level production data returned for {nass_crop}. "
-                "The data may not yet be published or the API parameters may need adjustment."
-            )
+            _why = _NASS_COUNTY_ERR.get((nass_crop, nass_year))
+            if _why:
+                st.error(
+                    f"NASS request failed for {nass_year} {nass_crop} county production ({_why}). "
+                    "This is a connection or rate-limit problem, not missing data; failures are "
+                    "not cached, so reloading the page retries it."
+                )
+            else:
+                st.warning(
+                    f"NASS has no {nass_year} county-level production data for {nass_crop} yet."
+                )
         else:
             # Forecast year: build state list from NASS state planted data (already published)
             if nass_year == FORECAST_YEAR and nass_df.empty:
