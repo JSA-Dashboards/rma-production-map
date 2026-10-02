@@ -13,6 +13,7 @@ from pathlib import Path
 from PIL import Image
 import geopandas as gpd
 from shapely.geometry import shape
+from demand_module import load_asd_demand
 
 _HERE = Path(__file__).parent
 st.set_page_config(
@@ -3819,12 +3820,13 @@ def main():
         unsafe_allow_html=True,
     )
 
-    tab_nass, tab_rma, tab_stocks, tab_acreage, tab_livestock, tab_aqua, tab_proc, tab_wcmd, tab_storage_cmp, tab_eia, tab_about = st.tabs([
+    tab_nass, tab_rma, tab_stocks, tab_acreage, tab_livestock, tab_aqua, tab_proc, tab_wcmd, tab_storage_cmp, tab_eia, tab_sd, tab_about = st.tabs([
         "🌾  NASS Production", "📋  RMA",
         "📦  Grain Stocks", "🌱  Acreage Summary", "🐄  Livestock",
         "🐟  Aquaculture", "🏭  Processing",
         "🏦  Grain Warehouses", "⚖️  Storage vs. Production",
         "🔋  Biofuels (EIA)",
+        "📊  ASD Supply & Demand",
         "📖  About the Data",
     ])
 
@@ -7132,6 +7134,368 @@ def main():
                     for p in crush_filtered
                 ])
                 st.dataframe(df_crush, use_container_width=True, hide_index=True)
+
+    # ASD SUPPLY & DEMAND TAB
+    # ══════════════════════════════════════════════════════════════════════════
+    with tab_sd:
+        st.markdown(
+            f"<h3 style='color:{ACCENT};margin-top:0;margin-bottom:4px;'>"
+            "ASD-Level Grain Supply & Demand</h3>",
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            f"<p style='color:{MUTED};font-size:0.86rem;margin-top:0;margin-bottom:16px;'>"
+            "Bottom-up demand estimate: livestock feed + ethanol + crush, distributed to NASS "
+            "Agricultural Statistical Districts (ASDs) via 2022 Census livestock shares. "
+            "Net = NASS production minus total local demand. "
+            "Positive = surplus (export pressure); negative = deficit (import / basis support).</p>",
+            unsafe_allow_html=True,
+        )
+
+        # ── Controls ─────────────────────────────────────────────────────────
+        sd_c1, sd_c2, sd_c3, sd_c4 = st.columns([1, 0.75, 1.8, 0.55])
+        with sd_c1:
+            sd_crop = st.selectbox("Crop", ["Corn", "Soybeans"], key="sd_crop")
+        with sd_c2:
+            sd_year = st.selectbox("Year", NASS_YEARS, index=1, key="sd_year")  # default 2025 — county data not published for current year
+        with sd_c4:
+            st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
+            if st.button("🔄 Refresh", use_container_width=True, key="sd_refresh"):
+                st.cache_data.clear()
+                st.rerun()
+
+        # ── Load data ────────────────────────────────────────────────────────
+        with st.spinner(f"Loading {sd_year} {sd_crop} production..."):
+            _sd_county = load_nass_county(sd_crop, sd_year, _CACHE_VERSION)
+
+        with st.spinner("Loading ASD demand estimates..."):
+            _sd_demand = load_asd_demand(sd_year, _CACHE_VERSION)
+
+        # Aggregate county production → ASD
+        _sd_prod = pd.DataFrame()
+        if not _sd_county.empty and "asd_code" in _sd_county.columns:
+            _sd_prod = (
+                _sd_county
+                .dropna(subset=["asd_code"])
+                [_sd_county["asd_code"].astype(str).str.strip().ne("")]
+                .groupby(["State", "asd_code", "asd_desc"], as_index=False)["Production"]
+                .sum()
+                .rename(columns={"State": "state_alpha", "Production": "production_bu"})
+            )
+
+        _sd_demand_col = "corn_demand_total_bu" if sd_crop == "Corn" else "soy_demand_total_bu"
+        _sd_feed_col   = "corn_feed_bu"          if sd_crop == "Corn" else "sbm_feed_lbs"
+        _sd_plant_col  = "corn_ethanol_bu"        if sd_crop == "Corn" else "soy_crush_bu"
+        _sd_plant_lbl  = "Ethanol Corn (bu)"      if sd_crop == "Corn" else "Crush Soy (bu)"
+        _sd_feed_lbl   = "Feed Corn (bu)"         if sd_crop == "Corn" else "Feed SBM (lbs)"
+
+        # Merge production + demand
+        _sd = pd.DataFrame()
+        if not _sd_prod.empty and not _sd_demand.empty:
+            _keep_dem = ["state_alpha", "asd_code", _sd_demand_col,
+                         _sd_feed_col, _sd_plant_col, "ddgs_dry_lbs"]
+            _keep_dem = [c for c in _keep_dem if c in _sd_demand.columns]
+            _sd = _sd_prod.merge(
+                _sd_demand[_keep_dem],
+                on=["state_alpha", "asd_code"], how="outer",
+            )
+            for _c in ["production_bu", _sd_demand_col]:
+                _sd[_c] = pd.to_numeric(_sd.get(_c, 0), errors="coerce").fillna(0)
+            _sd["net_bu"] = _sd["production_bu"] - _sd[_sd_demand_col]
+            _sd["net_pct"] = np.where(
+                _sd["production_bu"] > 0,
+                _sd["net_bu"] / _sd["production_bu"] * 100,
+                np.nan,
+            )
+
+        # State selector — populated after data load
+        with sd_c3:
+            _sd_states = sorted(_sd["state_alpha"].dropna().unique()) if not _sd.empty else []
+            _sd_state_opts = ["— All States —"] + [
+                f"{a}  —  {ABBR_TO_NAME.get(a, a)}" for a in _sd_states
+            ]
+            sd_state_sel = st.selectbox(
+                "State Drill-Down", _sd_state_opts, key="sd_state_dd"
+            )
+        _sd_sel_state = None if sd_state_sel.startswith("—") else sd_state_sel[:2]
+
+        if _sd.empty:
+            st.warning(
+                f"No ASD S&D data available for {sd_crop} {sd_year}. "
+                "Production data may not yet be published or demand CSVs are missing."
+            )
+        else:
+            # ── KPI row ───────────────────────────────────────────────────────
+            _kpi_df   = _sd[_sd["state_alpha"] == _sd_sel_state] if _sd_sel_state else _sd
+            _tot_prod = _kpi_df["production_bu"].sum()
+            _tot_dem  = _kpi_df[_sd_demand_col].sum() if _sd_demand_col in _kpi_df else 0
+            _tot_net  = _kpi_df["net_bu"].sum() if "net_bu" in _kpi_df else 0
+            _net_pct  = _tot_net / _tot_prod * 100 if _tot_prod > 0 else 0
+
+            def _fmt_mbu(v):
+                if abs(v) >= 1e9:
+                    return f"{v/1e9:+.2f}B bu" if v != abs(v) else f"{v/1e9:.2f}B bu"
+                return f"{v/1e6:+.0f}M bu" if v != abs(v) else f"{v/1e6:.0f}M bu"
+
+            _k1, _k2, _k3, _k4 = st.columns(4)
+            _k1.metric("Production", f"{_tot_prod/1e6:.0f}M bu")
+            _k2.metric("Total Demand", f"{_tot_dem/1e6:.0f}M bu")
+            _k3.metric(
+                "Net Surplus / Deficit",
+                f"{_tot_net/1e6:+.0f}M bu",
+                delta=f"{_net_pct:+.1f}% of production",
+                delta_color="normal",
+            )
+            if sd_crop == "Corn" and "ddgs_dry_lbs" in _kpi_df.columns:
+                _ddgs_tons = _kpi_df["ddgs_dry_lbs"].sum() / 2000
+                _k4.metric("Dry DDGS Produced", f"{_ddgs_tons/1e6:.1f}M tons/yr")
+            elif sd_crop == "Soybeans" and "soy_crush_bu" in _kpi_df.columns:
+                _sb_crush = _kpi_df["soy_crush_bu"].fillna(0).sum()
+                _k4.metric("Crush Capacity", f"{_sb_crush/1e6:.0f}M bu/yr")
+
+            st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
+
+            # ── State drill-down: ASD map + breakdown table ────────────────────
+            if _sd_sel_state:
+                _sfips = STATE_FIPS_ALL.get(_sd_sel_state, "")
+                _fips_map_sd = load_boundary_fips_map(
+                    sd_crop, _sfips, _CACHE_VERSION, geo
+                )
+                _dist_gdf_sd = build_nass_district_gdf(
+                    _sfips, _CACHE_VERSION, _fips_map_sd, geo
+                )
+
+                _st_df = _sd[_sd["state_alpha"] == _sd_sel_state].copy()
+
+                if not _dist_gdf_sd.empty and not _st_df.empty:
+                    # Build District-name keyed lookup for the choropleth
+                    # asd_desc in production data vs District in GDF — title-cased match
+                    _st_df["District"] = _st_df["asd_desc"].str.strip().str.title()
+                    _dist_net = dict(zip(_st_df["District"], _st_df["net_bu"]))
+                    _dist_prod = dict(zip(_st_df["District"], _st_df["production_bu"]))
+
+                    _dist_geojson = json.loads(_dist_gdf_sd.to_json())
+                    _districts = _dist_gdf_sd["District"].tolist()
+                    _z_vals    = [_dist_net.get(d, 0) / 1e6 for d in _districts]
+                    _abs_max   = max((abs(v) for v in _z_vals), default=1.0)
+                    _abs_max   = max(_abs_max, 1.0)
+
+                    def _sd_hover(d, z):
+                        prod_bu  = _dist_prod.get(d, 0)
+                        dem_bu   = _dist_net.get(d, 0) + _dist_prod.get(d, 0) - _dist_net.get(d, 0)
+                        net_bu   = _dist_net.get(d, 0)
+                        sign     = "+" if z >= 0 else ""
+                        return (f"<b>{d}</b><br>"
+                                f"Production: {prod_bu/1e6:.1f}M bu<br>"
+                                f"Net: {sign}{z:.1f}M bu")
+
+                    _hover_sd = [_sd_hover(d, z) for d, z in zip(_districts, _z_vals)]
+
+                    _fig_sd = go.Figure()
+                    _fig_sd.add_trace(go.Choropleth(
+                        geojson=_dist_geojson,
+                        featureidkey="properties.District",
+                        locations=_districts,
+                        z=_z_vals,
+                        colorscale=[
+                            [0.0,  "#b22222"],
+                            [0.25, "#e08080"],
+                            [0.5,  "#f5f5f5"],
+                            [0.75, "#7dbfa7"],
+                            [1.0,  "#1a6645"],
+                        ],
+                        zmid=0,
+                        zmin=-_abs_max,
+                        zmax=_abs_max,
+                        colorbar=dict(
+                            title=dict(text="Net (M bu)", font=dict(color=TEXT)),
+                            tickfont=dict(color=TEXT),
+                        ),
+                        marker=dict(line=dict(color=BORDER, width=0.5)),
+                        text=_hover_sd,
+                        hovertemplate="%{text}<extra></extra>",
+                    ))
+
+                    # County outlines
+                    _county_feats = [f for f in geo["features"]
+                                     if f["properties"]["STATE"] == _sfips]
+                    if _county_feats:
+                        _cfips_list = [f["properties"]["STATE"] + f["properties"]["COUNTY"]
+                                       for f in _county_feats]
+                        _fig_sd.add_trace(go.Choropleth(
+                            geojson={"type": "FeatureCollection", "features": _county_feats},
+                            featureidkey="id",
+                            locations=_cfips_list,
+                            z=[0] * len(_cfips_list),
+                            colorscale=[[0, "rgba(0,0,0,0)"], [1, "rgba(0,0,0,0)"]],
+                            showscale=False,
+                            marker=dict(line=dict(color="rgba(80,80,80,0.4)", width=0.4)),
+                            hoverinfo="skip",
+                        ))
+
+                    # District boundary lines + centroid labels
+                    _all_lons, _all_lats = [], []
+                    _lbl_lons, _lbl_lats, _lbl_texts = [], [], []
+                    for _, _row in _dist_gdf_sd.iterrows():
+                        _geom  = _row.geometry
+                        _polys = [_geom] if _geom.geom_type == "Polygon" else list(_geom.geoms)
+                        for _poly in _polys:
+                            _xs, _ys = _poly.exterior.coords.xy
+                            _all_lons.extend(list(_xs) + [None])
+                            _all_lats.extend(list(_ys) + [None])
+                        _dn  = _row["District"]
+                        _nv  = _dist_net.get(_dn, 0) / 1e6
+                        _sign = "+" if _nv >= 0 else ""
+                        _lbl_lons.append(_row["centroid_lon"])
+                        _lbl_lats.append(_row["centroid_lat"])
+                        _lbl_texts.append(
+                            f"{_dn.upper()}<br>{_sign}{_nv:.0f}M"
+                        )
+
+                    _fig_sd.add_trace(go.Scattergeo(
+                        lon=_all_lons, lat=_all_lats, mode="lines",
+                        line=dict(color="white", width=1.5),
+                        showlegend=False, hoverinfo="skip",
+                    ))
+                    _fig_sd.add_trace(go.Scattergeo(
+                        lon=_lbl_lons, lat=_lbl_lats, mode="text",
+                        text=_lbl_texts,
+                        textfont=dict(size=9, color=TEXT, family="Arial"),
+                        showlegend=False, hoverinfo="skip",
+                    ))
+
+                    _state_name_sd = ABBR_TO_NAME.get(_sd_sel_state, _sd_sel_state)
+                    _fig_sd.update_layout(
+                        title=dict(
+                            text=f"{_state_name_sd} — {sd_crop} Net S&D by ASD ({sd_year})",
+                            font=dict(color=TEXT, size=14),
+                            x=0.5, xanchor="center",
+                        ),
+                        geo=dict(
+                            scope="usa",
+                            fitbounds="locations",
+                            visible=False,
+                            bgcolor="rgba(0,0,0,0)",
+                        ),
+                        paper_bgcolor="rgba(0,0,0,0)",
+                        plot_bgcolor="rgba(0,0,0,0)",
+                        margin=dict(l=0, r=0, t=40, b=0),
+                        height=480,
+                    )
+                    st.plotly_chart(_fig_sd, use_container_width=True)
+
+                # Breakdown table
+                if not _st_df.empty:
+                    _tbl = _st_df[["District", "production_bu",
+                                   _sd_feed_col, _sd_plant_col,
+                                   _sd_demand_col, "net_bu", "net_pct"]].copy()
+                    # Fill missing demand columns
+                    for _c in [_sd_feed_col, _sd_plant_col, _sd_demand_col]:
+                        if _c not in _tbl.columns:
+                            _tbl[_c] = 0
+                        _tbl[_c] = pd.to_numeric(_tbl[_c], errors="coerce").fillna(0)
+                    _tbl = _tbl.sort_values("net_bu", ascending=False).reset_index(drop=True)
+                    _tbl_disp = pd.DataFrame({
+                        "District":          _tbl["District"].fillna("—"),
+                        "Production (M bu)": (_tbl["production_bu"] / 1e6).round(1),
+                        _sd_feed_lbl:        _tbl[_sd_feed_col].round(0).astype(int),
+                        _sd_plant_lbl:       _tbl[_sd_plant_col].round(0).astype(int),
+                        "Total Demand (M bu)": (_tbl[_sd_demand_col] / 1e6).round(1),
+                        "Net (M bu)":        (_tbl["net_bu"] / 1e6).round(1),
+                        "Net % of Prod":     _tbl["net_pct"].round(1),
+                    })
+                    st.dataframe(
+                        _tbl_disp, use_container_width=True, hide_index=True,
+                        column_config={
+                            "Net (M bu)": st.column_config.NumberColumn(
+                                format="%+.1f",
+                            ),
+                            "Net % of Prod": st.column_config.NumberColumn(
+                                format="%+.1f%%",
+                            ),
+                        },
+                    )
+
+            # ── National overview: state-level summary ─────────────────────────
+            else:
+                _state_sum = (
+                    _sd.groupby("state_alpha", as_index=False)
+                    .agg(
+                        production_bu=("production_bu", "sum"),
+                        demand_bu=(_sd_demand_col, "sum"),
+                        net_bu=("net_bu", "sum"),
+                    )
+                    .assign(
+                        net_pct=lambda d: np.where(
+                            d["production_bu"] > 0,
+                            d["net_bu"] / d["production_bu"] * 100,
+                            np.nan,
+                        )
+                    )
+                    .sort_values("net_bu", ascending=False)
+                )
+
+                # Bar chart — states sorted by net
+                _bar_colors = [
+                    "#1a6645" if v >= 0 else "#b22222"
+                    for v in _state_sum["net_bu"]
+                ]
+                _fig_bar = go.Figure(go.Bar(
+                    x=_state_sum["state_alpha"],
+                    y=_state_sum["net_bu"] / 1e6,
+                    marker_color=_bar_colors,
+                    text=(_state_sum["net_bu"] / 1e6).round(0).astype(int).astype(str) + "M",
+                    textposition="outside",
+                    hovertemplate=(
+                        "<b>%{x}</b><br>"
+                        "Net: %{y:.0f}M bu<extra></extra>"
+                    ),
+                ))
+                _fig_bar.update_layout(
+                    title=dict(
+                        text=f"{sd_crop} Net Surplus / Deficit by State ({sd_year})  ·  Green = surplus, Red = deficit",
+                        font=dict(color=TEXT, size=13),
+                    ),
+                    xaxis=dict(title="State", tickfont=dict(color=TEXT)),
+                    yaxis=dict(title="Net (M bu)", tickfont=dict(color=TEXT),
+                               zeroline=True, zerolinecolor=BORDER, zerolinewidth=1.5),
+                    paper_bgcolor="rgba(0,0,0,0)",
+                    plot_bgcolor="rgba(0,0,0,0)",
+                    margin=dict(l=0, r=0, t=44, b=0),
+                    height=420,
+                    font=dict(color=TEXT),
+                )
+                st.plotly_chart(_fig_bar, use_container_width=True)
+
+                # Summary table
+                _sum_disp = pd.DataFrame({
+                    "State": _state_sum["state_alpha"].map(
+                        lambda a: f"{a} — {ABBR_TO_NAME.get(a, a)}"
+                    ),
+                    "Production (M bu)": (_state_sum["production_bu"] / 1e6).round(1),
+                    "Total Demand (M bu)": (_state_sum["demand_bu"] / 1e6).round(1),
+                    "Net (M bu)": (_state_sum["net_bu"] / 1e6).round(1),
+                    "Net % of Prod": _state_sum["net_pct"].round(1),
+                })
+                st.dataframe(
+                    _sum_disp, use_container_width=True, hide_index=True,
+                    column_config={
+                        "Net (M bu)": st.column_config.NumberColumn(format="%+.1f"),
+                        "Net % of Prod": st.column_config.NumberColumn(format="%+.1f%%"),
+                    },
+                )
+
+        st.markdown(
+            f"<p style='color:{MUTED};font-size:0.78rem;margin-top:16px;'>"
+            f"Production: NASS {sd_year} county survey, aggregated to ASD. "
+            "Feed demand: bottom-up from NASS livestock inventory × feed conversion factors "
+            "(corn 50 bu/hd COF, 13 bu/hd hogs, 1.1 bu/layer, 0.12 bu/broiler, 50 bu/dairy cow; "
+            "SBM: 150 lb/hog, 1,450 lb/dairy cow; broilers/turkeys use production not inventory). "
+            "Ethanol & crush demand from JSA plant capacity spreadsheets. "
+            "Livestock distributed to ASD via 2022 Census county shares scaled to current NASS state totals. "
+            "Net is a structural snapshot — actual flows depend on basis, freight, and contract obligations.</p>",
+            unsafe_allow_html=True,
+        )
 
     # ABOUT THE DATA TAB
     # ══════════════════════════════════════════════════════════════════════════
