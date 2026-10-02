@@ -14,7 +14,9 @@ Usage:
 """
 
 import json
+import re
 import time
+import urllib.error
 import urllib.request
 import urllib.parse
 from pathlib import Path
@@ -51,13 +53,23 @@ LBS_PER_BU_SBM  = 2000   # SBM stays in lbs; convert to short tons where needed
 
 # ── NASS helpers ─────────────────────────────────────────────────────────────
 
-def _nass_get(params: dict, timeout: int = 30) -> list[dict]:
+def _nass_get(params: dict, timeout: int = 60, retries: int = 4) -> list[dict]:
+    """NASS 400 = zero rows (returns []). Throttling/network errors retry, then raise
+    so a failed pull is never cached as an empty result."""
     url = NASS_BASE + "?" + urllib.parse.urlencode({**params, "key": NASS_KEY, "format": "json"})
-    try:
-        with urllib.request.urlopen(url, timeout=timeout) as r:
-            return json.load(r).get("data", [])
-    except Exception:
-        return []
+    last = None
+    for attempt in range(retries):
+        try:
+            with urllib.request.urlopen(url, timeout=timeout) as r:
+                return json.load(r).get("data", [])
+        except urllib.error.HTTPError as e:
+            if e.code == 400:
+                return []
+            last = e
+        except Exception as e:
+            last = e
+        time.sleep(2 * (attempt + 1))
+    raise RuntimeError(f"NASS request failed after {retries} tries: {last}")
 
 
 def _parse_value(v: str) -> float:
@@ -67,39 +79,58 @@ def _parse_value(v: str) -> float:
         return 0.0
 
 
+# ── Species matching ─────────────────────────────────────────────────────────
+# NASS short_desc punctuation varies ("CATTLE, ON FEED - INVENTORY"), so match on
+# letters only. (commodity_desc, normalized short_desc, exact?) -> species key.
+
+_SPECIES_RULES = [
+    ("CATTLE",   "CATTLEONFEEDINVENTORY",       True,  "CATTLE ON FEED"),
+    ("CATTLE",   "CATTLEINCLCALVESINVENTORY",   True,  "CATTLE ALL"),
+    ("CATTLE",   "CATTLECOWSMILKINVENTORY",     True,  "MILK COWS"),
+    ("HOGS",     "HOGSINVENTORY",               True,  "HOGS"),
+    ("CHICKENS", "CHICKENSLAYERSINVENTORY",     True,  "CHICKENS, LAYERS"),
+    ("CHICKENS", "CHICKENSBROILERSPRODUCTION",  False, "BROILERS"),
+    ("TURKEYS",  "TURKEYSPRODUCTION",           False, "TURKEYS"),
+]
+
+
+def _norm(sd: str) -> str:
+    return re.sub(r"[^A-Z]", "", sd.upper())
+
+
+def _species_for(commodity: str, short_desc: str) -> str | None:
+    n = _norm(short_desc)
+    for com, pat, exact, key in _SPECIES_RULES:
+        if com == commodity and (n == pat if exact else n.startswith(pat)):
+            return key
+    return None
+
+
 # ── Step 1: 2022 Census ASD livestock shares ─────────────────────────────────
 
 @st.cache_data(ttl=86400 * 7, show_spinner=False)
 def _load_census_asd_shares(cache_ver: str) -> pd.DataFrame:
     """
-    Pull 2022 Census county livestock for Corn Belt states.
-    Return DataFrame with columns:
-        state_alpha, asd_code, species, total_head
-    aggregated to ASD level — used as spatial allocation weights.
+    2022 Census county livestock for Corn Belt states, aggregated to ASD:
+        state_alpha, asd_code, species, head
+    Used as spatial allocation weights. Raises if NASS is unreachable (not cached).
     """
-    queries = [
-        # (commodity_desc, short_desc filter substring, species_key)
-        ("CATTLE", "CATTLE ON FEED - INVENTORY",           "CATTLE ON FEED"),
-        ("CATTLE", "CATTLE, INCL CALVES - INVENTORY",      "CATTLE ALL"),
-        ("HOGS",   "HOGS - INVENTORY",                      "HOGS"),
-        ("CHICKENS", "CHICKENS, LAYERS - INVENTORY",        "CHICKENS, LAYERS"),
-        ("MILK COWS", "MILK COWS - INVENTORY",              "MILK COWS"),
-    ]
     records = []
-    for commodity, short_filter, species_key in queries:
+    for commodity in ("CATTLE", "HOGS", "CHICKENS"):
         for state in DEMAND_STATES:
             rows = _nass_get({
-                "commodity_desc":     commodity,
-                "statisticcat_desc":  "INVENTORY",
-                "source_desc":        "CENSUS",
-                "year":               "2022",
-                "agg_level_desc":     "COUNTY",
-                "state_alpha":        state,
-                "domain_desc":        "TOTAL",
+                "commodity_desc":    commodity,
+                "statisticcat_desc": "INVENTORY",
+                "source_desc":       "CENSUS",
+                "year":              "2022",
+                "agg_level_desc":    "COUNTY",
+                "state_alpha":       state,
+                "domain_desc":       "TOTAL",
             })
             time.sleep(0.3)
             for row in rows:
-                if short_filter.lower() not in row.get("short_desc", "").lower():
+                key = _species_for(commodity, row.get("short_desc", ""))
+                if not key:
                     continue
                 val = _parse_value(row.get("Value", "0"))
                 if val <= 0:
@@ -107,13 +138,13 @@ def _load_census_asd_shares(cache_ver: str) -> pd.DataFrame:
                 records.append({
                     "state_alpha": row["state_alpha"],
                     "asd_code":    row.get("asd_code", ""),
-                    "species":     species_key,
+                    "species":     key,
                     "head":        val,
                 })
 
     df = pd.DataFrame(records)
     if df.empty:
-        return df
+        raise RuntimeError("Census livestock shares came back empty")
     return df.groupby(["state_alpha", "asd_code", "species"])["head"].sum().reset_index()
 
 
@@ -122,21 +153,19 @@ def _load_census_asd_shares(cache_ver: str) -> pd.DataFrame:
 @st.cache_data(ttl=3600 * 24, show_spinner=False)
 def _load_state_livestock(year: int, cache_ver: str) -> pd.DataFrame:
     """
-    Annual state-level livestock inventory (SURVEY, most recent year).
-    Returns DataFrame: state_alpha, species, total_head
+    Annual state-level livestock (SURVEY): state_alpha, species, head.
+    Inventories with several reference periods (hogs are quarterly) are averaged.
+    Raises if nothing comes back so an empty table is never cached.
     """
     queries = [
-        ("CATTLE", "CATTLE ON FEED",            "INVENTORY", "CATTLE ON FEED"),
-        ("CATTLE", "CATTLE, INCL CALVES",        "INVENTORY", "CATTLE ALL"),
-        ("HOGS",   "HOGS",                       "INVENTORY", "HOGS"),
-        ("CHICKENS", "CHICKENS, LAYERS",         "INVENTORY", "CHICKENS, LAYERS"),
-        ("MILK COWS", "MILK COWS",               "INVENTORY", "MILK COWS"),
-        # Broilers and turkeys: use production not inventory
-        ("CHICKENS", "BROILERS", "PRODUCTION",  "BROILERS"),
-        ("TURKEYS",  "TURKEYS",  "PRODUCTION",  "TURKEYS"),
+        ("CATTLE",   "INVENTORY"),
+        ("HOGS",     "INVENTORY"),
+        ("CHICKENS", "INVENTORY"),
+        ("CHICKENS", "PRODUCTION"),
+        ("TURKEYS",  "PRODUCTION"),
     ]
     records = []
-    for commodity, class_or_short, statcat, species_key in queries:
+    for commodity, statcat in queries:
         rows = _nass_get({
             "commodity_desc":    commodity,
             "statisticcat_desc": statcat,
@@ -148,22 +177,24 @@ def _load_state_livestock(year: int, cache_ver: str) -> pd.DataFrame:
         })
         time.sleep(0.3)
         for row in rows:
-            sd = row.get("short_desc", "")
-            if class_or_short.upper() not in sd.upper():
+            key = _species_for(commodity, row.get("short_desc", ""))
+            if not key:
                 continue
             val = _parse_value(row.get("Value", "0"))
             if val <= 0:
                 continue
             records.append({
                 "state_alpha": row["state_alpha"],
-                "species":     species_key,
+                "species":     key,
+                "period":      row.get("reference_period_desc", ""),
                 "head":        val,
             })
 
     df = pd.DataFrame(records)
     if df.empty:
-        return df
-    return df.groupby(["state_alpha", "species"])["head"].sum().reset_index()
+        raise RuntimeError(f"State livestock for {year} came back empty")
+    per = df.groupby(["state_alpha", "species", "period"])["head"].sum().reset_index()
+    return per.groupby(["state_alpha", "species"])["head"].mean().reset_index()
 
 
 # ── Step 3: Distribute state livestock to ASDs using Census shares ────────────
@@ -235,8 +266,13 @@ def _compute_feed_demand(asd_inv: pd.DataFrame) -> pd.DataFrame:
 
     pivot["corn_feed_bu"]  = pivot[corn_cols].sum(axis=1)
     pivot["sbm_feed_lbs"]  = pivot[sbm_cols].sum(axis=1)
+    pivot = pivot.rename(columns={
+        **{f"_corn_{k}": f"corn_feed__{k}" for k in FEED_FACTORS},
+        **{f"_sbm_{k}":  f"sbm_feed__{k}"  for k in FEED_FACTORS},
+    })
+    per_species = [f"{p}__{k}" for k in FEED_FACTORS for p in ("corn_feed", "sbm_feed")]
 
-    return pivot[["state_alpha", "asd_code", "corn_feed_bu", "sbm_feed_lbs"]].copy()
+    return pivot[["state_alpha", "asd_code", "corn_feed_bu", "sbm_feed_lbs", *per_species]].copy()
 
 
 # ── Step 5: Facility demand from CSVs ─────────────────────────────────────────
@@ -321,7 +357,8 @@ def load_asd_demand(year: int, cache_ver: str) -> pd.DataFrame:
     else:
         base["soy_crush_bu"] = 0
 
-    for col in ["corn_feed_bu","sbm_feed_lbs","corn_ethanol_bu","ddgs_dry_lbs","soy_crush_bu"]:
+    species_cols = [c for c in base.columns if c.startswith(("corn_feed__", "sbm_feed__"))]
+    for col in ["corn_feed_bu","sbm_feed_lbs","corn_ethanol_bu","ddgs_dry_lbs","soy_crush_bu", *species_cols]:
         base[col] = pd.to_numeric(base.get(col, 0), errors="coerce").fillna(0)
 
     base["corn_demand_total_bu"] = base["corn_feed_bu"] + base["corn_ethanol_bu"]

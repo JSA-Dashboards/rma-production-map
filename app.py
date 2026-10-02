@@ -7158,11 +7158,25 @@ def main():
         )
 
         # ── Controls ─────────────────────────────────────────────────────────
-        sd_c1, sd_c2, sd_c3, sd_c4 = st.columns([1, 0.75, 1.8, 0.55])
+        sd_c1, sd_c2, sd_c5, sd_c3, sd_c4 = st.columns([1, 0.75, 1.3, 1.6, 0.55])
         with sd_c1:
             sd_crop = st.selectbox("Crop", ["Corn", "Soybeans"], key="sd_crop")
         with sd_c2:
             sd_year = st.selectbox("Year", NASS_YEARS, index=1, key="sd_year")  # default 2025 — county data not published for current year
+        _SD_SPECIES = {
+            "All Species": None,
+            "Cattle on Feed": "CATTLE ON FEED", "Other Cattle": "CATTLE OTHER",
+            "Dairy (Milk Cows)": "MILK COWS", "Hogs": "HOGS",
+            "Layers": "CHICKENS, LAYERS", "Broilers": "BROILERS", "Turkeys": "TURKEYS",
+        }
+        with sd_c5:
+            sd_species_sel = st.selectbox(
+                "Feed Species", list(_SD_SPECIES), key="sd_feed_species",
+                disabled=(sd_crop != "Corn"),
+                help="Livestock feed corn demand. All Species is the full feed estimate; "
+                     "pick one species to see only its feed demand (ethanol is unchanged).",
+            )
+        _sd_species = _SD_SPECIES[sd_species_sel] if sd_crop == "Corn" else None
         with sd_c4:
             st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
             if st.button("🔄 Refresh", use_container_width=True, key="sd_refresh"):
@@ -7173,8 +7187,12 @@ def main():
         with st.spinner(f"Loading {sd_year} {sd_crop} production..."):
             _sd_county = load_nass_county(sd_crop, sd_year, _CACHE_VERSION)
 
-        with st.spinner("Loading ASD demand estimates..."):
-            _sd_demand = load_asd_demand(sd_year, _CACHE_VERSION)
+        try:
+            with st.spinner("Loading ASD demand estimates..."):
+                _sd_demand = load_asd_demand(sd_year, _CACHE_VERSION)
+        except Exception as _e:
+            st.error(f"Livestock demand data unavailable from NASS right now ({_e}). Try Refresh in a few minutes.")
+            _sd_demand = pd.DataFrame()
 
         # Aggregate county production → ASD
         _sd_prod = pd.DataFrame()
@@ -7206,6 +7224,14 @@ def main():
             )
             for _c in ["production_bu", _sd_demand_col]:
                 _sd[_c] = pd.to_numeric(_sd.get(_c, 0), errors="coerce").fillna(0)
+            if _sd_species:
+                _sp_col = f"corn_feed__{_sd_species}"
+                _sd[_sp_col] = pd.to_numeric(_sd_demand.set_index(["state_alpha", "asd_code"])[_sp_col]
+                                             .reindex(pd.MultiIndex.from_frame(_sd[["state_alpha", "asd_code"]])).values,
+                                             errors="coerce")
+                _sd[_sp_col] = _sd[_sp_col].fillna(0)
+                _sd[_sd_feed_col] = _sd[_sp_col]
+                _sd[_sd_demand_col] = _sd[_sp_col] + pd.to_numeric(_sd.get(_sd_plant_col, 0), errors="coerce").fillna(0)
             _sd["net_bu"] = _sd["production_bu"] - _sd[_sd_demand_col]
             _sd["net_pct"] = np.where(
                 _sd["production_bu"] > 0,
@@ -7220,7 +7246,7 @@ def main():
                 f"{a}  —  {ABBR_TO_NAME.get(a, a)}" for a in _sd_states
             ]
             sd_state_sel = st.selectbox(
-                "State Drill-Down", _sd_state_opts, key="sd_state_dd"
+                "State Drill-Down", _sd_state_opts, key=f"sd_state_dd_{sd_crop}_{sd_year}"
             )
         _sd_sel_state = None if sd_state_sel.startswith("—") else sd_state_sel[:2]
 
