@@ -417,11 +417,19 @@ def load_canola_asd(year: int, cache_ver: str):
         {**base, "agg_level_desc": "STATE", "domain_desc": "TOTAL"},
     ])
 
-    state_total: dict = {}
+    # Each state has the final "YEAR" row and an "OCT FORECAST" row; use the final
+    # when it exists, else the latest forecast. (Class is ALL CLASSES: spring + winter.)
+    final: dict = {}
+    forecast: dict = {}
     for r in state_rows:
         s, v = r.get("state_alpha"), _parse_value(r.get("Value", "0"))
-        if s and s != "OT" and v > state_total.get(s, 0):
-            state_total[s] = v
+        if not s or s == "OT" or v <= 0:
+            continue
+        if str(r.get("reference_period_desc", "")).strip().upper() == "YEAR":
+            final[s] = v
+        else:
+            forecast[s] = max(v, forecast.get(s, 0))
+    state_total = {**forecast, **final}
 
     cty: dict = {}
     for r in county_rows:
