@@ -128,7 +128,25 @@ NASS_CROP_STAT_PARAMS = {
         "yield":         {"commodity_desc": "SORGHUM", "util_practice_desc": "GRAIN"},
         "prevent_plant": {"commodity_desc": "SORGHUM"},
     },
+    # NASS reports canola in LB and LB / ACRE (ALL CLASSES = spring + winter); the
+    # loaders convert to 50-lb bushels so the tab's bu labels hold (_lb_to_bu_scale).
+    "Canola": {
+        "production":    {"commodity_desc": "CANOLA", "unit_desc": "LB"},
+        "planted":       {"commodity_desc": "CANOLA"},
+        "harvested":     {"commodity_desc": "CANOLA"},
+        "yield":         {"commodity_desc": "CANOLA", "unit_desc": "LB / ACRE"},
+        "prevent_plant": {"commodity_desc": "CANOLA"},
+    },
 }
+
+_CANOLA_LB_PER_BU = 50
+
+
+def _lb_to_bu_scale(crop: str, stat_type: str = "production") -> float:
+    """Multiplier turning NASS canola pounds (production, yield) into 50-lb bushels."""
+    if crop == "Canola" and stat_type in ("production", "yield"):
+        return 1.0 / _CANOLA_LB_PER_BU
+    return 1.0
 
 # Base API params per stat type
 # prevent_plant uses AREA PLANTED — rows are filtered to "PREVENTED" in load_nass_stat
@@ -753,6 +771,7 @@ NASS_CROP_PARAMS = {
     "Soybeans": {"commodity_desc": "SOYBEANS"},
     "Wheat":    {"commodity_desc": "WHEAT",   "class_desc": "ALL CLASSES"},
     "Sorghum":  {"commodity_desc": "SORGHUM", "util_practice_desc": "GRAIN"},
+    "Canola":   {"commodity_desc": "CANOLA", "unit_desc": "LB"},
 }
 
 # ── State lookups ─────────────────────────────────────────────────────────────
@@ -943,7 +962,7 @@ def load_nass_stat(crop: str, year: int, stat_type: str,
     df["Value"] = pd.to_numeric(
         df["Value"].str.replace(",", "", regex=False).str.strip(),
         errors="coerce",
-    ).fillna(0)
+    ).fillna(0) * _lb_to_bu_scale(crop, stat_type)
     df["fips"]   = df["state_fips_code"].str.zfill(2) + df["county_ansi"].str.zfill(3)
     df["State"]  = df["state_alpha"].str.strip()
     df["County"] = df["county_name"].str.strip().str.title()
@@ -1017,7 +1036,7 @@ def load_nass_state(crop: str, year: int, stat_type: str,
     df["Value"] = pd.to_numeric(
         df["Value"].str.replace(",", "", regex=False).str.strip(),
         errors="coerce",
-    ).fillna(0)
+    ).fillna(0) * _lb_to_bu_scale(crop, stat_type)
     df["State"] = df["state_alpha"].str.strip()
 
     # Keep only known 50-state abbreviations — explicitly excludes "US" (national
@@ -1189,7 +1208,7 @@ def _load_nass_county_cached(crop: str, year: int = 2025,
     df["Production"] = pd.to_numeric(
         df["Value"].str.replace(",", "", regex=False).str.strip(),
         errors="coerce",
-    ).fillna(0)
+    ).fillna(0) * _lb_to_bu_scale(crop, "production")
     df["fips"]   = df["state_fips_code"].str.zfill(2) + df["county_ansi"].str.zfill(3)
     df["State"]  = df["state_alpha"].str.strip()
     df["County"] = df["county_name"].str.strip().str.title()
@@ -1250,7 +1269,7 @@ def _load_county_raw_for_est(crop: str, state: str, year: int,
     df = df[[c for c in needed if c in df.columns]].copy()
     df["Value_num"] = pd.to_numeric(
         df["Value"].str.replace(",", "", regex=False).str.strip(), errors="coerce"
-    ).fillna(0)
+    ).fillna(0) * _lb_to_bu_scale(crop, stat_type)
     df["fips"]    = df["state_fips_code"].str.zfill(2) + df["county_ansi"].str.zfill(3)
     df["State"]   = df["state_alpha"].str.strip()
     df["County"]  = df["county_name"].str.strip().str.title()
@@ -3883,6 +3902,13 @@ def main():
                 if st.button("🔄 Refresh", use_container_width=True, key="nass_refresh"):
                     st.cache_data.clear()
                     st.rerun()
+
+            if nass_crop == "Canola":
+                st.caption(
+                    "Canola: NASS reports pounds; shown here in 50-lb bushels (yield in bu/ac). Spring and "
+                    "winter canola are combined (NASS publishes one all-classes series). County estimates "
+                    "exist only for ND and, in some years, MT; other states show at state level."
+                )
 
             # Row 2 — Metric selector
             st.markdown(
