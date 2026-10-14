@@ -389,3 +389,84 @@ def load_asd_demand(year: int, cache_ver: str) -> pd.DataFrame:
     base["soy_demand_total_bu"]  = base["soy_crush_bu"]
 
     return base.sort_values(["state_alpha", "asd_code"]).reset_index(drop=True)
+
+
+# ── Canola ───────────────────────────────────────────────────────────────────
+# NASS reports canola in pounds; the tab shows 50-lb bushels. County estimates exist
+# only for ND (and MT in some years) and cover roughly half of ND's crop, so county
+# sums are scaled up to the state total. States with a state total but no county data
+# become one "STATE" row, with plants there keyed to the same row.
+
+LBS_PER_BU_CANOLA = 50
+LBS_PER_TONNE = 2204.62
+_CANOLA_PLANTS = DATA_DIR / "canola_crush_plants.csv"
+
+
+@st.cache_data(ttl=3600 * 6, show_spinner=False)
+def load_canola_asd(year: int, cache_ver: str):
+    """Returns (production_df, demand_df, meta).
+
+    production_df: state_alpha, asd_code, asd_desc, production_bu
+    demand_df:     state_alpha, asd_code, canola_feed_bu (0), canola_crush_bu, canola_demand_total_bu
+    meta:          plants_total, plants_with_capacity, county_coverage {state: share of state total}
+    """
+    base = {"commodity_desc": "CANOLA", "statisticcat_desc": "PRODUCTION", "unit_desc": "LB",
+            "source_desc": "SURVEY", "year": str(year)}
+    county_rows, state_rows = _cached_rows([
+        {**base, "agg_level_desc": "COUNTY"},
+        {**base, "agg_level_desc": "STATE", "domain_desc": "TOTAL"},
+    ])
+
+    state_total: dict = {}
+    for r in state_rows:
+        s, v = r.get("state_alpha"), _parse_value(r.get("Value", "0"))
+        if s and s != "OT" and v > state_total.get(s, 0):
+            state_total[s] = v
+
+    cty: dict = {}
+    for r in county_rows:
+        if r.get("county_ansi") in ("998", "000", "999", None, ""):
+            continue
+        if str(r.get("county_name", "")).strip().lower().startswith("other"):
+            continue
+        v = _parse_value(r.get("Value", "0"))
+        if v <= 0 or not r.get("asd_code"):
+            continue
+        k = (r["state_alpha"], r["asd_code"], r.get("asd_desc", ""))
+        cty[k] = cty.get(k, 0) + v
+
+    county_sum: dict = {}
+    for (s, _, _), v in cty.items():
+        county_sum[s] = county_sum.get(s, 0) + v
+
+    rows = []
+    for (s, code, desc), v in cty.items():
+        scale = max(1.0, state_total.get(s, 0) / county_sum[s]) if county_sum.get(s) else 1.0
+        rows.append({"state_alpha": s, "asd_code": code, "asd_desc": desc,
+                     "production_bu": v * scale / LBS_PER_BU_CANOLA})
+    for s, tot in state_total.items():
+        if s not in county_sum and tot > 0:
+            rows.append({"state_alpha": s, "asd_code": "STATE", "asd_desc": "STATE TOTAL",
+                         "production_bu": tot / LBS_PER_BU_CANOLA})
+    prod = pd.DataFrame(rows, columns=["state_alpha", "asd_code", "asd_desc", "production_bu"])
+    if prod.empty:
+        raise RuntimeError(f"No canola production in the NASS cache for {year}")
+
+    plants = pd.read_csv(_CANOLA_PLANTS, dtype=str) if _CANOLA_PLANTS.exists() else pd.DataFrame()
+    n_total = len(plants)
+    if n_total:
+        plants["cap_t"] = pd.to_numeric(plants["capacity_tonnes_yr"], errors="coerce")
+        n_cap = int(plants["cap_t"].notna().sum())
+        plants["canola_crush_bu"] = plants["cap_t"].fillna(0) * LBS_PER_TONNE / LBS_PER_BU_CANOLA
+        dem = (plants.groupby(["state", "asd_code"], as_index=False)["canola_crush_bu"].sum()
+               .rename(columns={"state": "state_alpha"}))
+    else:
+        n_cap = 0
+        dem = pd.DataFrame(columns=["state_alpha", "asd_code", "canola_crush_bu"])
+    dem["canola_feed_bu"] = 0.0
+    dem["canola_demand_total_bu"] = dem["canola_crush_bu"]
+
+    meta = {"plants_total": n_total, "plants_with_capacity": n_cap,
+            "county_coverage": {s: county_sum[s] / state_total[s]
+                                for s in county_sum if state_total.get(s)}}
+    return prod, dem, meta

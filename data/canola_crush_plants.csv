@@ -1,0 +1,6 @@
+company,state,city,county,asd_code,asd_desc,capacity_tonnes_yr,source
+Archer Daniels Midland,ND,Velva,McHenry,20,NORTH CENTRAL,,"Canola crusher + biodiesel plant. No public tonnage found; enter annual canola seed capacity (metric tonnes)."
+Archer Daniels Midland,ND,Enderlin,Ransom,90,SOUTHEAST,,"Crushes canola, sunflower and soybeans. Soybean capacity is already in crush_plants_asd.csv; enter only the canola share (metric tonnes)."
+Cargill,ND,West Fargo,Cass,60,EAST CENTRAL,,"Rebuilt and expanded 2013 (canola, sunflower, flax). Cargill published no tonnage; enter annual canola seed capacity (metric tonnes)."
+Pacific Coast Canola,WA,Warden,Grant,STATE,STATE TOTAL,360000,"Company CEO figure ~2015 (360,000 t/yr; design 1,100 t/day). Western Producer reports 379,500 t/yr at full capacity. Verify current status."
+Northstar Agri Industries,MN,Hallock,Kittson,STATE,STATE TOTAL,,"Reported as similar in size to Warden (~360-380 kt/yr) but unverified; enter capacity (metric tonnes)."

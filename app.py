@@ -14,7 +14,7 @@ from pathlib import Path
 from PIL import Image
 import geopandas as gpd
 from shapely.geometry import shape
-from demand_module import load_asd_demand
+from demand_module import load_asd_demand, load_canola_asd
 
 _HERE = Path(__file__).parent
 st.set_page_config(
@@ -7202,7 +7202,7 @@ def main():
             # ── Controls ─────────────────────────────────────────────────────────
             sd_c1, sd_c2, sd_c5, sd_c3, sd_c4 = st.columns([1, 0.75, 1.3, 1.6, 0.55])
             with sd_c1:
-                sd_crop = st.selectbox("Crop", ["Corn", "Soybeans"], key="sd_crop")
+                sd_crop = st.selectbox("Crop", ["Corn", "Soybeans", "Canola"], key="sd_crop")
             with sd_c2:
                 sd_year = st.selectbox("Year", NASS_YEARS, index=1, key="sd_year")  # default 2025 — county data not published for current year
             _SD_SPECIES = {
@@ -7226,19 +7226,30 @@ def main():
                     st.rerun()
 
             # ── Load data ────────────────────────────────────────────────────────
-            with st.spinner(f"Loading {sd_year} {sd_crop} production..."):
-                _sd_county = load_nass_county(sd_crop, sd_year, _CACHE_VERSION)
+            _canola_meta = None
+            _sd_county = pd.DataFrame()
+            if sd_crop == "Canola":
+                _sd_prod, _sd_demand = pd.DataFrame(), pd.DataFrame()
+                try:
+                    with st.spinner(f"Loading {sd_year} canola production and crush..."):
+                        _sd_prod, _sd_demand, _canola_meta = load_canola_asd(sd_year, _CACHE_VERSION)
+                except Exception as _e:
+                    st.error(f"Canola data unavailable ({_e}).")
+            else:
+                with st.spinner(f"Loading {sd_year} {sd_crop} production..."):
+                    _sd_county = load_nass_county(sd_crop, sd_year, _CACHE_VERSION)
 
-            try:
-                with st.spinner("Loading ASD demand estimates..."):
-                    _sd_demand = load_asd_demand(sd_year, _CACHE_VERSION)
-            except Exception as _e:
-                st.error(f"Livestock demand data unavailable from NASS right now ({_e}). Try Refresh in a few minutes.")
-                _sd_demand = pd.DataFrame()
+                try:
+                    with st.spinner("Loading ASD demand estimates..."):
+                        _sd_demand = load_asd_demand(sd_year, _CACHE_VERSION)
+                except Exception as _e:
+                    st.error(f"Livestock demand data unavailable from NASS right now ({_e}). Try Refresh in a few minutes.")
+                    _sd_demand = pd.DataFrame()
 
             # Aggregate county production → ASD
-            _sd_prod = pd.DataFrame()
-            if not _sd_county.empty and "asd_code" in _sd_county.columns:
+            if sd_crop != "Canola":
+                _sd_prod = pd.DataFrame()
+            if sd_crop != "Canola" and not _sd_county.empty and "asd_code" in _sd_county.columns:
                 _sd_prod = (
                     _sd_county
                     .dropna(subset=["asd_code"])
@@ -7248,11 +7259,13 @@ def main():
                     .rename(columns={"State": "state_alpha", "Production": "production_bu"})
                 )
 
-            _sd_demand_col = "corn_demand_total_bu" if sd_crop == "Corn" else "soy_demand_total_bu"
-            _sd_feed_col   = "corn_feed_bu"          if sd_crop == "Corn" else "sbm_feed_lbs"
-            _sd_plant_col  = "corn_ethanol_bu"        if sd_crop == "Corn" else "soy_crush_bu"
-            _sd_plant_lbl  = "Ethanol Corn (bu)"      if sd_crop == "Corn" else "Crush Soy (bu)"
-            _sd_feed_lbl   = "Feed Corn (bu)"         if sd_crop == "Corn" else "Feed SBM (lbs)"
+            _SD_COLS = {
+                "Corn":     ("corn_demand_total_bu",   "corn_feed_bu", "corn_ethanol_bu",  "Ethanol Corn (bu)",   "Feed Corn (bu)"),
+                "Soybeans": ("soy_demand_total_bu",    "sbm_feed_lbs", "soy_crush_bu",     "Crush Soy (bu)",      "Feed SBM (lbs)"),
+                "Canola":   ("canola_demand_total_bu", "canola_feed_bu", "canola_crush_bu", "Crush Canola (bu)",  "Feed Canola (bu)"),
+            }
+            (_sd_demand_col, _sd_feed_col, _sd_plant_col,
+             _sd_plant_lbl, _sd_feed_lbl) = _SD_COLS[sd_crop]
 
             # Merge production + demand
             _sd = pd.DataFrame()
@@ -7292,6 +7305,17 @@ def main():
                 )
             _sd_sel_state = None if sd_state_sel.startswith("—") else sd_state_sel[:2]
 
+            if sd_crop == "Canola" and _canola_meta:
+                _cov = ", ".join(f"{a} {v:.0%}" for a, v in _canola_meta["county_coverage"].items())
+                st.warning(
+                    f"Canola crush capacity is entered for {_canola_meta['plants_with_capacity']} of "
+                    f"{_canola_meta['plants_total']} plants (data/canola_crush_plants.csv), so demand and "
+                    "the surplus are NOT reliable until the rest are filled in. Production is in 50-lb "
+                    "bushels (NASS reports pounds). NASS county estimates cover "
+                    f"{_cov or 'no state'} of that state's crop; the rest is spread pro rata to match the "
+                    "NASS state total. States with no county data appear as one state-level row."
+                )
+
             if _sd.empty:
                 st.warning(
                     f"No ASD S&D data available for {sd_crop} {sd_year}. "
@@ -7325,6 +7349,9 @@ def main():
                 elif sd_crop == "Soybeans" and "soy_crush_bu" in _kpi_df.columns:
                     _sb_crush = _kpi_df["soy_crush_bu"].fillna(0).sum()
                     _k4.metric("Crush Capacity", f"{_sb_crush/1e6:.0f}M bu/yr")
+                elif sd_crop == "Canola" and "canola_crush_bu" in _kpi_df.columns:
+                    _cn_crush = _kpi_df["canola_crush_bu"].fillna(0).sum()
+                    _k4.metric("Crush Capacity (entered)", f"{_cn_crush/1e6:.1f}M bu/yr")
 
                 st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
 
@@ -7332,15 +7359,19 @@ def main():
                 if _sd_sel_state:
                     _sfips = STATE_FIPS_ALL.get(_sd_sel_state, "")
                     _fips_map_sd = load_boundary_fips_map(
-                        sd_crop, _sfips, _CACHE_VERSION, geo
+                        "Corn" if sd_crop == "Canola" else sd_crop, _sfips, _CACHE_VERSION, geo
                     )
                     _dist_gdf_sd = build_nass_district_gdf(
                         _sfips, _CACHE_VERSION, _fips_map_sd, geo
                     )
 
                     _st_df = _sd[_sd["state_alpha"] == _sd_sel_state].copy()
+                    _st_df["District"] = _st_df["asd_desc"].fillna("").str.strip().str.title()
 
-                    if not _dist_gdf_sd.empty and not _st_df.empty:
+                    if sd_crop == "Canola" and _st_df["asd_code"].eq("STATE").all():
+                        st.info(f"NASS publishes no county canola data for {ABBR_TO_NAME.get(_sd_sel_state, _sd_sel_state)}, "
+                                "so there is no district map; the state total is shown below.")
+                    elif not _dist_gdf_sd.empty and not _st_df.empty:
                         # Build District-name keyed lookup for the choropleth
                         # asd_desc in production data vs District in GDF — title-cased match
                         _st_df["District"] = _st_df["asd_desc"].str.strip().str.title()
@@ -7468,7 +7499,7 @@ def main():
                                 _tbl[_c] = 0
                             _tbl[_c] = pd.to_numeric(_tbl[_c], errors="coerce").fillna(0)
                         _tbl = _tbl.sort_values("net_bu", ascending=False).reset_index(drop=True)
-                        _tbl_disp = pd.DataFrame({
+                        _tbl_cols = {
                             "District":          _tbl["District"].fillna("—"),
                             "Production (M bu)": (_tbl["production_bu"] / 1e6).round(1),
                             _sd_feed_lbl:        _tbl[_sd_feed_col].round(0).astype(int),
@@ -7476,7 +7507,10 @@ def main():
                             "Total Demand (M bu)": (_tbl[_sd_demand_col] / 1e6).round(1),
                             "Net (M bu)":        (_tbl["net_bu"] / 1e6).round(1),
                             "Net % of Prod":     _tbl["net_pct"].round(1),
-                        })
+                        }
+                        if sd_crop == "Canola":
+                            _tbl_cols.pop(_sd_feed_lbl)
+                        _tbl_disp = pd.DataFrame(_tbl_cols)
                         st.dataframe(
                             _tbl_disp, use_container_width=True, hide_index=True,
                             column_config={
@@ -7560,13 +7594,21 @@ def main():
 
             st.markdown(
                 f"<p style='color:{MUTED};font-size:0.78rem;margin-top:16px;'>"
+                + (
+                    f"Canola production: NASS {sd_year} county estimates (ND, MT) scaled to the NASS state total; "
+                    "other states state-level only. Pounds converted at 50 lb/bu. Crush demand = nameplate annual "
+                    "capacity of the plants in data/canola_crush_plants.csv (mapped to NASS districts); "
+                    "no feed or other use is modelled, and exports and seed use are not deducted. "
+                    "Net is a structural snapshot — actual flows depend on basis, freight, and contract obligations.</p>"
+                    if sd_crop == "Canola" else
                 f"Production: NASS {sd_year} county survey, aggregated to ASD. "
                 "Feed demand: bottom-up from NASS livestock inventory × feed conversion factors "
                 "(corn 50 bu/hd COF, 13 bu/hd hogs, 1.1 bu/layer, 0.12 bu/broiler, 50 bu/dairy cow; "
                 "SBM: 150 lb/hog, 1,450 lb/dairy cow; broilers/turkeys use production not inventory). "
                 "Ethanol & crush demand from JSA plant capacity spreadsheets. "
                 "Livestock distributed to ASD via 2022 Census county shares scaled to current NASS state totals. "
-                "Net is a structural snapshot — actual flows depend on basis, freight, and contract obligations.</p>",
+                "Net is a structural snapshot — actual flows depend on basis, freight, and contract obligations.</p>"
+                ),
                 unsafe_allow_html=True,
             )
 
