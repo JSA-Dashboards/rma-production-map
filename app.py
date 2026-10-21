@@ -2128,14 +2128,25 @@ def _build_asd_hist_shares(crop: str, state: str, stat_type: str,
     return {d: _olympic(v) for d, v in yearly.items() if v}
 
 
-@st.cache_data(show_spinner=False)
-def _get_default_yield_est(crop: str, state: str, cache_ver: str) -> float:
-    """Prior-year NASS state yield as the default forecast estimate."""
+def _default_yield_sources(crop: str, state: str, cache_ver: str) -> dict:
+    """Reference yields for the forecast-year estimate box.
+
+    usda: USDA's latest FORECAST_YEAR state yield. In season NASS's "YEAR" row carries the
+          latest monthly forecast (Aug/Sep/Oct/Nov), so it is the newest USDA estimate.
+    ly:   last year's final state yield (falls back one more year).
+    Not cached itself: the loaders it calls are, and a failed pull must not freeze a None here.
+    """
+    out = {"usda": None, "ly": None}
+    cur = _load_state_for_stat(crop, FORECAST_YEAR, "yield", cache_ver)
+    if not cur.empty and state in cur["State"].values:
+        v = float(cur[cur["State"] == state]["Value"].iloc[0])
+        out["usda"] = round(v, 1) if v > 0 else None
     for yr in [FORECAST_YEAR - 1, FORECAST_YEAR - 2]:
         sdf = _load_state_for_stat(crop, yr, "yield", cache_ver)
         if not sdf.empty and state in sdf["State"].values:
-            return round(float(sdf[sdf["State"] == state]["Value"].iloc[0]), 1)
-    return 0.0
+            out["ly"] = round(float(sdf[sdf["State"] == state]["Value"].iloc[0]), 1)
+            break
+    return out
 
 
 @st.cache_data(show_spinner=False)
@@ -4118,26 +4129,32 @@ def main():
                     _fc_state_totals: dict  = {}
                     if _is_forecast_year:
                         _yield_key = f"fc_yield_{nass_crop}_{nass_state}"
+                        _ysrc = _default_yield_sources(nass_crop, nass_state, _CACHE_VERSION)
+                        _usda_y, _ly_y = _ysrc["usda"], _ysrc["ly"]
                         if _yield_key not in st.session_state:
-                            _def_yield = _get_default_yield_est(
-                                nass_crop, nass_state, _CACHE_VERSION
+                            st.session_state[_yield_key] = float(_usda_y or _ly_y or 0.0)
+                        _state_nm = ABBR_TO_NAME.get(nass_state, nass_state)
+                        if _usda_y:
+                            st.info(
+                                f"**{FORECAST_YEAR} Forecast** — USDA's latest {nass_crop} yield estimate for "
+                                f"{_state_nm} is **{_usda_y:g} bu/ac** (last year {_ly_y:g}); it is the default "
+                                "below. Change it to run your own estimate: ASD district production is "
+                                "allocated from historical district shares."
+                                if _ly_y else
+                                f"**{FORECAST_YEAR} Forecast** — USDA's latest {nass_crop} yield estimate for "
+                                f"{_state_nm} is **{_usda_y:g} bu/ac**; it is the default below. Change it to "
+                                "run your own estimate."
                             )
-                            st.session_state[_yield_key] = _def_yield if _def_yield > 0 else 0.0
-                        _nass_st_yield_avail = _nass_has_official(
-                            nass_crop, nass_state, FORECAST_YEAR, "yield", _CACHE_VERSION
-                        )
-                        _banner_extra = (
-                            " NASS yield is now available — your estimate overrides it."
-                            if _nass_st_yield_avail else ""
-                        )
-                        st.info(
-                            f"**{FORECAST_YEAR} Forecast** — NASS has not yet published "
-                            f"{nass_crop} yield or production for "
-                            f"{ABBR_TO_NAME.get(nass_state, nass_state)}. "
-                            "Enter a yield estimate below to project ASD district production."
-                            + _banner_extra
-                        )
-                        _fc_col1, _, _ = st.columns([1.2, 1, 2.8])
+                        else:
+                            st.info(
+                                f"**{FORECAST_YEAR} Forecast** — USDA has not yet published a {nass_crop} yield "
+                                f"for {_state_nm}, so the default below is last year's "
+                                f"({_ly_y:g} bu/ac). Enter your own estimate to project ASD district production."
+                                if _ly_y else
+                                f"**{FORECAST_YEAR} Forecast** — USDA has not yet published a {nass_crop} yield "
+                                f"for {_state_nm}. Enter a yield estimate below to project ASD district production."
+                            )
+                        _fc_col1, _fc_col2, _ = st.columns([1.2, 1.4, 2.4])
                         with _fc_col1:
                             # Use key-only pattern — session_state holds the value
                             _yield_input = st.number_input(
@@ -4146,6 +4163,14 @@ def main():
                                 step=0.5, format="%.1f",
                                 key=_yield_key,
                             )
+                        with _fc_col2:
+                            st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
+                            if _usda_y and abs(_yield_input - _usda_y) > 0.05:
+                                st.button(
+                                    f"Reset to USDA ({_usda_y:g})", key=f"fc_reset_{_yield_key}",
+                                    on_click=lambda k=_yield_key, v=float(_usda_y):
+                                        st.session_state.__setitem__(k, v),
+                                )
                         if _yield_input > 0:
                             _fc_stats, _fc_state_totals = get_asd_forecast_data(
                                 nass_crop, nass_state, _yield_input, _CACHE_VERSION
