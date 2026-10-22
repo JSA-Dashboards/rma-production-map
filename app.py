@@ -40,7 +40,8 @@ try:
 except TypeError:  # older Streamlit without st.html JS support
     import streamlit.components.v1 as _stc
     _stc.html(_BADGE_JS, height=0)
-_CACHE_VERSION = "v21"  # bump to invalidate all @st.cache_data on deploy
+_BASE_CACHE_VERSION = "v21"  # bump to invalidate all @st.cache_data on deploy
+_CACHE_VERSION = _BASE_CACHE_VERSION  # main() appends the high-oleic share while the NASS / S&D tabs run
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
 HERE       = Path(__file__).parent
@@ -913,9 +914,43 @@ def load_data():
     return out
 
 
+# ── New York high-oleic carve-out ─────────────────────────────────────────────
+# USDA does not separate high-oleic soybeans. The user enters the share of NY soybean acres
+# that is high-oleic (Adjustments box); NY soybean production / planted / harvested are scaled
+# down by it. Scoped to the NASS Production and ASD S&D tabs via _HO_SCOPE, and the share is
+# appended to the cache version while active so cached results never mix adjusted and raw.
+_HO_SCOPE = {"on": False}
+
+
+def _ho_share() -> float:
+    if not _HO_SCOPE["on"]:
+        return 0.0
+    try:
+        return min(max(float(st.session_state.get("ho_ny_share", 0.0)), 0.0), 100.0) / 100.0
+    except Exception:
+        return 0.0
+
+
+def _ho_adjust(df, crop: str, stat_type: str, cols):
+    sh = _ho_share()
+    if (sh <= 0 or crop != "Soybeans" or stat_type not in ("production", "planted", "harvested")
+            or df is None or df.empty or "State" not in df.columns):
+        return df
+    out = df.copy()
+    m = out["State"] == "NY"
+    for c in cols:
+        if c in out.columns:
+            out.loc[m, c] = out.loc[m, c] * (1 - sh)
+    return out
+
+
+def _base_ver(v) -> str:
+    return str(v).split("|")[0]
+
+
 # ── NASS Data ─────────────────────────────────────────────────────────────────
 @st.cache_data
-def load_nass_stat(crop: str, year: int, stat_type: str,
+def _load_nass_stat_raw(crop: str, year: int, stat_type: str,
                    cache_ver: str = _CACHE_VERSION) -> pd.DataFrame:
     """Generic NASS county-level loader for any stat type.
     stat_type: 'production' | 'planted' | 'harvested' | 'yield' | 'prevent_plant'
@@ -991,8 +1026,13 @@ def load_nass_stat(crop: str, year: int, stat_type: str,
     return df[key + ["Value"]].reset_index(drop=True)
 
 
+def load_nass_stat(crop: str, year: int, stat_type: str,
+                   cache_ver: str = _CACHE_VERSION) -> pd.DataFrame:
+    return _ho_adjust(_load_nass_stat_raw(crop, year, stat_type, _base_ver(cache_ver)),
+                      crop, stat_type, ["Value"])
+
 @st.cache_data
-def load_nass_state(crop: str, year: int, stat_type: str,
+def _load_nass_state_raw(crop: str, year: int, stat_type: str,
                     cache_ver: str = _CACHE_VERSION) -> pd.DataFrame:
     """Query NASS at STATE level for official state-reported totals.
     Uses domain_desc=TOTAL so we get the main survey figures, not organic
@@ -1064,6 +1104,11 @@ def load_nass_state(crop: str, year: int, stat_type: str,
 
     return df[["State", "Value"]].reset_index(drop=True)
 
+
+def load_nass_state(crop: str, year: int, stat_type: str,
+                    cache_ver: str = _CACHE_VERSION) -> pd.DataFrame:
+    return _ho_adjust(_load_nass_state_raw(crop, year, stat_type, _base_ver(cache_ver)),
+                      crop, stat_type, ["Value"])
 
 @st.cache_data(show_spinner=False)
 def _load_wheat_class_prod(year: int, class_desc: str, cache_ver: str) -> float:
@@ -1157,9 +1202,9 @@ def load_nass_county(crop: str, year: int = 2025,
     missing key) is NOT cached — the cached inner function raises — and its reason
     is kept in _NASS_COUNTY_ERR so the UI can say why instead of blaming publication."""
     try:
-        df = _load_nass_county_cached(crop, year, cache_ver)
+        df = _load_nass_county_cached(crop, year, _base_ver(cache_ver))
         _NASS_COUNTY_ERR.pop((crop, year), None)
-        return df
+        return _ho_adjust(df, crop, "production", ["Production"])
     except Exception as e:
         _NASS_COUNTY_ERR[(crop, year)] = f"{type(e).__name__}: {e}"
         return pd.DataFrame(columns=["State", "County", "fips", "Production"])
@@ -1245,8 +1290,8 @@ def _load_nass_county_cached(crop: str, year: int = 2025,
 # historical shares, then scaled to reconcile with NASS OTHER COUNTIES totals.
 
 @st.cache_data(show_spinner=False)
-def _load_county_raw_for_est(crop: str, state: str, year: int,
-                              stat_type: str, cache_ver: str) -> pd.DataFrame:
+def _load_county_raw_for_est_raw(crop: str, state: str, year: int,
+                                  stat_type: str, cache_ver: str) -> pd.DataFrame:
     """County rows INCLUDING the OTHER COUNTIES catch-all for any stat type.
     Used only for the estimation pipeline."""
     params = {
@@ -1297,6 +1342,11 @@ def _load_county_raw_for_est(crop: str, state: str, year: int,
 
     return df
 
+
+def _load_county_raw_for_est(crop: str, state: str, year: int,
+                              stat_type: str, cache_ver: str) -> pd.DataFrame:
+    return _ho_adjust(_load_county_raw_for_est_raw(crop, state, year, stat_type, _base_ver(cache_ver)),
+                      crop, stat_type, ["Value_num"])
 
 @st.cache_data(show_spinner=False)
 def _build_hist_shares(crop: str, state: str, stat_type: str,
@@ -2065,7 +2115,7 @@ FORECAST_YEAR = 2026
 
 
 @st.cache_data(show_spinner=False)
-def _load_nass_state_forecast(crop: str, stat_type: str, cache_ver: str) -> pd.DataFrame:
+def _load_nass_state_forecast_raw(crop: str, stat_type: str, cache_ver: str) -> pd.DataFrame:
     """State-level planted/harvested for FORECAST_YEAR — accepts any reference period."""
     params = {
         "key": NASS_API_KEY, "source_desc": "SURVEY", "sector_desc": "CROPS",
@@ -2097,6 +2147,10 @@ def _load_nass_state_forecast(crop: str, stat_type: str, cache_ver: str) -> pd.D
         df = df.loc[df.groupby("State")["Value"].idxmax()]
     return df[["State", "Value"]].reset_index(drop=True)
 
+
+def _load_nass_state_forecast(crop: str, stat_type: str, cache_ver: str) -> pd.DataFrame:
+    return _ho_adjust(_load_nass_state_forecast_raw(crop, stat_type, _base_ver(cache_ver)),
+                      crop, stat_type, ["Value"])
 
 @st.cache_data(show_spinner=False)
 def _build_asd_hist_shares(crop: str, state: str, stat_type: str,
@@ -3878,6 +3932,18 @@ def main():
     # Markdown treats indented lines after a block as code, so flatten the indentation.
     st.markdown("\n".join(_l.strip() for _l in _hdr_html.splitlines()), unsafe_allow_html=True)
 
+    with st.expander("Adjustments", expanded=False):
+        st.number_input(
+            "New York high-oleic soybeans (% of NY soybean acres)",
+            min_value=0.0, max_value=100.0, value=0.0, step=1.0, format="%.0f", key="ho_ny_share",
+            help="USDA does not separate high-oleic soybeans. Enter your estimate of the share of New York "
+                 "soybean acres that is high-oleic; it is carved out of New York soybean production, planted "
+                 "and harvested acres (yield unchanged) on the NASS Production and ASD Supply & Demand tabs. "
+                 "0 = no adjustment. The same share is applied to every year.",
+        )
+        st.caption("High-oleic beans in New York mostly go to on-farm / dairy-feed use rather than crush or export, "
+                   "so the carve-out leaves commodity soybean supply. Applies to NASS Production and ASD S&D only.")
+
     tab_nass, tab_rma, tab_stocks, tab_acreage, tab_livestock, tab_aqua, tab_proc, tab_wcmd, tab_storage_cmp, tab_eia, tab_sd, tab_about = st.tabs([
         "NASS Production", "RMA",
         "Grain Stocks", "Acreage Summary", "Livestock",
@@ -3887,6 +3953,12 @@ def main():
         "ASD Supply & Demand",
         "About the Data",
     ], on_change="rerun")
+
+    # High-oleic carve-out applies only while the NASS or S&D tab renders; its share keys the caches.
+    _HO_SCOPE["on"] = bool(tab_nass.open or tab_sd.open)
+    _ho_pct = _ho_share() * 100
+    globals()["_CACHE_VERSION"] = (f"{_BASE_CACHE_VERSION}|ho{_ho_pct:g}" if _ho_pct > 0
+                                   else _BASE_CACHE_VERSION)
 
     # ══════════════════════════════════════════════════════════════════════════
     # NASS TAB
@@ -3910,6 +3982,11 @@ def main():
                     st.cache_data.clear()
                     st.rerun()
 
+            if nass_crop == "Soybeans" and _ho_share() > 0:
+                st.caption(
+                    f"New York soybean production, planted and harvested acres exclude {_ho_share():.0%} high-oleic "
+                    "(your estimate under Adjustments; yield unchanged)."
+                )
             if nass_crop == "Canola":
                 st.caption(
                     "Canola: NASS reports pounds; shown here in 50-lb bushels (yield in bu/ac). Spring and "
@@ -7351,6 +7428,15 @@ def main():
                     "State Drill-Down", _sd_state_opts, key=f"sd_state_dd_{sd_crop}_{sd_year}"
                 )
             _sd_sel_state = None if sd_state_sel.startswith("—") else sd_state_sel[:2]
+
+            if sd_crop == "Soybeans" and _ho_share() > 0 and not _sd.empty:
+                _ho_s = _ho_share()
+                _ny_adj = _sd.loc[_sd["state_alpha"] == "NY", "production_bu"].sum()
+                st.info(
+                    f"New York high-oleic carve-out: {_ho_s:.0%} of NY soybean production "
+                    f"({_ny_adj * _ho_s / (1 - _ho_s) / 1e6:.1f}M bu) is excluded as on-farm / dairy-feed supply, so "
+                    "it does not count toward NY crush or export supply. Change it under Adjustments at the top."
+                )
 
             if sd_crop == "Canola" and _canola_meta:
                 _cov = ", ".join(f"{a} {v:.0%}" for a, v in _canola_meta["county_coverage"].items())
