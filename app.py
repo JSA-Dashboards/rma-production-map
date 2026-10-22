@@ -15,7 +15,7 @@ from pathlib import Path
 from PIL import Image
 import geopandas as gpd
 from shapely.geometry import shape
-from demand_module import load_asd_demand, load_canola_asd
+from demand_module import load_asd_demand, load_canola_asd, livestock_carried
 
 _HERE = Path(__file__).parent
 st.set_page_config(
@@ -43,6 +43,7 @@ except TypeError:  # older Streamlit without st.html JS support
     _stc.html(_BADGE_JS, height=0)
 _BASE_CACHE_VERSION = "v21"  # bump to invalidate all @st.cache_data on deploy
 _CACHE_VERSION = _BASE_CACHE_VERSION  # default for def-time params; _session_ver() adds the per-session adjustment flags
+_DEMAND_VER = _BASE_CACHE_VERSION + "-ls2"  # S&D demand cache key; bump when the livestock logic changes
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
 HERE       = Path(__file__).parent
@@ -2322,6 +2323,40 @@ def get_asd_forecast_data(crop: str, state: str, yield_est: float,
         "pct_harvested": st_hv / st_pl * 100 if st_pl else 0.0,
     }
     return stats, state_totals
+
+
+def _sd_forecast_production(crop: str, year: int) -> pd.DataFrame:
+    """ASD production for a year whose county estimates are not published yet (they come in January).
+
+    USDA's latest state production for `year` (NASS's in-season YEAR row = yield x harvested acres,
+    updated monthly) times each ASD's average fraction of its state's production over the three prior
+    years. The fraction is taken on the same published-county basis the completed years use, so the
+    forecast year is comparable with them. The high-oleic and total-supply adjustments apply through the
+    loaders on both sides of the ratio.
+    """
+    ver = _session_ver()
+    cols = ["state_alpha", "asd_code", "asd_desc", "production_bu"]
+    now = load_nass_state(crop, year, "production", ver)
+    if now is None or now.empty:
+        return pd.DataFrame(columns=cols)
+    now_map = dict(zip(now["State"], now["Value"]))
+    fracs: dict = {}
+    for y in (year - 1, year - 2, year - 3):
+        cty = load_nass_county(crop, y, ver)
+        st_y = load_nass_state(crop, y, "production", ver)
+        if cty is None or cty.empty or st_y is None or st_y.empty or "asd_code" not in cty.columns:
+            continue
+        sm = dict(zip(st_y["State"], st_y["Value"]))
+        agg = (cty.dropna(subset=["asd_code"])
+               [cty["asd_code"].astype(str).str.strip().ne("")]
+               .groupby(["State", "asd_code", "asd_desc"], as_index=False)["Production"].sum())
+        for r in agg.itertuples(index=False):
+            if sm.get(r.State, 0) > 0:
+                fracs.setdefault((r.State, r.asd_code, r.asd_desc), []).append(r.Production / sm[r.State])
+    rows = [{"state_alpha": k[0], "asd_code": k[1], "asd_desc": k[2],
+             "production_bu": float(np.mean(v)) * now_map[k[0]]}
+            for k, v in fracs.items() if k[0] in now_map and now_map[k[0]] > 0]
+    return pd.DataFrame(rows, columns=cols)
 
 
 def _nass_has_official(crop: str, state: str, year: int, stat_type: str,
@@ -7472,7 +7507,7 @@ def main():
 
                 try:
                     with st.spinner("Loading ASD demand estimates..."):
-                        _sd_demand = load_asd_demand(sd_year, _BASE_CACHE_VERSION)
+                        _sd_demand = load_asd_demand(sd_year, _DEMAND_VER)
                 except Exception as _e:
                     st.error(f"Livestock demand data unavailable from NASS right now ({_e}). Try Refresh in a few minutes.")
                     _sd_demand = pd.DataFrame()
@@ -7480,6 +7515,11 @@ def main():
             # Aggregate county production → ASD
             if sd_crop != "Canola":
                 _sd_prod = pd.DataFrame()
+            _sd_fc_note = False
+            if sd_crop != "Canola" and _sd_county.empty and sd_year == FORECAST_YEAR:
+                with st.spinner(f"Building {sd_year} ASD production from USDA's latest state estimate..."):
+                    _sd_prod = _sd_forecast_production(sd_crop, sd_year)
+                _sd_fc_note = not _sd_prod.empty
             if sd_crop != "Canola" and not _sd_county.empty and "asd_code" in _sd_county.columns:
                 _sd_prod = (
                     _sd_county
@@ -7544,6 +7584,29 @@ def main():
                     f"({_ny_adj * _ho_s / (1 - _ho_s) / 1e6:.1f}M bu) is excluded as on-farm / dairy-feed supply, so "
                     "it does not count toward NY crush or export supply. Change it under Adjustments at the top."
                 )
+
+            if _sd_fc_note:
+                st.info(
+                    f"{sd_year} forecast: NASS has no county production until January, so production here is "
+                    f"USDA's latest {sd_crop.lower()} state estimate (yield x harvested acres, updated monthly) "
+                    f"spread over districts by each district's average share of its state over "
+                    f"{sd_year - 3}-{sd_year - 1}. Demand uses {sd_year} livestock and current plant capacity."
+                )
+
+            if sd_crop == "Corn":
+                try:
+                    _carried = livestock_carried(sd_year, _DEMAND_VER)
+                except Exception:
+                    _carried = {}
+                if _carried:
+                    _names = {"BROILERS": "broilers", "CHICKENS, LAYERS": "layers", "TURKEYS": "turkeys",
+                              "HOGS": "hogs", "MILK COWS": "dairy cows", "CATTLE ALL": "cattle",
+                              "CATTLE ON FEED": "cattle on feed"}
+                    st.caption(
+                        "Feed demand: NASS has not published "
+                        + ", ".join(f"{_names.get(k, k.lower())} (using {v})" for k, v in sorted(_carried.items()))
+                        + f" for {sd_year} yet, so the latest published year is used for those."
+                    )
 
             if sd_crop == "Canola" and _canola_meta:
                 _cov = ", ".join(f"{a} {v:.0%}" for a, v in _canola_meta["county_coverage"].items())

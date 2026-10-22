@@ -43,6 +43,9 @@ DEMAND_STATES = [
     "TX","OK","KY","TN","AR","MS","AL","GA","NC","VA",
 ]
 
+_EXPECTED_SPECIES = ["CATTLE ON FEED", "CATTLE ALL", "MILK COWS", "HOGS", "CHICKENS, LAYERS",
+                     "BROILERS", "TURKEYS"]
+
 LBS_PER_BU_CORN = 56
 LBS_PER_BU_SBM  = 2000   # SBM stays in lbs; convert to short tons where needed
 
@@ -209,7 +212,30 @@ def _load_state_livestock(year: int, cache_ver: str) -> pd.DataFrame:
     if df.empty:
         raise RuntimeError(f"State livestock for {year} came back empty")
     per = df.groupby(["state_alpha", "species", "period"])["head"].sum().reset_index()
-    return per.groupby(["state_alpha", "species"])["head"].mean().reset_index()
+    out = per.groupby(["state_alpha", "species"])["head"].mean().reset_index()
+    out["year_used"] = year
+
+    # A series NASS has not published yet for `year` (2026 broilers and layers, for example) would count
+    # as zero feed demand, so carry forward the most recent published year and record which year it is.
+    missing = [sp for sp in _EXPECTED_SPECIES if sp not in set(out["species"])]
+    for back in (1, 2):
+        if not missing:
+            break
+        prev = _load_state_livestock(year - back, cache_ver)
+        add = prev[prev["species"].isin(missing)]
+        if not add.empty:
+            out = pd.concat([out, add], ignore_index=True)
+            missing = [sp for sp in missing if sp not in set(add["species"])]
+    return out
+
+
+def livestock_carried(year: int, cache_ver: str) -> dict:
+    """{species: year_used} for livestock series carried forward from an earlier year."""
+    lv = _load_state_livestock(year, cache_ver)
+    if lv is None or lv.empty or "year_used" not in lv.columns:
+        return {}
+    carried = lv[lv["year_used"] != year].groupby("species")["year_used"].max()
+    return {k: int(v) for k, v in carried.items()}
 
 
 # ── Step 3: Distribute state livestock to ASDs using Census shares ────────────
