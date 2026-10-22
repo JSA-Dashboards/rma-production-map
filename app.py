@@ -1,4 +1,5 @@
 import os
+import threading
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -41,7 +42,7 @@ except TypeError:  # older Streamlit without st.html JS support
     import streamlit.components.v1 as _stc
     _stc.html(_BADGE_JS, height=0)
 _BASE_CACHE_VERSION = "v21"  # bump to invalidate all @st.cache_data on deploy
-_CACHE_VERSION = _BASE_CACHE_VERSION  # main() appends the high-oleic share while the NASS / S&D tabs run
+_CACHE_VERSION = _BASE_CACHE_VERSION  # default for def-time params; _session_ver() adds the per-session adjustment flags
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
 HERE       = Path(__file__).parent
@@ -86,12 +87,13 @@ STOCKS_CROP_PARAMS = {
 }
 
 # Metrics available in the NASS tab
-NASS_METRICS     = ["Production (bu)", "Planted Acres", "Harvested Acres",
+NASS_METRICS     = ["Production (bu)", "Total Supply (bu)", "Planted Acres", "Harvested Acres",
                     "% Harvested", "Yield (bu/ac)", "Prevent Plant Acres"]
 NASS_CHANGE_OPTS = ["Current Year", "vs Prior Year", "vs Selected Year", "vs 3-Yr Avg"]
 
 _METRIC_TO_STAT = {
     "Production (bu)":    "production",
+    "Total Supply (bu)":  "production",   # production scaled by _ts_adjust while the flag is on
     "Planted Acres":      "planted",
     "Harvested Acres":    "harvested",
     "% Harvested":        "pct_harvested",   # derived: harvested / planted * 100
@@ -914,21 +916,43 @@ def load_data():
     return out
 
 
-# ── New York high-oleic carve-out ─────────────────────────────────────────────
-# USDA does not separate high-oleic soybeans. The user enters the share of NY soybean acres
-# that is high-oleic (Adjustments box); NY soybean production / planted / harvested are scaled
-# down by it. Scoped to the NASS Production and ASD S&D tabs via _HO_SCOPE, and the share is
-# appended to the cache version while active so cached results never mix adjusted and raw.
-_HO_SCOPE = {"on": False}
+# ── Per-session adjustments applied inside the NASS loaders ───────────────────────────
+# Two optional adjustments change what "production" means on the NASS Production and ASD S&D tabs:
+#   * New York high-oleic carve-out: the user's % of NY soybean acres is removed (Adjustments box).
+#   * Total supply: production + the marketing-year-start stocks (Sep 1; Jun 1 for wheat). Stocks
+#     are published by state only, so each state's stocks are spread over its counties / districts
+#     in proportion to production (factor = (stocks + production) / production).
+# Streamlit runs every session in one process, so the flags live in thread-local storage (one script
+# thread per session run), not module globals, and _session_ver() appends them to the cache version so cached
+# results never mix adjusted and raw.
+_tls = threading.local()
 
 
 def _ho_share() -> float:
-    if not _HO_SCOPE["on"]:
+    if not getattr(_tls, "ho_scope", False):
         return 0.0
     try:
         return min(max(float(st.session_state.get("ho_ny_share", 0.0)), 0.0), 100.0) / 100.0
     except Exception:
         return 0.0
+
+
+def _ts_on() -> bool:
+    return bool(getattr(_tls, "ts", False))
+
+
+def _session_ver() -> str:
+    parts = [_BASE_CACHE_VERSION]
+    ho = _ho_share()
+    if ho > 0:
+        parts.append(f"ho{ho * 100:g}")
+    if _ts_on():
+        parts.append("ts")
+    return "|".join(parts)
+
+
+def _base_ver(v) -> str:
+    return str(v).split("|")[0]
 
 
 def _ho_adjust(df, crop: str, stat_type: str, cols):
@@ -944,8 +968,49 @@ def _ho_adjust(df, crop: str, stat_type: str, cols):
     return out
 
 
-def _base_ver(v) -> str:
-    return str(v).split("|")[0]
+def _ts_period(crop: str) -> str:
+    return "FIRST OF JUN" if crop == "Wheat" else "FIRST OF SEP"
+
+
+def _ts_state_stocks(crop: str, year: int) -> dict:
+    """State total stocks (bu) at the crop's marketing-year start: Jun 1 wheat, Sep 1 the rest."""
+    if crop not in STOCKS_CROPS:
+        return {}
+    df = load_grain_stocks(crop, year, _ts_period(crop), _BASE_CACHE_VERSION)
+    if df is None or df.empty or "Total" not in df.columns:
+        return {}
+    return {r["State"]: float(r["Total"]) for _, r in df.iterrows() if pd.notna(r["Total"])}
+
+
+def _ts_factors(crop: str, year: int) -> dict:
+    """{state: (production + stocks) / production}; states without published stocks are left out."""
+    if not _ts_on() or crop not in STOCKS_CROPS:
+        return {}
+    stocks = _ts_state_stocks(crop, year)
+    if not stocks:
+        return {}
+    prod = _ho_adjust(_load_nass_state_raw(crop, year, "production", _BASE_CACHE_VERSION),
+                      crop, "production", ["Value"])
+    if prod is None or prod.empty:
+        return {}
+    pm = dict(zip(prod["State"], prod["Value"]))
+    return {s_: (pm[s_] + stocks[s_]) / pm[s_] for s_ in pm
+            if pm[s_] and pm[s_] > 0 and stocks.get(s_, 0) > 0}
+
+
+def _ts_adjust(df, crop: str, year: int, stat_type: str, cols):
+    if (not _ts_on() or stat_type != "production" or df is None or df.empty
+            or "State" not in df.columns):
+        return df
+    f = _ts_factors(crop, year)
+    if not f:
+        return df
+    out = df.copy()
+    fac = out["State"].map(f).fillna(1.0)
+    for c in cols:
+        if c in out.columns:
+            out[c] = out[c] * fac
+    return out
 
 
 # ── NASS Data ─────────────────────────────────────────────────────────────────
@@ -1028,8 +1093,8 @@ def _load_nass_stat_raw(crop: str, year: int, stat_type: str,
 
 def load_nass_stat(crop: str, year: int, stat_type: str,
                    cache_ver: str = _CACHE_VERSION) -> pd.DataFrame:
-    return _ho_adjust(_load_nass_stat_raw(crop, year, stat_type, _base_ver(cache_ver)),
-                      crop, stat_type, ["Value"])
+    return _ts_adjust(_ho_adjust(_load_nass_stat_raw(crop, year, stat_type, _base_ver(cache_ver)),
+                                 crop, stat_type, ["Value"]), crop, year, stat_type, ["Value"])
 
 @st.cache_data
 def _load_nass_state_raw(crop: str, year: int, stat_type: str,
@@ -1107,8 +1172,8 @@ def _load_nass_state_raw(crop: str, year: int, stat_type: str,
 
 def load_nass_state(crop: str, year: int, stat_type: str,
                     cache_ver: str = _CACHE_VERSION) -> pd.DataFrame:
-    return _ho_adjust(_load_nass_state_raw(crop, year, stat_type, _base_ver(cache_ver)),
-                      crop, stat_type, ["Value"])
+    return _ts_adjust(_ho_adjust(_load_nass_state_raw(crop, year, stat_type, _base_ver(cache_ver)),
+                                 crop, stat_type, ["Value"]), crop, year, stat_type, ["Value"])
 
 @st.cache_data(show_spinner=False)
 def _load_wheat_class_prod(year: int, class_desc: str, cache_ver: str) -> float:
@@ -1204,7 +1269,8 @@ def load_nass_county(crop: str, year: int = 2025,
     try:
         df = _load_nass_county_cached(crop, year, _base_ver(cache_ver))
         _NASS_COUNTY_ERR.pop((crop, year), None)
-        return _ho_adjust(df, crop, "production", ["Production"])
+        return _ts_adjust(_ho_adjust(df, crop, "production", ["Production"]),
+                          crop, year, "production", ["Production"])
     except Exception as e:
         _NASS_COUNTY_ERR[(crop, year)] = f"{type(e).__name__}: {e}"
         return pd.DataFrame(columns=["State", "County", "fips", "Production"])
@@ -1345,8 +1411,8 @@ def _load_county_raw_for_est_raw(crop: str, state: str, year: int,
 
 def _load_county_raw_for_est(crop: str, state: str, year: int,
                               stat_type: str, cache_ver: str) -> pd.DataFrame:
-    return _ho_adjust(_load_county_raw_for_est_raw(crop, state, year, stat_type, _base_ver(cache_ver)),
-                      crop, stat_type, ["Value_num"])
+    return _ts_adjust(_ho_adjust(_load_county_raw_for_est_raw(crop, state, year, stat_type, _base_ver(cache_ver)),
+                                 crop, stat_type, ["Value_num"]), crop, year, stat_type, ["Value_num"])
 
 @st.cache_data(show_spinner=False)
 def _build_hist_shares(crop: str, state: str, stat_type: str,
@@ -1680,7 +1746,7 @@ def get_nass_district_view_data(crop: str, year: int, metric: str,
 
     def _load_state(yr, use_estimation=False):
         if use_estimation:
-            df = get_completed_county_data(crop, state, yr, stat_type, _CACHE_VERSION)
+            df = get_completed_county_data(crop, state, yr, stat_type, _session_ver())
             if df.empty:
                 return pd.DataFrame(columns=["fips", "Value", "District"])
         else:
@@ -1887,7 +1953,7 @@ def cached_nass_district_fig(state: str, crop: str, year: int,
         STATE_FIPS_ALL.get(state, ""), cache_ver, _fips_map, _geo
     )
     # Build set of districts that contain at least one estimated county
-    if metric == "Production (bu)":
+    if metric in ("Production (bu)", "Total Supply (bu)"):
         _comp = get_completed_county_production(crop, state, year, cache_ver)
         estimated_districts = (
             set(_comp[_comp["is_estimated"]]["District"].dropna().unique())
@@ -2047,6 +2113,12 @@ def _nass_view_cfg(metric: str, change_view: str) -> dict:
             "rank_unit": "%", "rank_div": 1, "rank_fmt": "+.1f",
         }
     _abs_cfgs = {
+        "Total Supply (bu)": {
+            "cscale": SAGE_SEQ, "diverging": False, "clabel": "Total Supply<br>(bu)",
+            "hover_fmt": ":,.0f", "hover_sfx": " bu", "label_unit": "M bu",
+            "label_fn": format_nass_label,
+            "rank_unit": "M bu", "rank_div": 1_000_000, "rank_fmt": ",.2f",
+        },
         "Production (bu)": {
             "cscale": SAGE_SEQ, "diverging": False, "clabel": "Production<br>(bu)",
             "hover_fmt": ":,.0f", "hover_sfx": " bu", "label_unit": "M bu",
@@ -2221,6 +2293,7 @@ def get_asd_forecast_data(crop: str, state: str, yield_est: float,
     st_pl = float(p_df[p_df["State"] == state]["Value"].iloc[0]) if state in p_df["State"].values else 0.0
     st_hv = float(h_df[h_df["State"] == state]["Value"].iloc[0]) if state in h_df["State"].values else 0.0
     st_pr = yield_est * st_hv if (yield_est and st_hv) else 0.0
+    st_sup = st_pr + (_ts_state_stocks(crop, FORECAST_YEAR).get(state, 0.0) if (_ts_on() and st_pr) else 0.0)
 
     # Historical ASD shares
     sh_pl = _build_asd_hist_shares(crop, state, "planted",    _hist, cache_ver)
@@ -2235,7 +2308,7 @@ def get_asd_forecast_data(crop: str, state: str, yield_est: float,
         apr = st_pr * sh_pr[d] if (d in sh_pr and st_pr) else None
         stats["planted"][d]    = apl
         stats["harvested"][d]  = ahv
-        stats["production"][d] = apr
+        stats["production"][d] = (st_sup * sh_pr[d]) if (d in sh_pr and st_sup) else None
         if apl and ahv and apl > 0:
             stats["pct_harvested"][d] = ahv / apl * 100
         if ahv and apr and ahv > 0:
@@ -2244,7 +2317,7 @@ def get_asd_forecast_data(crop: str, state: str, yield_est: float,
     state_totals = {
         "planted":       st_pl,
         "harvested":     st_hv,
-        "production":    st_pr,
+        "production":    st_sup,
         "yield":         yield_est if yield_est else 0.0,
         "pct_harvested": st_hv / st_pl * 100 if st_pl else 0.0,
     }
@@ -2713,10 +2786,10 @@ def _load_for_metric(crop: str, year: int, stat_type: str) -> pd.DataFrame:
     Production → load_nass_county; pct_harvested → derived; all others → load_nass_stat.
     """
     if stat_type == "production":
-        return load_nass_county(crop, year, _CACHE_VERSION).rename(columns={"Production": "Value"})
+        return load_nass_county(crop, year, _session_ver()).rename(columns={"Production": "Value"})
     if stat_type == "pct_harvested":
-        planted   = load_nass_stat(crop, year, "planted",   _CACHE_VERSION)
-        harvested = load_nass_stat(crop, year, "harvested", _CACHE_VERSION)
+        planted   = load_nass_stat(crop, year, "planted",   _session_ver())
+        harvested = load_nass_stat(crop, year, "harvested", _session_ver())
         if planted.empty or harvested.empty:
             return pd.DataFrame(columns=["State", "County", "fips", "Value"])
         merged = planted.merge(
@@ -2725,7 +2798,7 @@ def _load_for_metric(crop: str, year: int, stat_type: str) -> pd.DataFrame:
         )
         merged["Value"] = merged["Harv"] / merged["Value"].replace(0, np.nan) * 100
         return merged[["State", "County", "fips", "Value"]].dropna(subset=["Value"])
-    return load_nass_stat(crop, year, stat_type, _CACHE_VERSION)
+    return load_nass_stat(crop, year, stat_type, _session_ver())
 
 
 def get_nass_view_data(crop: str, year: int, metric: str, change_view: str, comp_year=None):
@@ -3808,6 +3881,8 @@ def _chart(fig, **kw) -> None:
 
 # ── App ────────────────────────────────────────────────────────────────────────
 def main():
+    _tls.ho_scope = False
+    _tls.ts = False
     st.markdown(
         f"""
         <style>
@@ -3955,10 +4030,7 @@ def main():
     ], on_change="rerun")
 
     # High-oleic carve-out applies only while the NASS or S&D tab renders; its share keys the caches.
-    _HO_SCOPE["on"] = bool(tab_nass.open or tab_sd.open)
-    _ho_pct = _ho_share() * 100
-    globals()["_CACHE_VERSION"] = (f"{_BASE_CACHE_VERSION}|ho{_ho_pct:g}" if _ho_pct > 0
-                                   else _BASE_CACHE_VERSION)
+    _tls.ho_scope = bool(tab_nass.open or tab_sd.open)
 
     # ══════════════════════════════════════════════════════════════════════════
     # NASS TAB
@@ -4003,6 +4075,18 @@ def main():
                 "Metric", NASS_METRICS, horizontal=True,
                 key="nass_metric", label_visibility="collapsed",
             )
+            if nass_metric == "Total Supply (bu)" and nass_crop not in STOCKS_CROPS:
+                st.info(f"Total supply needs NASS grain stocks, which are not published for {nass_crop}; "
+                        "showing production instead.")
+                nass_metric = "Production (bu)"
+            _tls.ts = nass_metric == "Total Supply (bu)"
+            if _tls.ts:
+                st.caption(
+                    f"Total supply = {'Jun 1' if nass_crop == 'Wheat' else 'Sep 1'} stocks + production for the "
+                    "same year. NASS publishes stocks by state only, so counties and districts get their state's "
+                    "stocks in proportion to their share of its production; a state with no published stocks "
+                    "shows production only."
+                )
 
             # Row 3 — Change view selector
             st.markdown(
@@ -4026,44 +4110,44 @@ def main():
             stat_type = _METRIC_TO_STAT[nass_metric]
 
             with st.spinner(f"Loading NASS {nass_year} {nass_crop} {nass_metric}..."):
-                nass_df = load_nass_county(nass_crop, nass_year, _CACHE_VERSION)   # county data — for drill-down & coverage KPI
+                nass_df = load_nass_county(nass_crop, nass_year, _session_ver())   # county data — for drill-down & coverage KPI
                 # Pre-warm 2023 benchmark county count
-                load_nass_county(nass_crop, _NASS_BENCHMARK_YEAR, _CACHE_VERSION)
+                load_nass_county(nass_crop, _NASS_BENCHMARK_YEAR, _session_ver())
                 # Pre-warm comparison years for county and state data
                 if nass_change == "vs Prior Year":
                     _load_for_metric(nass_crop, nass_year - 1, stat_type)
-                    _load_state_for_stat(nass_crop, nass_year - 1, stat_type, _CACHE_VERSION)
+                    _load_state_for_stat(nass_crop, nass_year - 1, stat_type, _session_ver())
                 elif nass_change == "vs Selected Year" and nass_comp_yr:
                     _load_for_metric(nass_crop, nass_comp_yr, stat_type)
-                    _load_state_for_stat(nass_crop, nass_comp_yr, stat_type, _CACHE_VERSION)
+                    _load_state_for_stat(nass_crop, nass_comp_yr, stat_type, _session_ver())
                 elif nass_change == "vs 3-Yr Avg":
                     for _y in [nass_year - 1, nass_year - 2, nass_year - 3]:
                         if _y >= 2015:
                             _load_for_metric(nass_crop, _y, stat_type)
-                            _load_state_for_stat(nass_crop, _y, stat_type, _CACHE_VERSION)
+                            _load_state_for_stat(nass_crop, _y, stat_type, _session_ver())
                 # County-level data for the county map
                 county_vdf, _ = get_nass_view_data(
                     nass_crop, nass_year, nass_metric, nass_change, nass_comp_yr
                 )
                 # Official state-level data for the state choropleth map
-                _st_cur = _load_state_for_stat(nass_crop, nass_year, stat_type, _CACHE_VERSION)
+                _st_cur = _load_state_for_stat(nass_crop, nass_year, stat_type, _session_ver())
                 if nass_change == "Current Year" or _st_cur.empty:
                     state_vdf = _st_cur
                 elif nass_change == "vs Prior Year":
                     state_vdf = _state_pct_change(
                         _st_cur,
-                        _load_state_for_stat(nass_crop, nass_year - 1, stat_type, _CACHE_VERSION),
+                        _load_state_for_stat(nass_crop, nass_year - 1, stat_type, _session_ver()),
                     )
                 elif nass_change == "vs Selected Year" and nass_comp_yr:
                     state_vdf = _state_pct_change(
                         _st_cur,
-                        _load_state_for_stat(nass_crop, nass_comp_yr, stat_type, _CACHE_VERSION),
+                        _load_state_for_stat(nass_crop, nass_comp_yr, stat_type, _session_ver()),
                     )
                 else:  # vs 3-Yr Avg
                     _sy = [y for y in [nass_year - 1, nass_year - 2, nass_year - 3] if y >= 2015]
                     state_vdf = _state_pct_change_avg(
                         _st_cur,
-                        [_load_state_for_stat(nass_crop, y, stat_type, _CACHE_VERSION) for y in _sy],
+                        [_load_state_for_stat(nass_crop, y, stat_type, _session_ver()) for y in _sy],
                     )
 
             if nass_df.empty and nass_year != FORECAST_YEAR:
@@ -4081,7 +4165,7 @@ def main():
             else:
                 # Forecast year: build state list from NASS state planted data (already published)
                 if nass_year == FORECAST_YEAR and nass_df.empty:
-                    _fc_st_avail = _load_nass_state_forecast(nass_crop, "planted", _CACHE_VERSION)
+                    _fc_st_avail = _load_nass_state_forecast(nass_crop, "planted", _session_ver())
                     states_avail_nass = sorted(_fc_st_avail["State"].unique()) if not _fc_st_avail.empty else []
                 else:
                     states_avail_nass = sorted(nass_df["State"].unique())
@@ -4110,7 +4194,7 @@ def main():
                 _kpi_state = _st_cur if sel_st is None else _st_cur[_st_cur["State"] == sel_st]
 
                 # County coverage % — current year vs 2023 benchmark
-                _bench_df  = load_nass_county(nass_crop, _NASS_BENCHMARK_YEAR, _CACHE_VERSION)
+                _bench_df  = load_nass_county(nass_crop, _NASS_BENCHMARK_YEAR, _session_ver())
                 if sel_st is None:
                     _bench_n = len(_bench_df)
                     _curr_n  = len(nass_df)
@@ -4206,7 +4290,7 @@ def main():
                     _fc_state_totals: dict  = {}
                     if _is_forecast_year:
                         _yield_key = f"fc_yield_{nass_crop}_{nass_state}"
-                        _ysrc = _default_yield_sources(nass_crop, nass_state, _CACHE_VERSION)
+                        _ysrc = _default_yield_sources(nass_crop, nass_state, _session_ver())
                         _usda_y, _ly_y = _ysrc["usda"], _ysrc["ly"]
                         if _yield_key not in st.session_state:
                             st.session_state[_yield_key] = float(_usda_y or _ly_y or 0.0)
@@ -4250,7 +4334,7 @@ def main():
                                 )
                         if _yield_input > 0:
                             _fc_stats, _fc_state_totals = get_asd_forecast_data(
-                                nass_crop, nass_state, _yield_input, _CACHE_VERSION
+                                nass_crop, nass_state, _yield_input, _session_ver()
                             )
 
                     # Back button + map-view toggle on the same row
@@ -4281,7 +4365,7 @@ def main():
                         # ASD-grouped ranking chart regardless of current map view.
                         _sfips    = STATE_FIPS_ALL.get(nass_state, "")
                         _fips_map = load_boundary_fips_map(
-                            nass_crop, _sfips, _CACHE_VERSION, geo
+                            nass_crop, _sfips, _BASE_CACHE_VERSION, geo
                         )
 
                         # ── Map ───────────────────────────────────────────────────
@@ -4304,7 +4388,7 @@ def main():
                             _est_stat = _METRIC_TO_STAT.get(nass_metric, "")
                             if _est_stat in ("production", "planted", "harvested", "yield"):
                                 _comp_data = get_completed_county_data(
-                                    nass_crop, nass_state, nass_year, _est_stat, _CACHE_VERSION
+                                    nass_crop, nass_state, nass_year, _est_stat, _session_ver()
                                 )
                                 _n_est = int(_comp_data["is_estimated"].sum()) if not _comp_data.empty else 0
                             else:
@@ -4415,7 +4499,7 @@ def main():
                                             _mde[_yr] = {d: True for d in _mdv[_yr]}
                                             continue
                                         _cdf = get_completed_county_data(
-                                            nass_crop, nass_state, _yr, _ms, _CACHE_VERSION
+                                            nass_crop, nass_state, _yr, _ms, _session_ver()
                                         )
                                         _mdv[_yr] = {}; _mde[_yr] = {}
                                         if not _cdf.empty and "District" in _cdf.columns:
@@ -4467,7 +4551,7 @@ def main():
                                         d for d, ie in _mde.get(nass_year, {}).items() if ie
                                     }
                                     _dgdf = build_nass_district_gdf(
-                                        _sfips, _CACHE_VERSION, _fips_map, geo
+                                        _sfips, _BASE_CACHE_VERSION, _fips_map, geo
                                     )
                                     nass_dist_fig = build_nass_district_fig(
                                         _dvdf, _drdf, _dgdf,
@@ -4498,7 +4582,7 @@ def main():
                                 if _use_est_county:
                                     _comp_cty = get_completed_county_data(
                                         nass_crop, nass_state, nass_year,
-                                        _cty_est_stat, _CACHE_VERSION
+                                        _cty_est_stat, _session_ver()
                                     )
                                     nass_county_fig = build_nass_county_fig_with_est(
                                         _comp_cty, geo, nass_state, nass_crop,
@@ -4511,7 +4595,7 @@ def main():
                                         nass_state, nass_crop, nass_year,
                                         nass_metric, nass_change,
                                         nass_comp_yr if nass_comp_yr else 0,
-                                        _CACHE_VERSION, geo, centroids, logo_50yr, fips_lk
+                                        _session_ver(), geo, centroids, logo_50yr, fips_lk
                                     )
                                     _cty_n_est = 0
                             if nass_county_fig is None:
@@ -4591,13 +4675,13 @@ def main():
                                     _nc_vals.append(_v)
                                     continue
                                 if _htbl_scope == "State":
-                                    _ndf = _load_state_for_stat(nass_crop, _ny, _nc_stat, _CACHE_VERSION)
+                                    _ndf = _load_state_for_stat(nass_crop, _ny, _nc_stat, _session_ver())
                                     if not _ndf.empty and "State" in _ndf.columns:
                                         _s = _ndf[_ndf["State"] == nass_state]
                                         if not _s.empty:
                                             _v = float(_s["Value"].mean() if _nc_ratio else _s["Value"].sum())
                                 elif _htbl_scope == "ASD District" and _htbl_dist:
-                                    _cdf = get_completed_county_data(nass_crop, nass_state, _ny, _nc_stat, _CACHE_VERSION)
+                                    _cdf = get_completed_county_data(nass_crop, nass_state, _ny, _nc_stat, _session_ver())
                                     if not _cdf.empty and "District" in _cdf.columns:
                                         _d = _cdf[_cdf["District"] == _htbl_dist]
                                         if not _d.empty:
@@ -4614,7 +4698,7 @@ def main():
                         # don't show as 0.3 B bu when M bu is more readable
                         _nc_max = max((v for v in _nc_vals if v), default=0)
 
-                        if nass_metric == "Production (bu)":
+                        if nass_metric in ("Production (bu)", "Total Supply (bu)"):
                             _nc_unit, _nc_y_lbl = _auto_bu(_nc_max)
                         elif nass_metric in ("Planted Acres", "Harvested Acres",
                                              "Prevent Plant Acres"):
@@ -4684,7 +4768,7 @@ def main():
                                         if _htbl_scope == "State":
                                             # Official state totals from state-level API
                                             _hdf = _load_state_for_stat(
-                                                nass_crop, _hyr, _hst, _CACHE_VERSION
+                                                nass_crop, _hyr, _hst, _session_ver()
                                             )
                                             _hdf_s = (
                                                 _hdf[_hdf["State"] == nass_state]
@@ -4703,10 +4787,10 @@ def main():
                                             if _hst == "pct_harvested":
                                                 # Derive from completed planted + harvested
                                                 _plt_yr = get_completed_county_data(
-                                                    nass_crop, nass_state, _hyr, "planted", _CACHE_VERSION
+                                                    nass_crop, nass_state, _hyr, "planted", _session_ver()
                                                 )
                                                 _hv_yr  = get_completed_county_data(
-                                                    nass_crop, nass_state, _hyr, "harvested", _CACHE_VERSION
+                                                    nass_crop, nass_state, _hyr, "harvested", _session_ver()
                                                 )
                                                 _plt_d  = _plt_yr[_plt_yr["District"] == _htbl_dist] if not _plt_yr.empty else pd.DataFrame()
                                                 _hv_d   = _hv_yr[_hv_yr["District"] == _htbl_dist]  if not _hv_yr.empty  else pd.DataFrame()
@@ -4720,7 +4804,7 @@ def main():
                                                         _tbl_est_years.add(_hyr)
                                             else:
                                                 _comp_yr = get_completed_county_data(
-                                                    nass_crop, nass_state, _hyr, _hst, _CACHE_VERSION
+                                                    nass_crop, nass_state, _hyr, _hst, _session_ver()
                                                 )
                                                 if _comp_yr.empty:
                                                     _hist[_hyr][_hst] = None
@@ -4837,7 +4921,7 @@ def main():
                                 _nt_state_yr: dict = {}
                                 _nt_us_tot:   dict = {}
                                 for _ny in _HIST_YEARS:
-                                    _ntdf = _load_state_for_stat(nass_crop, _ny, _nt_stat, _CACHE_VERSION)
+                                    _ntdf = _load_state_for_stat(nass_crop, _ny, _nt_stat, _session_ver())
                                     if not _ntdf.empty and "State" in _ntdf.columns:
                                         for _, _nr in _ntdf.iterrows():
                                             _ns = _nr["State"]
@@ -4864,7 +4948,7 @@ def main():
                                 _nd_est:  dict = {}   # {district: {county: {year: bool}}}
                                 for _ny in _HIST_YEARS:
                                     _cddf = get_completed_county_data(
-                                        nass_crop, nass_state, _ny, _nt_stat, _CACHE_VERSION
+                                        nass_crop, nass_state, _ny, _nt_stat, _session_ver()
                                     )
                                     if not _cddf.empty and "District" in _cddf.columns:
                                         for dist, grp in _cddf.groupby("District"):
@@ -5108,13 +5192,14 @@ def main():
                                     lambda v: f"{v:,.0f}" if pd.notna(v) else "—"
                                 )
                             else:
-                                col_label = "Production (bu)"
+                                col_label = ("Total Supply (bu)" if nass_metric == "Total Supply (bu)"
+                                             else "Production (bu)")
                                 tbl[col_label] = tbl["Value"].apply(
                                     lambda v: f"{v:,.0f}" if pd.notna(v) else "—"
                                 )
 
                             show_tbl = tbl[["County", col_label]].copy()
-                            if nass_metric != "Production (bu)":
+                            if nass_metric not in ("Production (bu)", "Total Supply (bu)"):
                                 prod_ctx = state_df[["County", "Production"]].copy()
                                 prod_ctx["Production (bu)"] = prod_ctx["Production"].apply(
                                     lambda v: f"{v:,.0f}" if pd.notna(v) else "—"
@@ -5227,7 +5312,7 @@ def main():
                 else:
                     with st.spinner(f"Building {ABBR_TO_NAME.get(state, state)} county map…"):
                         fig = cached_rma_county_fig(
-                            state, crop, metric, practice, wheat_type, _CACHE_VERSION,
+                            state, crop, metric, practice, wheat_type, _session_ver(),
                             geo, fips_lk, centroids, logo_50yr
                         )
                     if fig is None:
@@ -5305,13 +5390,13 @@ def main():
 
             # ── Load data ─────────────────────────────────────────────────────────
             with st.spinner(f"Loading {stk_year} {stk_crop} data…"):
-                stk_df   = load_grain_stocks(stk_crop, stk_year, stk_period, _CACHE_VERSION)
+                stk_df   = load_grain_stocks(stk_crop, stk_year, stk_period, _session_ver())
                 # Production (state level — always loaded)
-                _prod_st = _load_state_for_stat(stk_crop, stk_year, "production", _CACHE_VERSION)
+                _prod_st = _load_state_for_stat(stk_crop, stk_year, "production", _session_ver())
                 _prod_map = dict(zip(_prod_st["State"], _prod_st["Value"])) \
                             if not _prod_st.empty else {}
                 # Sep 1 stocks — used for Total Supply regardless of selected period
-                _sep_df  = load_grain_stocks(stk_crop, stk_year, "FIRST OF SEP", _CACHE_VERSION)
+                _sep_df  = load_grain_stocks(stk_crop, stk_year, "FIRST OF SEP", _session_ver())
                 _sep_map = dict(zip(_sep_df["State"], _sep_df["Total"])) \
                            if not _sep_df.empty else {}
 
@@ -5367,9 +5452,9 @@ def main():
                 # ── Load comparison base data ─────────────────────────────────────
                 def _load_yr(yr):
                     """Load and enrich a full year of stocks + production."""
-                    _s = load_grain_stocks(stk_crop, yr, stk_period, _CACHE_VERSION)
-                    _p = _load_state_for_stat(stk_crop, yr, "production", _CACHE_VERSION)
-                    _e = load_grain_stocks(stk_crop, yr, "FIRST OF SEP", _CACHE_VERSION)
+                    _s = load_grain_stocks(stk_crop, yr, stk_period, _session_ver())
+                    _p = _load_state_for_stat(stk_crop, yr, "production", _session_ver())
+                    _e = load_grain_stocks(stk_crop, yr, "FIRST OF SEP", _session_ver())
                     _pm = dict(zip(_p["State"], _p["Value"])) if not _p.empty else {}
                     _sm = dict(zip(_e["State"], _e["Total"])) if not _e.empty else {}
                     return _enrich(_s, _pm, _sm)
@@ -5556,7 +5641,7 @@ def main():
                     )
                 elif stk_view == "Total Supply":
                     _sep_chart = {
-                        y: load_grain_stocks(stk_crop, y, "FIRST OF SEP", _CACHE_VERSION)
+                        y: load_grain_stocks(stk_crop, y, "FIRST OF SEP", _session_ver())
                         for y in _chart_yrs
                     }
                     _sep_raw  = [(_sep_chart[y]["Total"].sum() if not _sep_chart[y].empty else 0) for y in _chart_yrs]
@@ -5672,15 +5757,15 @@ def main():
                 _disapp_rows = []
                 for _dy in _disapp_years:
                     if _is_wheat:
-                        _jun_dy  = load_grain_stocks("Wheat", _dy,     "FIRST OF JUN", _CACHE_VERSION)
-                        _sep_dy  = load_grain_stocks("Wheat", _dy,     "FIRST OF SEP", _CACHE_VERSION)
-                        _jun_dy1 = load_grain_stocks("Wheat", _dy + 1, "FIRST OF JUN", _CACHE_VERSION)
+                        _jun_dy  = load_grain_stocks("Wheat", _dy,     "FIRST OF JUN", _session_ver())
+                        _sep_dy  = load_grain_stocks("Wheat", _dy,     "FIRST OF SEP", _session_ver())
+                        _jun_dy1 = load_grain_stocks("Wheat", _dy + 1, "FIRST OF JUN", _session_ver())
                         _beg_bu = float(_jun_dy["Total"].sum())  if not _jun_dy.empty  else None
                         _sep_bu = float(_sep_dy["Total"].sum())  if not _sep_dy.empty  else None
                         _end_bu = float(_jun_dy1["Total"].sum()) if not _jun_dy1.empty else None
-                        _winter_bu = _load_wheat_class_prod(_dy, "WINTER",               _CACHE_VERSION)
-                        _spring_bu = (_load_wheat_class_prod(_dy, "SPRING, (EXCL DURUM)", _CACHE_VERSION) +
-                                      _load_wheat_class_prod(_dy, "SPRING, DURUM",        _CACHE_VERSION))
+                        _winter_bu = _load_wheat_class_prod(_dy, "WINTER",               _session_ver())
+                        _spring_bu = (_load_wheat_class_prod(_dy, "SPRING, (EXCL DURUM)", _session_ver()) +
+                                      _load_wheat_class_prod(_dy, "SPRING, DURUM",        _session_ver()))
                         _total_prod = _winter_bu + _spring_bu
                         if not _beg_bu:
                             continue
@@ -5698,7 +5783,7 @@ def main():
                         # For ending stocks (Jun 1 next year), try WASDE if NASS not yet published
                         _end_is_est = False
                         if not _end_bu:
-                            _wasde_end = load_wasde_ending_stocks("Wheat", _dy, _CACHE_VERSION)
+                            _wasde_end = load_wasde_ending_stocks("Wheat", _dy, _session_ver())
                             if _wasde_end:
                                 _end_bu     = _wasde_end
                                 _end_is_est = "W"
@@ -5719,9 +5804,9 @@ def main():
                             "end_is_est":    _end_is_est,
                         })
                     else:
-                        _sep_dy  = load_grain_stocks(stk_crop, _dy,     "FIRST OF SEP", _CACHE_VERSION)
-                        _sep_dy1 = load_grain_stocks(stk_crop, _dy + 1, "FIRST OF SEP", _CACHE_VERSION)
-                        _prod_dy = _load_state_for_stat(stk_crop, _dy, "production", _CACHE_VERSION)
+                        _sep_dy  = load_grain_stocks(stk_crop, _dy,     "FIRST OF SEP", _session_ver())
+                        _sep_dy1 = load_grain_stocks(stk_crop, _dy + 1, "FIRST OF SEP", _session_ver())
+                        _prod_dy = _load_state_for_stat(stk_crop, _dy, "production", _session_ver())
                         _begin_bu = float(_sep_dy["Total"].sum())  if not _sep_dy.empty  else None
                         _end_bu   = float(_sep_dy1["Total"].sum()) if not _sep_dy1.empty else None
                         _prod_bu  = float(_prod_dy["Value"].sum()) if not _prod_dy.empty else None
@@ -5739,7 +5824,7 @@ def main():
                         else:
                             # Sep 1 end stocks not yet published.
                             # Try WASDE (FAS PSD) ending stocks for this marketing year first.
-                            _wasde_end = load_wasde_ending_stocks(stk_crop, _dy, _CACHE_VERSION)
+                            _wasde_end = load_wasde_ending_stocks(stk_crop, _dy, _session_ver())
                             if _wasde_end:
                                 _disapp_rows.append({
                                     "year":     _dy,
@@ -5751,15 +5836,15 @@ def main():
                                 })
                             else:
                                 # Fall back: Jun 1 quarterly stocks × avg historical Sep/Jun ratio
-                                _jun_cur = load_grain_stocks(stk_crop, _dy + 1, "FIRST OF JUN", _CACHE_VERSION)
+                                _jun_cur = load_grain_stocks(stk_crop, _dy + 1, "FIRST OF JUN", _session_ver())
                                 _jun_bu  = float(_jun_cur["Total"].sum()) if not _jun_cur.empty else None
                                 if not _jun_bu:
                                     continue
                                 _hist_ratios = [
-                                    r["end_bu"] / _load_yr_jun(stk_crop, r["year"] + 1, _CACHE_VERSION)
+                                    r["end_bu"] / _load_yr_jun(stk_crop, r["year"] + 1, _session_ver())
                                     for r in _disapp_rows
                                     if r.get("end_bu") and not r.get("is_est")
-                                    and _load_yr_jun(stk_crop, r["year"] + 1, _CACHE_VERSION)
+                                    and _load_yr_jun(stk_crop, r["year"] + 1, _session_ver())
                                 ]
                                 _sep_ratio = (sum(_hist_ratios) / len(_hist_ratios)) if _hist_ratios else 1.0
                                 _est_end   = _jun_bu * _sep_ratio
@@ -5984,12 +6069,12 @@ def main():
                 for _ck, _cp in _ACR_PARAMS.items():
                     _acr[_ck] = load_acreage_crop_hist(
                         _ck, _cp, _acr_start_yr, _acr_end_yr,
-                        _acr_state_abbr, False, _CACHE_VERSION
+                        _acr_state_abbr, False, _session_ver()
                     )
                     if _ck in _ACR_PP_CROPS:
                         _pp[_ck] = load_acreage_crop_hist(
                             _ck, _cp, _acr_start_yr, _acr_end_yr,
-                            _acr_state_abbr, True, _CACHE_VERSION
+                            _acr_state_abbr, True, _session_ver()
                         )
 
             # ── RMA prevent-plant lookup (NASS QuickStats lacks PP data) ────────────
@@ -6240,7 +6325,7 @@ def main():
             # ── National / state-level choropleth ─────────────────────────────────
             with st.spinner(f"Loading {_lv_species} state inventory..."):
                 _lv_st_df = load_livestock(
-                    "STATE", _lv_species, _lv_year, cache_ver=_CACHE_VERSION
+                    "STATE", _lv_species, _lv_year, cache_ver=_session_ver()
                 )
 
             if _lv_st_df.empty:
@@ -6358,7 +6443,7 @@ def main():
                     with st.spinner("Loading county data..."):
                         _lv_co_df = load_livestock(
                             "COUNTY", _lv_species, _lv_year,
-                            state_alpha=_lv_state_abbr, cache_ver=_CACHE_VERSION
+                            state_alpha=_lv_state_abbr, cache_ver=_session_ver()
                         )
                     if _lv_co_df.empty:
                         _lv_co_note = livestock_coverage_note(
@@ -6470,7 +6555,7 @@ def main():
                     )
                     with st.spinner("Loading county history..."):
                         _lv_co_hist = load_livestock_county_hist(
-                            _lv_species, _lv_state_abbr, cache_ver=_CACHE_VERSION
+                            _lv_species, _lv_state_abbr, cache_ver=_session_ver()
                         )
                     if _lv_co_hist.empty or "county_name" not in _lv_co_hist.columns:
                         st.info("No multi-year county history available for this selection.")
@@ -6568,7 +6653,7 @@ def main():
                     with st.spinner("Loading ASD data..."):
                         _lv_asd_df = load_livestock(
                             "AG DISTRICT", _lv_species, _lv_year,
-                            state_alpha=_lv_state_abbr, cache_ver=_CACHE_VERSION
+                            state_alpha=_lv_state_abbr, cache_ver=_session_ver()
                         )
                     if _lv_asd_df.empty or "asd_desc" not in _lv_asd_df.columns:
                         st.info(
@@ -6590,10 +6675,10 @@ def main():
                         _lv_sfips = STATE_FIPS_ALL.get(_lv_state_abbr, "")
                         try:
                             _lv_fmap = load_boundary_fips_map(
-                                "Corn", _lv_sfips, _CACHE_VERSION, geo
+                                "Corn", _lv_sfips, _BASE_CACHE_VERSION, geo
                             )
                             _lv_dgdf = build_nass_district_gdf(
-                                _lv_sfips, _CACHE_VERSION, _lv_fmap, geo
+                                _lv_sfips, _BASE_CACHE_VERSION, _lv_fmap, geo
                             )
                         except Exception:
                             _lv_dgdf = gpd.GeoDataFrame()
@@ -6680,7 +6765,7 @@ def main():
                 unsafe_allow_html=True,
             )
             with st.spinner("Loading historical data..."):
-                _lv_hist_df = load_livestock_hist(_lv_species, cache_ver=_CACHE_VERSION)
+                _lv_hist_df = load_livestock_hist(_lv_species, cache_ver=_session_ver())
 
             if _lv_hist_df.empty:
                 st.info("Historical trend data not available for this species.")
@@ -6819,7 +6904,7 @@ def main():
             )
             with st.spinner("Loading NASS aquaculture data…"):
                 _aq_df = load_aquaculture_nass(
-                    _aq_species, _aq_year, cache_ver=_CACHE_VERSION
+                    _aq_species, _aq_year, cache_ver=_session_ver()
                 )
 
             if _aq_df.empty:
@@ -6951,7 +7036,7 @@ def main():
                 "(Fish Hatcheries &amp; Preserves) or SIC 0273 (Animal Aquaculture) — active permits only."
             )
             with st.spinner("Loading EPA ECHO facility data…"):
-                _echo_df = load_echo_aquaculture(cache_ver=_CACHE_VERSION)
+                _echo_df = load_echo_aquaculture(cache_ver=_session_ver())
 
             if _echo_df.empty:
                 st.info(
@@ -7350,22 +7435,44 @@ def main():
                     st.rerun()
 
             # ── Load data ────────────────────────────────────────────────────────
+            _sd_stock_ok = sd_crop in STOCKS_CROPS
+            st.markdown(
+                f"<p style='color:{MUTED};font-size:0.78rem;margin:4px 0 2px 0;'>Supply basis</p>",
+                unsafe_allow_html=True,
+            )
+            sd_supply_basis = st.radio(
+                "Supply basis", ["Production", "Total supply (production + beginning stocks)"],
+                horizontal=True, key="sd_supply_basis", label_visibility="collapsed",
+                disabled=not _sd_stock_ok,
+            )
+            _tls.ts = bool(_sd_stock_ok and sd_supply_basis != "Production")
+            _sd_sup_lbl = "Total Supply" if _tls.ts else "Production"
+            if _tls.ts:
+                st.caption(
+                    f"Supply = {'Jun 1' if sd_crop == 'Wheat' else 'Sep 1'} stocks + production for the same "
+                    "year, so net = total supply minus demand. Stocks are published by state only and are spread "
+                    "over the districts in proportion to production; a state with no published stocks counts "
+                    "production only."
+                )
+            elif not _sd_stock_ok:
+                st.caption("Total supply needs NASS grain stocks, which are not published for canola.")
+
             _canola_meta = None
             _sd_county = pd.DataFrame()
             if sd_crop == "Canola":
                 _sd_prod, _sd_demand = pd.DataFrame(), pd.DataFrame()
                 try:
                     with st.spinner(f"Loading {sd_year} canola production and crush..."):
-                        _sd_prod, _sd_demand, _canola_meta = load_canola_asd(sd_year, _CACHE_VERSION)
+                        _sd_prod, _sd_demand, _canola_meta = load_canola_asd(sd_year, _BASE_CACHE_VERSION)
                 except Exception as _e:
                     st.error(f"Canola data unavailable ({_e}).")
             else:
                 with st.spinner(f"Loading {sd_year} {sd_crop} production..."):
-                    _sd_county = load_nass_county(sd_crop, sd_year, _CACHE_VERSION)
+                    _sd_county = load_nass_county(sd_crop, sd_year, _session_ver())
 
                 try:
                     with st.spinner("Loading ASD demand estimates..."):
-                        _sd_demand = load_asd_demand(sd_year, _CACHE_VERSION)
+                        _sd_demand = load_asd_demand(sd_year, _BASE_CACHE_VERSION)
                 except Exception as _e:
                     st.error(f"Livestock demand data unavailable from NASS right now ({_e}). Try Refresh in a few minutes.")
                     _sd_demand = pd.DataFrame()
@@ -7468,12 +7575,12 @@ def main():
                     return f"{v/1e6:+.0f}M bu" if v != abs(v) else f"{v/1e6:.0f}M bu"
 
                 _k1, _k2, _k3, _k4 = st.columns(4)
-                _k1.metric("Production", f"{_tot_prod/1e6:.0f}M bu")
+                _k1.metric(_sd_sup_lbl, f"{_tot_prod/1e6:.0f}M bu")
                 _k2.metric("Total Demand", f"{_tot_dem/1e6:.0f}M bu")
                 _k3.metric(
                     "Net Surplus / Deficit",
                     f"{_tot_net/1e6:+.0f}M bu",
-                    delta=f"{_net_pct:+.1f}% of production",
+                    delta=f"{_net_pct:+.1f}% of {_sd_sup_lbl.lower()}",
                     delta_color="normal",
                 )
                 if sd_crop == "Corn" and "ddgs_dry_lbs" in _kpi_df.columns:
@@ -7492,10 +7599,10 @@ def main():
                 if _sd_sel_state:
                     _sfips = STATE_FIPS_ALL.get(_sd_sel_state, "")
                     _fips_map_sd = load_boundary_fips_map(
-                        "Corn" if sd_crop == "Canola" else sd_crop, _sfips, _CACHE_VERSION, geo
+                        "Corn" if sd_crop == "Canola" else sd_crop, _sfips, _BASE_CACHE_VERSION, geo
                     )
                     _dist_gdf_sd = build_nass_district_gdf(
-                        _sfips, _CACHE_VERSION, _fips_map_sd, geo
+                        _sfips, _BASE_CACHE_VERSION, _fips_map_sd, geo
                     )
 
                     _st_df = _sd[_sd["state_alpha"] == _sd_sel_state].copy()
@@ -7523,7 +7630,7 @@ def main():
                             net_bu   = _dist_net.get(d, 0)
                             sign     = "+" if z >= 0 else ""
                             return (f"<b>{d}</b><br>"
-                                    f"Production: {prod_bu/1e6:.1f}M bu<br>"
+                                    f"{_sd_sup_lbl}: {prod_bu/1e6:.1f}M bu<br>"
                                     f"Net: {sign}{z:.1f}M bu")
 
                         _hover_sd = [_sd_hover(d, z) for d, z in zip(_districts, _z_vals)]
@@ -7634,7 +7741,7 @@ def main():
                         _tbl = _tbl.sort_values("net_bu", ascending=False).reset_index(drop=True)
                         _tbl_cols = {
                             "District":          _tbl["District"].fillna("—"),
-                            "Production (M bu)": (_tbl["production_bu"] / 1e6).round(1),
+                            f"{_sd_sup_lbl} (M bu)": (_tbl["production_bu"] / 1e6).round(1),
                             _sd_feed_lbl:        _tbl[_sd_feed_col].round(0).astype(int),
                             _sd_plant_lbl:       _tbl[_sd_plant_col].round(0).astype(int),
                             "Total Demand (M bu)": (_tbl[_sd_demand_col] / 1e6).round(1),
@@ -7712,7 +7819,7 @@ def main():
                         "State": _state_sum["state_alpha"].map(
                             lambda a: f"{a} — {ABBR_TO_NAME.get(a, a)}"
                         ),
-                        "Production (M bu)": (_state_sum["production_bu"] / 1e6).round(1),
+                        f"{_sd_sup_lbl} (M bu)": (_state_sum["production_bu"] / 1e6).round(1),
                         "Total Demand (M bu)": (_state_sum["demand_bu"] / 1e6).round(1),
                         "Net (M bu)": (_state_sum["net_bu"] / 1e6).round(1),
                         "Net % of Prod": _state_sum["net_pct"].round(1),
@@ -8168,7 +8275,7 @@ def main():
                             break
                     return asd_map
 
-                county_asd_map = load_county_asd_map(_CACHE_VERSION)
+                county_asd_map = load_county_asd_map(_session_ver())
 
                 dc1, dc2, dc3 = st.columns([1.2, 1, 2])
                 with dc1:
