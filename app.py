@@ -2212,7 +2212,10 @@ def _load_nass_state_forecast_raw(crop: str, stat_type: str, cache_ver: str) -> 
     )
     df["State"] = df["state_alpha"].str.strip()
     df = df[df["State"].isin(set(STATE_FIPS_ALL.keys()))].dropna(subset=["Value"])
-    _pref = {"YEAR - JUN ACREAGE": 0, "YEAR": 1, "YEAR - MAR ACREAGE": 2}
+    # The plain YEAR row is NASS's latest in-season estimate (it moves with each monthly Crop
+    # Production report); the Jun/Mar Acreage rows are frozen snapshots. Preferring a snapshot
+    # made harvested area stale, so ASD production didn't tie to the state total on the NASS tile.
+    _pref = {"YEAR": 0, "YEAR - JUN ACREAGE": 1, "YEAR - MAR ACREAGE": 2}
     if "reference_period_desc" in df.columns:
         df["_p"] = df["reference_period_desc"].map(lambda x: _pref.get(x, 99))
         df = df.sort_values("_p").drop_duplicates(subset=["State"], keep="first")
@@ -2300,6 +2303,13 @@ def get_asd_forecast_data(crop: str, state: str, yield_est: float,
     sh_pl = _build_asd_hist_shares(crop, state, "planted",    _hist, cache_ver)
     sh_hv = _build_asd_hist_shares(crop, state, "harvested",  _hist, cache_ver)
     sh_pr = _build_asd_hist_shares(crop, state, "production", _hist, cache_ver)
+
+    def _norm_shares(sh: dict) -> dict:
+        # Olympic-averaging each district separately leaves the shares summing to ~0.97-1.03;
+        # rescale so the districts add back to exactly the state figure.
+        tot = sum(sh.values())
+        return {d: v / tot for d, v in sh.items()} if tot > 0 else sh
+    sh_pl, sh_hv, sh_pr = _norm_shares(sh_pl), _norm_shares(sh_hv), _norm_shares(sh_pr)
 
     stats: dict = {k: {} for k in ("planted", "harvested", "pct_harvested",
                                     "production", "yield")}
