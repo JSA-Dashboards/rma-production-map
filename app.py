@@ -4482,7 +4482,11 @@ def main():
                                 else:
                                     _tbl_cols = ["District", "ASD", nass_metric, "% of State"]
 
-                                _tbl_col, _map_col = st.columns([1, 2.5])
+                                # Map first at full width, district table beneath it. Containers keep
+                                # their position however they are filled, so the table code below can
+                                # stay where it is.
+                                _map_col = st.container()
+                                _tbl_col = st.container()
                                 with _tbl_col:
                                     st.markdown(
                                         f"<p style='color:{MUTED};font-size:0.78rem;"
