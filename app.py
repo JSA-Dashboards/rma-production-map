@@ -7539,6 +7539,24 @@ def main():
                     .sum()
                     .rename(columns={"State": "state_alpha", "Production": "production_bu"})
                 )
+                # County rows cover only the counties NASS publishes (it withholds small ones), so the
+                # district sums fall short of the state figure. Scale each state's districts up to the
+                # official NASS state production so the tab ties to the NASS Production tab.
+                _sd_st = load_nass_state(sd_crop, sd_year, "production", _session_ver())
+                _sd_scaled = []
+                if _sd_st is not None and not _sd_st.empty:
+                    _sd_smap = dict(zip(_sd_st["State"], _sd_st["Value"]))
+                    _sd_csum = _sd_prod.groupby("state_alpha")["production_bu"].sum()
+                    for _stt, _cs in _sd_csum.items():
+                        _tgt = _sd_smap.get(_stt, 0)
+                        if _cs > 0 and _tgt > 0 and abs(_tgt / _cs - 1) > 0.005:
+                            _sd_prod.loc[_sd_prod["state_alpha"] == _stt, "production_bu"] *= _tgt / _cs
+                            _sd_scaled.append(_stt)
+                if _sd_scaled:
+                    st.caption(
+                        f"District production is scaled to NASS state production for {len(_sd_scaled)} states "
+                        "(NASS publishes county figures only for some counties, so county sums run below the state total)."
+                    )
 
             _SD_COLS = {
                 "Corn":     ("corn_demand_total_bu",   "corn_feed_bu", "corn_ethanol_bu",  "Ethanol Corn (bu)",   "Feed Corn (bu)"),
