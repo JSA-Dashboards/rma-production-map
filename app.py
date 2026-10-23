@@ -8476,39 +8476,61 @@ def main():
                 if nass_sc is not None:
                     st.markdown("<hr style='border-color:#3a3f47;margin:28px 0 16px 0;'>", unsafe_allow_html=True)
                     st.markdown(
-                        f"<h4 style='color:{ACCENT};margin-bottom:4px;'>NASS Grain Storage Capacity — On-Farm & Off-Farm by State</h4>"
-                        f"<p style='color:{MUTED};font-size:0.82rem;margin-top:0;'>Annual survey covering farmer-owned bins/bags (on-farm) and "
-                        "commercial elevators & warehouses (off-farm). Source: USDA NASS.</p>",
+                        f"<h4 style='color:{ACCENT};margin-bottom:4px;'>Grain Storage Capacity — NASS On-Farm & Off-Farm with FSA Licensed Warehouses</h4>"
+                        f"<p style='color:{MUTED};font-size:0.82rem;margin-top:0;'>NASS's annual survey covers farmer-owned bins and bags (on-farm) and "
+                        "commercial elevators & warehouses (off-farm). The FSA WCMD figure above is the federally licensed subset of that commercial storage, "
+                        "shown here against it by state.</p>",
                         unsafe_allow_html=True,
                     )
                     avail_nc_years = sorted(nass_sc["year"].unique(), reverse=True)
-                    sel_nc_yr = str(st.selectbox("Year", avail_nc_years, key="wcmd_nass_yr"))
+                    _yc, _ = st.columns([1, 5])
+                    sel_nc_yr = str(_yc.selectbox("NASS survey year", avail_nc_years, key="wcmd_nass_yr"))
                     nc_yr = nass_sc[nass_sc["year"].astype(str) == sel_nc_yr]
 
                     OFF_DESC = "GRAIN STORAGE CAPACITY, OFF FARM - CAPACITY, MEASURED IN BU"
                     ON_DESC  = "GRAIN STORAGE CAPACITY, ON FARM - CAPACITY, MEASURED IN BU"
                     nc_off = nc_yr[nc_yr["short_desc"] == OFF_DESC][["state_alpha","value_bu"]].rename(columns={"value_bu":"off_farm"})
                     nc_on  = nc_yr[nc_yr["short_desc"] == ON_DESC ][["state_alpha","value_bu"]].rename(columns={"value_bu":"on_farm"})
-                    nc_state = nc_off.merge(nc_on, on="state_alpha", how="outer").dropna()
+                    # Outer merge: a state NASS publishes on only one side keeps its figure (OT = pooled "other states").
+                    nc_state = nc_off.merge(nc_on, on="state_alpha", how="outer").fillna(0.0)
                     nc_state["total"] = nc_state["off_farm"] + nc_state["on_farm"]
-                    nc_state = nc_state.sort_values("total", ascending=True)
+                    _fsa = wcmd_state.rename(columns={"state": "state_alpha", "capacity_bu": "fsa_bu", "locations": "fsa_locs"})
+                    blend = nc_state.merge(_fsa[["state_alpha", "fsa_bu", "fsa_locs"]], on="state_alpha", how="outer").fillna(0.0)
+                    blend = blend[blend["state_alpha"].isin(set(STATE_FIPS_ALL) | {"OT"})]
 
+                    _b_off, _b_on, _b_tot = blend["off_farm"].sum(), blend["on_farm"].sum(), blend["total"].sum()
+                    _b_fsa = blend["fsa_bu"].sum()
+                    bk1, bk2, bk3, bk4, bk5 = st.columns(5)
+                    bk1.metric("NASS Total Capacity", f"{_b_tot/1e9:.2f}B bu")
+                    bk2.metric("Off-Farm (Commercial)", f"{_b_off/1e9:.2f}B bu")
+                    bk3.metric("On-Farm", f"{_b_on/1e9:.2f}B bu")
+                    bk4.metric("FSA Licensed (WCMD)", f"{_b_fsa/1e9:.2f}B bu")
+                    bk5.metric("FSA as % of Off-Farm", f"{_b_fsa / _b_off * 100:.0f}%" if _b_off else "—")
+
+                    # Stacked NASS bars by state with the FSA licensed figure as a marker on the same axis
+                    nc_chart = blend[blend["state_alpha"] != "OT"].sort_values("total", ascending=True)
                     fig_nsc = go.Figure()
                     fig_nsc.add_trace(go.Bar(
-                        name="Off-Farm (Commercial)", x=nc_state["off_farm"] / 1e9, y=nc_state["state_alpha"],
+                        name="NASS Off-Farm (Commercial)", x=nc_chart["off_farm"] / 1e9, y=nc_chart["state_alpha"],
                         orientation="h", marker_color="#f97316",
-                        hovertemplate="Off-Farm: %{x:.2f}B bu<extra></extra>",
+                        hovertemplate="NASS off-farm: %{x:.2f}B bu<extra></extra>",
                     ))
                     fig_nsc.add_trace(go.Bar(
-                        name="On-Farm / Temporary", x=nc_state["on_farm"] / 1e9, y=nc_state["state_alpha"],
+                        name="NASS On-Farm / Temporary", x=nc_chart["on_farm"] / 1e9, y=nc_chart["state_alpha"],
                         orientation="h", marker_color="#a3e635",
-                        hovertemplate="On-Farm: %{x:.2f}B bu<extra></extra>",
+                        hovertemplate="NASS on-farm: %{x:.2f}B bu<extra></extra>",
+                    ))
+                    fig_nsc.add_trace(go.Scatter(
+                        name="FSA Licensed (WCMD)", x=nc_chart["fsa_bu"] / 1e9, y=nc_chart["state_alpha"],
+                        mode="markers", marker=dict(symbol="diamond", size=9, color="white",
+                                                    line=dict(width=1.8, color=TEXT)),
+                        hovertemplate="FSA licensed: %{x:.2f}B bu<extra></extra>",
                     ))
                     fig_nsc.update_layout(
                         paper_bgcolor=DARK, plot_bgcolor=SURFACE,
                         font=dict(color=TEXT, family="Arial"),
                         margin=dict(l=20, r=20, t=10, b=50),
-                        height=max(400, len(nc_state) * 22),
+                        height=max(400, len(nc_chart) * 22),
                         barmode="stack",
                         legend=dict(
                             font=dict(color=TEXT, size=10), bgcolor="rgba(0,0,0,0)",
@@ -8524,7 +8546,7 @@ def main():
                     _add_logo(fig_nsc, logo_50yr)
                     _chart(fig_nsc, use_container_width=True, config={"displayModeBar": False})
 
-                    # Trend: national on-farm vs off-farm
+                    # Trend: national on-farm vs off-farm, with today's FSA licensed total for reference
                     st.markdown(
                         f"<h4 style='color:{ACCENT};margin-bottom:6px;margin-top:20px;'>National Trend: On-Farm vs Off-Farm Capacity</h4>",
                         unsafe_allow_html=True,
@@ -8544,6 +8566,12 @@ def main():
                             marker=dict(color=color, size=5),
                             hovertemplate=f"{label}: %{{y:.2f}}B bu<extra></extra>",
                         ))
+                    if _b_fsa > 0:
+                        fig_sc_trend.add_hline(
+                            y=_b_fsa / 1e9, line_dash="dash", line_color=TEXT, line_width=1.2,
+                            annotation_text=f"FSA licensed today: {_b_fsa/1e9:.2f}B bu",
+                            annotation_position="bottom right", annotation_font=dict(color=MUTED, size=10),
+                        )
                     fig_sc_trend.update_layout(
                         paper_bgcolor=DARK, plot_bgcolor=SURFACE,
                         font=dict(color=TEXT, family="Arial"),
@@ -8558,11 +8586,32 @@ def main():
                         hovermode="x unified",
                     )
                     _chart(fig_sc_trend, use_container_width=True, config={"displayModeBar": False})
+
+                    # Blended state table
+                    st.markdown(
+                        f"<h4 style='color:{ACCENT};margin-bottom:6px;margin-top:20px;'>State Detail — NASS {sel_nc_yr} + FSA Licensed</h4>",
+                        unsafe_allow_html=True,
+                    )
+                    _bt = blend.sort_values("total", ascending=False).copy()
+                    _bt["State"] = _bt["state_alpha"].map(lambda s: "Other states (NASS)" if s == "OT" else s)
+                    _bt["NASS Off-Farm (M Bu)"] = (_bt["off_farm"] / 1e6).round(1)
+                    _bt["NASS On-Farm (M Bu)"]  = (_bt["on_farm"]  / 1e6).round(1)
+                    _bt["NASS Total (M Bu)"]    = (_bt["total"]    / 1e6).round(1)
+                    _bt["FSA Licensed (M Bu)"]  = (_bt["fsa_bu"]   / 1e6).round(1)
+                    _bt["FSA Locations"]        = _bt["fsa_locs"].astype(int)
+                    _bt["FSA % of Off-Farm"]    = np.where(_bt["off_farm"] > 0, _bt["fsa_bu"] / _bt["off_farm"] * 100, np.nan).round(0)
+                    _bt["% Off-Farm"]           = np.where(_bt["total"] > 0, _bt["off_farm"] / _bt["total"] * 100, np.nan).round(1)
+                    st.dataframe(
+                        _bt[["State", "NASS Off-Farm (M Bu)", "NASS On-Farm (M Bu)", "NASS Total (M Bu)",
+                             "FSA Licensed (M Bu)", "FSA Locations", "FSA % of Off-Farm", "% Off-Farm"]],
+                        use_container_width=True, hide_index=True,
+                    )
                     st.markdown(
                         f"<p style='color:{MUTED};font-size:0.78rem;margin-top:4px;'>"
-                        "On-farm includes farmer-owned bins, grain bags, and temporary structures. "
-                        "Off-farm includes commercial grain elevators and licensed warehouses. "
-                        "USDA NASS Grain Storage Capacity report, published annually each January.</p>",
+                        "On-farm includes farmer-owned bins, grain bags, and temporary structures; off-farm includes commercial elevators and warehouses "
+                        "(USDA NASS Grain Storage Capacity, a Dec 1 survey published each January). FSA licensed capacity is the current WCMD license file: "
+                        "only federally licensed warehouses, so it normally sits below NASS off-farm, and a state above 100% reflects timing or definition "
+                        "differences between the two sources. NASS withholds some state figures; those are pooled in 'Other states'.</p>",
                         unsafe_allow_html=True,
                     )
 
