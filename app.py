@@ -16,6 +16,7 @@ from PIL import Image
 import geopandas as gpd
 from shapely.geometry import shape
 from demand_module import load_asd_demand, load_canola_asd, livestock_carried
+import heat_map
 
 _HERE = Path(__file__).parent
 st.set_page_config(
@@ -4064,8 +4065,8 @@ def main():
         st.caption("High-oleic beans in New York mostly go to on-farm / dairy-feed use rather than crush or export, "
                    "so the carve-out leaves commodity soybean supply. Applies to NASS Production and ASD S&D only.")
 
-    tab_nass, tab_rma, tab_stocks, tab_acreage, tab_livestock, tab_aqua, tab_proc, tab_wcmd, tab_storage_cmp, tab_eia, tab_sd, tab_about = st.tabs([
-        "NASS Production", "RMA",
+    tab_nass, tab_rma, tab_heat, tab_stocks, tab_acreage, tab_livestock, tab_aqua, tab_proc, tab_wcmd, tab_storage_cmp, tab_eia, tab_sd, tab_about = st.tabs([
+        "NASS Production", "RMA", "Heat Map",
         "Grain Stocks", "Acreage Summary", "Livestock",
         "Aquaculture", "Processing",
         "Grain Warehouses", "Storage vs. Production",
@@ -5387,6 +5388,20 @@ def main():
                     )
                     st.dataframe(disp, use_container_width=True, hide_index=True)
 
+
+    # ══════════════════════════════════════════════════════════════════════════════
+    # HEAT MAP TAB  (heat_map.py: where a crop is concentrated; NASS or RMA county values)
+    # ══════════════════════════════════════════════════════════════════════════════
+    with tab_heat:
+        if tab_heat.open:
+            heat_map.render_tab(
+                rma_data=rma_data, geo=geo, state_fips=STATE_FIPS_ALL, abbr_to_name=ABBR_TO_NAME,
+                load_county=lambda crop, year, stat: _load_for_metric(crop, year, stat),
+                load_state=lambda crop, year, stat: load_nass_state(crop, year, stat, _session_ver()),
+                load_districts=lambda crop, year: load_nass_county(crop, year, _session_ver()),
+                nass_years=NASS_YEARS, nass_crops=list(NASS_CROP_STAT_PARAMS.keys()),
+                current_year=datetime.date.today().year,
+            )
 
     # ══════════════════════════════════════════════════════════════════════════
     # GRAIN STOCKS TAB
