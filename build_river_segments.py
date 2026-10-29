@@ -102,6 +102,53 @@ def merge_nodes(segs):
     return out
 
 
+AK_PINS = ["Wagoner", "Webbers Falls", "Port 33", "Van Buren", "Pine Bluff"]       # McClellan-Kerr: all of it passes Arkansas Lock 1
+PNW_PINS = ["PNW export (rail)", "Kennewick"]                                         # beans that leave by rail to the coast
+DROP_PINS = ["CHS Macon", "ADM Livingston Point, KY"]                                  # inland / mis-placed in the tracker
+EXTRA_PINS = {"MS-5": ["Meredosia", "Naples"]}                                         # IL River terminals below La Grange
+FGIS_FALLBACK = {"east_gulf_mbu": 1017.0, "west_coast_mbu": 377.0}
+
+
+def fgis_soy_exports():
+    """Average annual soybean ship inspections (M bu), 2021-25, by FGIS region, from AgTransport sruw-w49i."""
+    import urllib.parse
+    import urllib.request
+    q = {"$select": "fgis_reg,sum(pounds) as lbs", "$group": "fgis_reg", "$limit": "50",
+         "$where": "grain='SOYBEANS' and year>=2021 and year<=2025 and type_carrier_text='SHIP'"}
+    try:
+        rows = json.load(urllib.request.urlopen("https://agtransport.usda.gov/resource/sruw-w49i.json?" + urllib.parse.urlencode(q), timeout=90))
+        by = {r["fgis_reg"]: float(r["lbs"]) / 60 / 1e6 / 5 for r in rows}
+        return {"east_gulf_mbu": by["EAST GULF"], "west_coast_mbu": by["WEST COAST"], "source": "FGIS ship inspections 2021-25 avg"}
+    except Exception as e:                                       # keep the build working offline
+        return {**FGIS_FALLBACK, "source": f"fallback constants ({type(e).__name__})"}
+
+
+def build_groups(segs, nodes, pins, usda, bu):
+    """Pin groups with annual soybean targets for draw_model.solve. Every group's pins share the group's target."""
+    fg = fgis_soy_exports()
+    ak = usda[(usda.lock == "AK Lock 1") & (usda.commodity == "Soybeans") & usda.year.between(YEARS[0], YEARS[-1])].tons.sum() / len(YEARS)
+    ak_mbu = ak * bu / 1e6
+    placed, groups = set(), []
+    for n in nodes:
+        pl = list(n["pins"]) + [p["key"] for p in pins if any(t.lower() in p["key"].lower() for t in EXTRA_PINS.get(n["node"].split()[0], []))]
+        placed.update(pl)
+        groups.append({"name": n["node"], "kind": "lock", "pins": pl, "target_mbu": max(0.0, n["soy_mbu"]), "range_mbu": [n["soy_mbu_min"], n["soy_mbu_max"]]})
+    for name, tags, tgt, kind in (("AK Arkansas River (Lock 1)", AK_PINS, ak_mbu, "lock"),
+                                  ("PNW export by rail", PNW_PINS, fg["west_coast_mbu"], "pnw")):
+        pl = [p["key"] for p in pins if any(t.lower() in p["key"].lower() for t in tags)]
+        placed.update(pl)
+        groups.append({"name": name, "kind": kind, "pins": pl, "target_mbu": float(tgt)})
+    measured = sum(g["target_mbu"] for g in groups if g["kind"] == "lock")
+    pinless = sum(g["target_mbu"] for g in groups if g["kind"] == "lock" and not g["pins"])
+    harbor = [p for p in segs if p["segment"].startswith("St. Louis harbor")][0]["pins"]
+    lower = [p["key"] for p in pins if p["key"] not in placed and p["key"] not in DROP_PINS]
+    groups = [g for g in groups if g["pins"]]
+    groups.append({"name": "Below Lock 27 / Lower Mississippi", "kind": "below", "pins": lower,
+                   "target_mbu": max(0.0, fg["east_gulf_mbu"] - measured + pinless),
+                   "note": "East Gulf soybean ship inspections less barge arrivals the locks measure; includes rail to the Gulf"})
+    return {"fgis": fg, "stl_harbor_pins": harbor, "measured_arrivals_mbu": measured, "groups": groups, "dropped": DROP_PINS}
+
+
 def main():
     corps = pd.read_csv(os.path.join(D, "corps_lock_farm_tons.csv"), dtype={"lock": str})
     usda = pd.read_csv(os.path.join(D, "usda_barge_annual.csv"))
@@ -189,6 +236,8 @@ def main():
                       "soy_mbu_at_LaGrange": avg(lambda y: f("IL", "08", y)) * BU_PER_SHORT_TON_SOY / 1e6}}
     with open(os.path.join(D, "river_segments.json"), "w") as fh:
         json.dump(out, fh, indent=1)
+    with open(os.path.join(D, "river_nodes.json"), "w") as fh:
+        json.dump(build_groups(segs, out_nodes, pins, usda, BU_PER_SHORT_TON_SOY), fh, indent=1)
     return out
 
 

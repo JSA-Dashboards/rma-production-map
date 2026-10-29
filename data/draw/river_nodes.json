@@ -1,0 +1,293 @@
+{
+ "fgis": {
+  "east_gulf_mbu": 1017.3136423533333,
+  "west_coast_mbu": 377.00050364333333,
+  "source": "FGIS ship inspections 2021-25 avg"
+ },
+ "stl_harbor_pins": [
+  "CGB - Cahokia",
+  "CHS Cahokia",
+  "Cargill East St. Louis",
+  "Bunge Fairmont City, IL",
+  "ADM Sauget, IL",
+  "ADM St. Louis, MO (Elevator)",
+  "ADM St. Louis"
+ ],
+ "measured_arrivals_mbu": 410.2194866666667,
+ "groups": [
+  {
+   "name": "IL-1 Joliet / Morris / Seneca",
+   "kind": "lock",
+   "pins": [
+    "ADM Morris, IL",
+    "CHS Seneca"
+   ],
+   "target_mbu": 16.686781171772466,
+   "range_mbu": [
+    13.939839515866684,
+    20.90502150335675
+   ]
+  },
+  {
+   "name": "IL-2 Ottawa (Marseilles to Starved Rock)",
+   "kind": "lock",
+   "pins": [
+    "ADM Ottawa, IL (North Side)",
+    "ADM Ottawa, IL (South)",
+    "CGB - River Landing",
+    "CHS Ottawa River Mkt"
+   ],
+   "target_mbu": 5.634021911792833,
+   "range_mbu": [
+    3.5590232237828667,
+    7.200717120225435
+   ]
+  },
+  {
+   "name": "IL-3 Peru / Spring Valley / Hennepin / Lacon (Starved Rock to Peoria)",
+   "kind": "lock",
+   "pins": [
+    "ADM Hennepin, IL",
+    "ADM Lacon, IL",
+    "ADM Spring Valley, IL",
+    "CGB HENNEPIN",
+    "CHS Peru Marketstreet",
+    "Cargill Lacon",
+    "Cargill Spring Valley South"
+   ],
+   "target_mbu": 48.601393358272524,
+   "range_mbu": [
+    43.715256996395226,
+    56.43212413963082
+   ]
+  },
+  {
+   "name": "IL-4 Pekin / Havana / Beardstown (Peoria to La Grange)",
+   "kind": "lock",
+   "pins": [
+    "ADM Creve Coeur, IL",
+    "ADM Havana, IL",
+    "CHS Havana/Beardstown",
+    "Cargill Beardstown",
+    "Cargill Havana"
+   ],
+   "target_mbu": 27.825130224828843,
+   "range_mbu": [
+    16.827092607029655,
+    34.22677739490789
+   ]
+  },
+  {
+   "name": "MS-1 Twin Cities / Winona / Clayton (above L&D 10)",
+   "kind": "lock",
+   "pins": [
+    "ADM St. Paul, MN (Elevator D)",
+    "ADM Winona, MN",
+    "CGB CLAYTON",
+    "CGB SAVAGE",
+    "CHS Savage",
+    "CHS Winona",
+    "Cargill Savage"
+   ],
+   "target_mbu": 62.60619993088621,
+   "range_mbu": [
+    51.45347474764091,
+    85.33231141549658
+   ]
+  },
+  {
+   "name": "MS-2 Dubuque / Clinton / Quad Cities (L&D 10 to 15)",
+   "kind": "lock",
+   "pins": [
+    "ADM Clinton, IA (Elevator)",
+    "CGB ALBANY",
+    "CHS Davenport",
+    "Cargill Bettendorf"
+   ],
+   "target_mbu": 21.01205340244712,
+   "range_mbu": [
+    10.762599124452565,
+    27.004255251170107
+   ]
+  },
+  {
+   "name": "MS-3 Muscatine / Burlington (L&D 15 to 19)",
+   "kind": "lock",
+   "pins": [
+    "ADM Burlington, IA",
+    "ADM Gulfport, IL",
+    "CGB - Dallas City",
+    "CGB - Meekers Landing",
+    "CGB - Nauvoo",
+    "CGB - Oquawka",
+    "Cargill Keithsburg",
+    "Cargill Muscatine",
+    "Cargill New Boston"
+   ],
+   "target_mbu": 34.098698460863034,
+   "range_mbu": [
+    29.83472833077043,
+    41.86684215981485
+   ]
+  },
+  {
+   "name": "MS-4 Keokuk / Quincy / Hannibal (L&D 19 to 25)",
+   "kind": "lock",
+   "pins": [
+    "ADM Quincy, IL (Barge Dock)",
+    "CGB - East Hannibal",
+    "CGB - Lagrange",
+    "CHS Quincy Elevator",
+    "Cargill Buffalo Island"
+   ],
+   "target_mbu": 27.86254153913697,
+   "range_mbu": [
+    22.9696125598102,
+    33.65672450685181
+   ]
+  },
+  {
+   "name": "MS-5 Alton / Grafton / IL River below La Grange (Pool 26)",
+   "kind": "lock",
+   "pins": [
+    "CGB - Naples",
+    "Cargill Meredosia"
+   ],
+   "target_mbu": 3.3758800000000067,
+   "range_mbu": [
+    -7.546666666666667,
+    11.653333333333318
+   ]
+  },
+  {
+   "name": "OH-1 Cincinnati to Cannelton (above Cannelton)",
+   "kind": "lock",
+   "pins": [
+    "ADM Silver Grove, KY"
+   ],
+   "target_mbu": 39.72365276625534,
+   "range_mbu": [
+    30.019898508671417,
+    44.95339483348906
+   ]
+  },
+  {
+   "name": "OH-2 Owensboro / Rockport (Cannelton to Newburgh)",
+   "kind": "lock",
+   "pins": [
+    "ADM Rockport, IN",
+    "CGB OWENSBORO"
+   ],
+   "target_mbu": 24.740284334077014,
+   "range_mbu": [
+    19.646763239946964,
+    28.132929443358943
+   ]
+  },
+  {
+   "name": "OH-3 Evansville / Mt. Vernon / Henderson (Newburgh to Myers)",
+   "kind": "lock",
+   "pins": [
+    "ADM Evansville, IN (1st Ave.)",
+    "ADM Evansville, IN (Broadway)",
+    "ADM Evansville, IN (Ohio St.)",
+    "ADM Evansville, IN (River South)",
+    "ADM Henderson, KY",
+    "ADM Mt. Vernon, IN (Elevator)",
+    "ADM Newburgh, IN"
+   ],
+   "target_mbu": 30.69839010856507,
+   "range_mbu": [
+    25.81968083781701,
+    33.753917252849206
+   ]
+  },
+  {
+   "name": "OH-4 Paducah (Myers to Olmsted)",
+   "kind": "lock",
+   "pins": [
+    "ADM Paducah, KY"
+   ],
+   "target_mbu": 34.901386124435916,
+   "range_mbu": [
+    30.996957413564626,
+    37.931722955209366
+   ]
+  },
+  {
+   "name": "AK Arkansas River (Lock 1)",
+   "kind": "lock",
+   "pins": [
+    "CGB - Pine Bluff",
+    "CGB - Port 33",
+    "CGB - Van Buren",
+    "CGB - Wagoner",
+    "CGB - Webbers Falls"
+   ],
+   "target_mbu": 22.786813333333335
+  },
+  {
+   "name": "PNW export by rail",
+   "kind": "pnw",
+   "pins": [
+    "CHS Kennewick/LoMo",
+    "PNW export (rail)"
+   ],
+   "target_mbu": 377.00050364333333
+  },
+  {
+   "name": "Below Lock 27 / Lower Mississippi",
+   "kind": "below",
+   "pins": [
+    "CGB - Cahokia",
+    "CGB - Desoto Landing",
+    "CGB - Friars Point",
+    "CGB - Greenville",
+    "CGB - Helena North (River)",
+    "CGB - Jonesville",
+    "CGB - Louisiana",
+    "CGB - Mayersville",
+    "CGB - Old Town",
+    "CGB - Rosedale",
+    "CGB - Tallulah Port",
+    "CGB - Vicksburg",
+    "CGB - Vidalia",
+    "CGB - Yazoo City",
+    "CGB BIRDS POINT",
+    "CGB DYERSBURG",
+    "CGB GRAND TOWER",
+    "CGB HICKMAN",
+    "CGB LINDA",
+    "CGB MOUND CITY",
+    "CGB OSCEOLA",
+    "CGB SCOTT CITY",
+    "CHS Boyle Terminal",
+    "CHS Cahokia",
+    "Cargill East St. Louis",
+    "Bunge Fairmont City, IL",
+    "Cargill New Madrid",
+    "Cargill Hickman (Ashland)",
+    "Cargill Hales Point",
+    "Cargill West Memphis",
+    "LDC West Memphis",
+    "LDC Rosedale",
+    "LDC Port Allen",
+    "ADM Helena, AR",
+    "ADM Memphis, TN",
+    "ADM Mound City, IL",
+    "ADM New Madrid, MO",
+    "ADM Sauget, IL",
+    "ADM St. Louis, MO (Elevator)",
+    "ADM Vidalia, LA",
+    "ADM St. Louis",
+    "ADM Heloise, TN"
+   ],
+   "target_mbu": 616.7604156866666,
+   "note": "East Gulf soybean ship inspections less barge arrivals the locks measure; includes rail to the Gulf"
+  }
+ ],
+ "dropped": [
+  "CHS Macon",
+  "ADM Livingston Point, KY"
+ ]
+}
