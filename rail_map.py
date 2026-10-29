@@ -128,7 +128,7 @@ def build_figure(rails, rivers, show_crush, show_ethanol, shipper_roads, height=
         fig.add_trace(_production_layer(crop))
     if states:
         lon, lat = _line_xy(_load("state_lines.json"), step=0)
-        fig.add_trace(go.Scattermap(lon=lon, lat=lat, mode="lines", line=dict(width=1, color="#555"), name="State lines",
+        fig.add_trace(go.Scattermap(lon=lon, lat=lat, mode="lines", line=dict(width=2.2, color="#2b2b2b"), name="State lines",
                                     hoverinfo="skip"))
     lines = _load("rail_lines.json")
     if rivers:

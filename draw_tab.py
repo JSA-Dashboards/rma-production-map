@@ -18,6 +18,12 @@ OTHER_PLANT_COLOR = "#bdbdbd"
 PALETTE = ["#e41a1c", "#377eb8", "#4daf4a", "#984ea3", "#ff7f00", "#a65628", "#f781bf", "#17becf", "#bcbd22", "#7f7f7f", "#1b9e77", "#d95f02"]
 
 
+def _in_box(paths, box):
+    """The paths with a vertex inside (west, south, east, north), so the map carries only the region's lines."""
+    w, so, e, n = box
+    return [p for p in paths if any(w <= x <= e and so <= y <= n for x, y in p[::3] + p[-1:])]
+
+
 @st.cache_data(show_spinner="Solving the draw…")
 def _solve(rate, tau, river_premium, util, river_share, plant_premium_items):
     inp = dm.load()
@@ -47,6 +53,10 @@ def render():
     river_prem = c6.number_input("River bid over crush bids (cents/bu)", -30.0, 30.0, 0.0, 1.0, key="draw_river_prem",
                                  help="How much more (or less) the river terminals pay for a bean than the crush plants, after their basis. "
                                       "Positive pulls beans toward the river.")
+    o1, o2 = st.columns([1, 3])
+    show_rivers = o1.checkbox("Rivers", value=True, key="draw_rivers")
+    rails = o2.multiselect("Railroads", list(rm.RAILROADS), default=["UP", "BNSF", "CSXT", "NS", "CN", "TPW", "IAIS"],
+                           format_func=lambda k: rm.RAILROADS[k][0], key="draw_rails")
     with st.expander("Plant bid adjustments (cents/bu over the base, per plant)"):
         keys = [p["key"] for p in inp["plants"] if p["state"] == state] or [p["key"] for p in inp["plants"][:6]]
         prem = {}
@@ -99,6 +109,20 @@ def render():
             geojson={"type": "FeatureCollection", "features": [f for f in geo["features"] if f["id"] in set(sel)]}, locations=sel,
             z=[1] * len(sel), colorscale=[[0, col], [1, col]], showscale=False, marker=dict(opacity=0.62, line=dict(width=0.3, color="#888")),
             hovertext=[h for h, c_ in zip(hover, colors) if c_ == col], hoverinfo="text", name=label, showlegend=True))
+    sc0 = [c for c in inp["counties"] if c["state"] == state]
+    box = (min(c["lon"] for c in sc0) - 2.2, min(c["lat"] for c in sc0) - 2.2, max(c["lon"] for c in sc0) + 2.2, max(c["lat"] for c in sc0) + 2.2)
+    if show_rivers:                                                      # the navigable grain rivers, as on the Rail Map tab
+        water = rm._load("waterways.json")
+        lon, lat = rm._line_xy(_in_box([p for r in rm.GRAIN_RIVERS for p in water.get(r, [])], box), step=0)
+        fig.add_trace(go.Scattermap(lon=lon, lat=lat, mode="lines", line=dict(width=3.5, color="#4aa3ff"), name="Rivers", hoverinfo="skip"))
+    lines = rm._load("rail_lines.json")
+    for code in rails:
+        label, color, width = rm.RAILROADS[code]
+        lon, lat = rm._line_xy(_in_box(lines.get(code, []), box), step=0.1)
+        fig.add_trace(go.Scattermap(lon=lon, lat=lat, mode="lines", line=dict(width=max(1.0, width * 0.8), color=color), name=label,
+                                    hovertemplate="%{fullData.name}<extra></extra>"))
+    lon, lat = rm._line_xy(_in_box(rm._load("state_lines.json"), box), step=0)
+    fig.add_trace(go.Scattermap(lon=lon, lat=lat, mode="lines", line=dict(width=2.2, color="#2b2b2b"), name="State lines", hoverinfo="skip"))
     pts = [p for p in inp["plants"] if p["state"] in FOCUS_STATES]
     fig.add_trace(go.Scattermap(
         lon=[p["lon"] for p in pts], lat=[p["lat"] for p in pts], mode="markers+text", marker=dict(size=[8 + 14 * (p["need_bu"] / 1e8) ** 0.5 for p in pts], color="#222"),
