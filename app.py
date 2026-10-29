@@ -4065,8 +4065,8 @@ def main():
         st.caption("High-oleic beans in New York mostly go to on-farm / dairy-feed use rather than crush or export, "
                    "so the carve-out leaves commodity soybean supply. Applies to NASS Production and ASD S&D only.")
 
-    tab_nass, tab_rma, tab_heat, tab_stocks, tab_acreage, tab_livestock, tab_aqua, tab_proc, tab_wcmd, tab_storage_cmp, tab_eia, tab_sd, tab_about = st.tabs([
-        "NASS Production", "RMA", "Heat Map",
+    tab_nass, tab_rma, tab_heat, tab_rail, tab_stocks, tab_acreage, tab_livestock, tab_aqua, tab_proc, tab_wcmd, tab_storage_cmp, tab_eia, tab_sd, tab_about = st.tabs([
+        "NASS Production", "RMA", "Heat Map", "🚂 Rail Map",
         "Grain Stocks", "Acreage Summary", "Livestock",
         "Aquaculture", "Processing",
         "Grain Warehouses", "Storage vs. Production",
@@ -7961,9 +7961,17 @@ def main():
                 ),
                 unsafe_allow_html=True,
             )
+    # ═══════════════════════════════
+    # RAIL MAP TAB: rail lines, rivers, plants and shippers over a 5-year county production layer
+    # ═══════════════════════════════
+    with tab_rail:
+        if tab_rail.open:
+            import rail_map
+            rail_map.render()
 
+    # ═══════════════════════════════
     # ABOUT THE DATA TAB
-    # ══════════════════════════════════════════════════════════════════════════
+    # ═══════════════════════════════
     with tab_about:
         if tab_about.open:
             st.markdown(
