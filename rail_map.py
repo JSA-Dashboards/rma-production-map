@@ -39,7 +39,7 @@ GRAIN_RIVERS = ["MISSISSIPPI RIVER", "ILLINOIS RIVER", "OHIO RIVER", "MISSOURI R
 GAL_PER_BU = 3.0                                  # ethanol gallons per bushel of corn, to put ethanol capacity in bushels
 PROPOSED_COLOR, IDLE_COLOR, CLOSED_COLOR = "#f2b705", "#9aa0a6", "#d3d6da"
 STATUS_GROUP = {"Run": "live", "Expand": "live", "Proposed": "proposed", "Build": "proposed", "Idle": "idle", "Idled": "idle", "Hold": "idle",
-                "Closed": "closed", "Repurposed": "closed"}
+                "Closed": "closed", "Repurposed": "closed", "Cancelled": "closed"}
 MIN_DOT, MAX_DOT = 5, 26                          # plant marker diameters (px)
 SHIPPER_COLORS = {"UP": "#e8a317", "BNSF": "#f26b21", "CN": "#d4272e", "CSX": "#1f4e9c", "NS": "#2d2d2d"}
 
