@@ -37,6 +37,7 @@ GRAIN_RIVERS = ["MISSISSIPPI RIVER", "ILLINOIS RIVER", "OHIO RIVER", "MISSOURI R
                 "CUMBERLAND RIVER", "KENTUCKY RIVER", "MONONGAHELA RIVER", "ALLEGHENY RIVER", "KANAWHA RIVER", "COLUMBIA RIVER",
                 "SNAKE RIVER", "WHITE RIVER", "ATCHAFALAYA RIVER", "MINNESOTA RIVER", "GULF INTRACOASTAL WATERWAY"]
 GAL_PER_BU = 3.0                                  # ethanol gallons per bushel of corn, to put ethanol capacity in bushels
+RIVER_COLOR = "#0b3d91"
 PROPOSED_COLOR, IDLE_COLOR, CLOSED_COLOR = "#f2b705", "#9aa0a6", "#d3d6da"
 STATUS_GROUP = {"Run": "live", "Expand": "live", "Proposed": "proposed", "Build": "proposed", "Idle": "idle", "Idled": "idle", "Hold": "idle",
                 "Closed": "closed", "Repurposed": "closed", "Cancelled": "closed"}
@@ -121,7 +122,7 @@ def _production_layer(crop):
         hovertemplate="%{customdata[0]}<br>" + crop + " 5-yr avg: %{customdata[1]} M bu<extra></extra>", name=f"{crop} 5-yr avg")
 
 
-def build_figure(rails, rivers, show_crush, show_ethanol, shipper_roads, height=720, crop=None, states=True, show_closed=False, focus=None):
+def build_figure(rails, rivers, show_crush, show_ethanol, shipper_roads, height=720, crop=None, states=True, show_closed=False, focus=None, show_river=False):
     fig = go.Figure()
     if crop:
         fig.add_trace(_production_layer(crop))
@@ -177,6 +178,12 @@ def build_figure(rails, rivers, show_crush, show_ethanol, shipper_roads, height=
             fig.add_trace(go.Scattermap(
                 lon=[r["lon"] for r in rows], lat=[r["lat"] for r in rows], mode="markers",
                 marker=dict(size=sizes, color=gcolor, opacity=0.85), name=f"{name}: {label} ({len(rows)})", text=text, hoverinfo="text"))
+    if show_river:
+        rows = pts["river"]
+        fig.add_trace(go.Scattermap(
+            lon=[r["lon"] for r in rows], lat=[r["lat"] for r in rows], mode="markers", marker=dict(size=9, color=RIVER_COLOR),
+            name=f"River loading facilities ({len(rows)})", hoverinfo="text",
+            text=[f'{r["name"]}' + (f', {r["state"]}' if r.get("state") else "") + "<br>river terminal" for r in rows]))
     view = dict(center=dict(lat=40.5, lon=-91), zoom=4.6)
     if focus:                                                    # a searched place: pin it and zoom to it
         label, lat, lon, kind = focus
@@ -208,13 +215,14 @@ def render():
         crush = st.checkbox("Crush plants", value=True, key="railmap_crush")
         ethanol = st.checkbox("Ethanol / corn processing", value=True, key="railmap_eth")
         closed = st.checkbox("Include closed plants", value=False, key="railmap_closed")
+        river = st.checkbox("River loading facilities", value=False, key="railmap_river")
     crop = c1.selectbox("County production overlay (5-yr avg)", [None, "Corn", "Soybeans", "Wheat"], key="railmap_crop",
                         format_func=lambda c: "None" if c is None else c)
     states = c2.checkbox("State boundaries", value=True, key="railmap_states")
     shippers = c3.multiselect("Grain shippers by railroad", list(SHIPPER_COLORS), default=list(SHIPPER_COLORS), key="railmap_ship")
-    st.plotly_chart(build_figure(rails, rivers, crush, ethanol, shippers, crop=crop, states=states, show_closed=closed, focus=focus), use_container_width=True, key="railmap_fig")
+    st.plotly_chart(build_figure(rails, rivers, crush, ethanol, shippers, crop=crop, states=states, show_closed=closed, focus=focus, show_river=river), use_container_width=True, key="railmap_fig")
     st.caption("Rail lines: US DOT BTS North American Rail Network (NTAD); rivers: USACE navigable waterway network via BTS NTAD (2018). "
                "Shippers: BNSF and CN directories with coordinates; CSX and NS only where the station's city is geocoded. "
-               "County overlay: NASS county production, 5-year average of the last five crop years (counties NASS withheld are filled by the basis tracker's heat builder). Crush and ethanol markers are JSA's plant lists, placed by city (live plants in colour, proposed or under construction in gold, idled in grey; includes Canadian plants near the border), sized by annual capacity in bushels (ethanol gallons ÷ 3.0 gal/bu, crush as listed). "
+               "County overlay: NASS county production, 5-year average of the last five crop years (counties NASS withheld are filled by the basis tracker's heat builder). River loading facilities are the basis tracker's river-terminal locations (ADM, CGB, Cargill, CHS and others it carries bids for). Crush and ethanol markers are JSA's plant lists, placed by city (live plants in colour, proposed or under construction in gold, idled in grey; includes Canadian plants near the border), sized by annual capacity in bushels (ethanol gallons ÷ 3.0 gal/bu, crush as listed). "
                "[CN GeoMapGuide](https://cnebusiness.geomapguide.ca/) · [TPW](https://www.gwrr.com/railroads/toledo-peoria-and-western-railway) · "
                "[Iowa Interstate](https://iaisrr.com/ship-with-iais/what-where-how/) · [Watco system map](https://www.watco.com/system-map/)")
