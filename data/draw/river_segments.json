@@ -1,0 +1,1068 @@
+{
+ "method": "River segments for the Draw Territory model: how many soybeans are loaded onto barges in each pool of the river system,",
+ "years": [
+  2021,
+  2022,
+  2023,
+  2024,
+  2025
+ ],
+ "segments": [
+  {
+   "river": "IL",
+   "segment": "above Brandon Road",
+   "upper_lock": null,
+   "lower_lock": "Brandon Road",
+   "grain_mtons": 0.3062069460168853,
+   "soy_mtons": 0.12304911072846254,
+   "soy_mbu": 4.101637024282085,
+   "soy_mbu_2025": 2.5625971536430985,
+   "pins": [],
+   "soy_mbu_by_year": [
+    4.196673393787856,
+    6.3020899683397245,
+    2.989873854665496,
+    4.4569507509742525,
+    2.5625971536430985
+   ],
+   "grain_mtons_by_year": [
+    0.4171357730106427,
+    0.3990075096925877,
+    0.18714605198074855,
+    0.28333324918830477,
+    0.24441214621214272
+   ]
+  },
+  {
+   "river": "IL",
+   "segment": "Brandon Road to Dresden Island",
+   "upper_lock": "Brandon Road",
+   "lower_lock": "Dresden Island",
+   "grain_mtons": 0.21366747621483861,
+   "soy_mtons": 0.08715320656151508,
+   "soy_mbu": 2.905106885383836,
+   "soy_mbu_2025": 1.6983869796486055,
+   "pins": [],
+   "soy_mbu_by_year": [
+    2.6372649837415545,
+    4.592367006578459,
+    2.4380816889097776,
+    3.1594337680407842,
+    1.6983869796486055
+   ],
+   "grain_mtons_by_year": [
+    0.2621356165708196,
+    0.2907589279262566,
+    0.15260756294919614,
+    0.20084867101090734,
+    0.16198660261701345
+   ]
+  },
+  {
+   "river": "IL",
+   "segment": "Dresden Island to Marseilles",
+   "upper_lock": "Dresden Island",
+   "lower_lock": "Marseilles",
+   "grain_mtons": 0.7492321792894069,
+   "soy_mtons": 0.2904011178631963,
+   "soy_mbu": 9.680037262106543,
+   "soy_mbu_2025": 9.950805765377082,
+   "pins": [
+    "CHS Seneca",
+    "ADM Morris, IL"
+   ],
+   "soy_mbu_by_year": [
+    10.152431313874214,
+    10.010564528438564,
+    8.511883972291411,
+    9.774500730551454,
+    9.950805765377082
+   ],
+   "grain_mtons_by_year": [
+    1.0091188631260097,
+    0.6338040940665141,
+    0.5327868524776836,
+    0.6213757355463766,
+    0.9490753512304504
+   ]
+  },
+  {
+   "river": "IL",
+   "segment": "Marseilles to Starved Rock",
+   "upper_lock": "Marseilles",
+   "lower_lock": "Starved Rock",
+   "grain_mtons": 0.42708677546526286,
+   "soy_mtons": 0.16902065735378496,
+   "soy_mbu": 5.634021911792833,
+   "soy_mbu_2025": 7.043575710028102,
+   "pins": [
+    "CGB - River Landing",
+    "CHS Ottawa River Mkt",
+    "ADM Ottawa, IL (North Side)",
+    "ADM Ottawa, IL (South)"
+   ],
+   "soy_mbu_by_year": [
+    3.5590232237828667,
+    4.493005885397686,
+    5.873787619530076,
+    7.200717120225435,
+    7.043575710028102
+   ],
+   "grain_mtons_by_year": [
+    0.3537554067974591,
+    0.2844680254285494,
+    0.367659712951815,
+    0.4577574876081711,
+    0.6717932445403197
+   ]
+  },
+  {
+   "river": "IL",
+   "segment": "Starved Rock to Peoria",
+   "upper_lock": "Starved Rock",
+   "lower_lock": "Peoria",
+   "grain_mtons": 3.669525359035521,
+   "soy_mtons": 1.4580418007481755,
+   "soy_mbu": 48.601393358272524,
+   "soy_mbu_2025": 43.715256996395226,
+   "pins": [
+    "CGB HENNEPIN",
+    "CHS Peru Marketstreet",
+    "Cargill Spring Valley South",
+    "Cargill Lacon",
+    "ADM Hennepin, IL",
+    "ADM Lacon, IL",
+    "ADM Spring Valley, IL"
+   ],
+   "soy_mbu_by_year": [
+    43.82351447778387,
+    56.43212413963082,
+    47.510115166593195,
+    51.52595601095953,
+    43.715256996395226
+   ],
+   "grain_mtons_by_year": [
+    4.3559157152407995,
+    3.572916513844864,
+    2.9738145870951302,
+    3.2755615553812434,
+    4.169418423615566
+   ]
+  },
+  {
+   "river": "IL",
+   "segment": "Peoria to La Grange",
+   "upper_lock": "Peoria",
+   "lower_lock": "La Grange",
+   "grain_mtons": 2.1002592639780855,
+   "soy_mtons": 0.8347539067448654,
+   "soy_mbu": 27.825130224828847,
+   "soy_mbu_2025": 34.22677739490789,
+   "pins": [
+    "CHS Havana/Beardstown",
+    "Cargill Havana",
+    "Cargill Beardstown",
+    "ADM Creve Coeur, IL",
+    "ADM Havana, IL"
+   ],
+   "soy_mbu_by_year": [
+    16.827092607029655,
+    33.847981804948084,
+    26.38759103134339,
+    27.836208285915202,
+    34.22677739490789
+   ],
+   "grain_mtons_by_year": [
+    1.6725586252542688,
+    2.143034929041228,
+    1.651686232545426,
+    1.7695783012649957,
+    3.2644382317845078
+   ]
+  },
+  {
+   "river": "MI",
+   "segment": "above L&D 10 Guttenberg",
+   "upper_lock": null,
+   "lower_lock": "L&D 10 Guttenberg",
+   "grain_mtons": 4.3631813470516345,
+   "soy_mtons": 1.8781859979265865,
+   "soy_mbu": 62.60619993088623,
+   "soy_mbu_2025": 55.239037192041344,
+   "pins": [
+    "CHS Winona",
+    "CGB CLAYTON",
+    "CGB SAVAGE",
+    "CHS Savage",
+    "Cargill Savage",
+    "ADM St. Paul, MN (Elevator D)",
+    "ADM Winona, MN"
+   ],
+   "soy_mbu_by_year": [
+    59.2334675422141,
+    85.33231141549658,
+    61.77270875703817,
+    51.45347474764091,
+    55.239037192041344
+   ],
+   "grain_mtons_by_year": [
+    6.3145764560513395,
+    4.916458883703271,
+    3.3763924048729206,
+    2.8800637854790163,
+    4.328415205151624
+   ]
+  },
+  {
+   "river": "MI",
+   "segment": "L&D 10 Guttenberg to L&D 11 Dubuque",
+   "upper_lock": "L&D 10 Guttenberg",
+   "lower_lock": "L&D 11 Dubuque",
+   "grain_mtons": 0.02491322209102679,
+   "soy_mtons": 0.01131133297289661,
+   "soy_mbu": 0.37704443242988706,
+   "soy_mbu_2025": 0.5377480749401187,
+   "pins": [],
+   "soy_mbu_by_year": [
+    0.14702981825872946,
+    0.35662411670326255,
+    0.7781913934920371,
+    0.06562875875528748,
+    0.5377480749401187
+   ],
+   "grain_mtons_by_year": [
+    0.015674095528046602,
+    0.020547056298187004,
+    0.042534633228701074,
+    0.0036735130582354033,
+    0.04213681234196387
+   ]
+  },
+  {
+   "river": "MI",
+   "segment": "L&D 11 Dubuque to L&D 12 Bellevue",
+   "upper_lock": "L&D 11 Dubuque",
+   "lower_lock": "L&D 12 Bellevue",
+   "grain_mtons": 0.32830713777441267,
+   "soy_mtons": 0.144233704072408,
+   "soy_mbu": 4.8077901357469335,
+   "soy_mbu_2025": 4.852128955385361,
+   "pins": [],
+   "soy_mbu_by_year": [
+    3.687080716200243,
+    5.39918379486984,
+    6.212167393000106,
+    3.8883898192791193,
+    4.852128955385361
+   ],
+   "grain_mtons_by_year": [
+    0.39306078215809725,
+    0.31107636360374,
+    0.33954662545270053,
+    0.21764925998208812,
+    0.38020265767543765
+   ]
+  },
+  {
+   "river": "MI",
+   "segment": "L&D 12 Bellevue to L&D 13 Fulton",
+   "upper_lock": "L&D 12 Bellevue",
+   "lower_lock": "L&D 13 Fulton",
+   "grain_mtons": 0.25492555848603804,
+   "soy_mtons": 0.1150710658267322,
+   "soy_mbu": 3.835702194224407,
+   "soy_mbu_2025": 3.703766861535345,
+   "pins": [],
+   "soy_mbu_by_year": [
+    2.2294320263568546,
+    6.221450666483787,
+    3.6981954024291137,
+    3.3256660143169348,
+    3.703766861535345
+   ],
+   "grain_mtons_by_year": [
+    0.2376683244817108,
+    0.3584516332836738,
+    0.20213714308059869,
+    0.1861512812771052,
+    0.2902194103071019
+   ]
+  },
+  {
+   "river": "MI",
+   "segment": "L&D 13 Fulton to L&D 14 LeClaire",
+   "upper_lock": "L&D 13 Fulton",
+   "lower_lock": "L&D 14 LeClaire",
+   "grain_mtons": 0.7616198655287847,
+   "soy_mtons": 0.3340411195320998,
+   "soy_mbu": 11.134703984403327,
+   "soy_mbu_2025": 12.314214953046347,
+   "pins": [
+    "CGB ALBANY",
+    "ADM Clinton, IA (Elevator)"
+   ],
+   "soy_mbu_by_year": [
+    8.072035589880869,
+    12.746107069320761,
+    10.206422574291192,
+    12.334739735477473,
+    12.314214953046347
+   ],
+   "grain_mtons_by_year": [
+    0.8605183522633426,
+    0.7343725992428102,
+    0.5578658982933778,
+    0.6904263976280139,
+    0.9649160802163789
+   ]
+  },
+  {
+   "river": "MI",
+   "segment": "L&D 14 LeClaire to L&D 15 Rock Island",
+   "upper_lock": "L&D 14 LeClaire",
+   "lower_lock": "L&D 15 Rock Island",
+   "grain_mtons": 0.022164069068103563,
+   "soy_mtons": 0.025704379669276904,
+   "soy_mbu": 0.8568126556425635,
+   "soy_mbu_2025": 1.8097706297181548,
+   "pins": [
+    "CHS Davenport",
+    "Cargill Bettendorf"
+   ],
+   "soy_mbu_by_year": [
+    -3.372979026244131,
+    2.280889603792457,
+    1.864314479749386,
+    1.7020675911969507,
+    1.8097706297181548
+   ],
+   "grain_mtons_by_year": [
+    -0.3595760104825366,
+    0.13141446386831812,
+    0.10190029507170152,
+    0.09527176257554115,
+    0.14180983430749364
+   ]
+  },
+  {
+   "river": "MI",
+   "segment": "L&D 15 Rock Island to L&D 16 Muscatine",
+   "upper_lock": "L&D 15 Rock Island",
+   "lower_lock": "L&D 16 Muscatine",
+   "grain_mtons": 0.5668264791787226,
+   "soy_mtons": 0.227809365780986,
+   "soy_mbu": 7.593645526032867,
+   "soy_mbu_2025": 7.732800150139708,
+   "pins": [
+    "Cargill Muscatine"
+   ],
+   "soy_mbu_by_year": [
+    8.083952995475506,
+    6.533796321935641,
+    5.948842293792809,
+    9.668835868820674,
+    7.732800150139708
+   ],
+   "grain_mtons_by_year": [
+    0.8672497830976471,
+    0.3956805443178136,
+    0.34830029561115244,
+    0.5713881418377832,
+    0.6515136310292166
+   ]
+  },
+  {
+   "river": "MI",
+   "segment": "L&D 16 Muscatine to L&D 17 New Boston",
+   "upper_lock": "L&D 16 Muscatine",
+   "lower_lock": "L&D 17 New Boston",
+   "grain_mtons": 0.33996079538192525,
+   "soy_mtons": 0.12673461807671144,
+   "soy_mbu": 4.224487269223714,
+   "soy_mbu_2025": 3.9487494219943886,
+   "pins": [],
+   "soy_mbu_by_year": [
+    3.0412652320880755,
+    7.433761635986235,
+    3.8992589420754773,
+    2.799401113974396,
+    3.9487494219943886
+   ],
+   "grain_mtons_by_year": [
+    0.3357961460893117,
+    0.47071999916944,
+    0.26309700410293974,
+    0.22137677362604904,
+    0.4088140539218858
+   ]
+  },
+  {
+   "river": "MI",
+   "segment": "L&D 17 New Boston to L&D 18 Gladstone",
+   "upper_lock": "L&D 17 New Boston",
+   "lower_lock": "L&D 18 Gladstone",
+   "grain_mtons": 0.7809077233047524,
+   "soy_mtons": 0.30214383567242636,
+   "soy_mbu": 10.071461189080882,
+   "soy_mbu_2025": 9.702740917367132,
+   "pins": [
+    "CGB - Oquawka",
+    "CGB - Meekers Landing",
+    "Cargill New Boston",
+    "Cargill Keithsburg"
+   ],
+   "soy_mbu_by_year": [
+    8.128497547567838,
+    12.522938307306202,
+    9.882326745259482,
+    10.12080242790375,
+    9.702740917367132
+   ],
+   "grain_mtons_by_year": [
+    0.885356052661458,
+    0.7902375104299616,
+    0.6232496490196716,
+    0.6779788476777775,
+    0.9277165567348935
+   ]
+  },
+  {
+   "river": "MI",
+   "segment": "L&D 18 Gladstone to L&D 19 Keokuk",
+   "upper_lock": "L&D 18 Gladstone",
+   "lower_lock": "L&D 19 Keokuk",
+   "grain_mtons": 1.0225232715141463,
+   "soy_mtons": 0.3662731342957672,
+   "soy_mbu": 12.209104476525573,
+   "soy_mbu_2025": 12.333766205989647,
+   "pins": [
+    "CGB - Dallas City",
+    "CGB - Nauvoo",
+    "ADM Burlington, IA",
+    "ADM Gulfport, IL"
+   ],
+   "soy_mbu_by_year": [
+    10.581012555639012,
+    15.376345894586777,
+    11.20785945906203,
+    11.5465382673504,
+    12.333766205989647
+   ],
+   "grain_mtons_by_year": [
+    1.1636483126466368,
+    1.0162963949516426,
+    0.7706570496695321,
+    0.8639615245964574,
+    1.2980530757064632
+   ]
+  },
+  {
+   "river": "MI",
+   "segment": "L&D 19 Keokuk to L&D 20 Canton",
+   "upper_lock": "L&D 19 Keokuk",
+   "lower_lock": "L&D 20 Canton",
+   "grain_mtons": 0.433188081663252,
+   "soy_mtons": 0.13906715556504687,
+   "soy_mbu": 4.635571852168229,
+   "soy_mbu_2025": 4.538226694313934,
+   "pins": [],
+   "soy_mbu_by_year": [
+    4.979844578613061,
+    3.964558892876283,
+    4.341740331536237,
+    5.353488763501635,
+    4.538226694313934
+   ],
+   "grain_mtons_by_year": [
+    0.552019778378442,
+    0.29947399060687424,
+    0.3295260693064332,
+    0.43342017239148917,
+    0.5515003976330217
+   ]
+  },
+  {
+   "river": "MI",
+   "segment": "L&D 20 Canton to L&D 21 Quincy",
+   "upper_lock": "L&D 20 Canton",
+   "lower_lock": "L&D 21 Quincy",
+   "grain_mtons": 1.9243663415601753,
+   "soy_mtons": 0.7755599891622755,
+   "soy_mbu": 25.851999638742523,
+   "soy_mbu_2025": 25.516434323258437,
+   "pins": [
+    "CHS Quincy Elevator",
+    "ADM Quincy, IL (Barge Dock)"
+   ],
+   "soy_mbu_by_year": [
+    15.187516476180049,
+    30.72728436863376,
+    24.64880972589506,
+    33.1799532997453,
+    25.516434323258437
+   ],
+   "grain_mtons_by_year": [
+    1.6511222854437175,
+    1.9067087776029055,
+    1.5224026584431882,
+    2.1610463135724656,
+    2.3805516727385987
+   ]
+  },
+  {
+   "river": "MI",
+   "segment": "L&D 21 Quincy to L&D 22 Saverton",
+   "upper_lock": "L&D 21 Quincy",
+   "lower_lock": "L&D 22 Saverton",
+   "grain_mtons": 0.1472133473884277,
+   "soy_mtons": 0.015159495242198744,
+   "soy_mbu": 0.5053165080732915,
+   "soy_mbu_2025": 0.4553675191523197,
+   "pins": [
+    "CGB - East Hannibal",
+    "CGB - Lagrange"
+   ],
+   "soy_mbu_by_year": [
+    -0.17593797136014327,
+    3.1200707469383566,
+    -0.9579225880891086,
+    0.08500483372503272,
+    0.4553675191523197
+   ],
+   "grain_mtons_by_year": [
+    0.001276179707845673,
+    0.2677132007245142,
+    0.04453422404051572,
+    0.16090891941903346,
+    0.2616342130502295
+   ]
+  },
+  {
+   "river": "MI",
+   "segment": "L&D 22 Saverton to L&D 24 Clarksville",
+   "upper_lock": "L&D 22 Saverton",
+   "lower_lock": "L&D 24 Clarksville",
+   "grain_mtons": 0.2731752058998477,
+   "soy_mtons": 0.056965265649956465,
+   "soy_mbu": 1.8988421883318822,
+   "soy_mbu_2025": 0.5604855252348818,
+   "pins": [
+    "Cargill Buffalo Island"
+   ],
+   "soy_mbu_by_year": [
+    3.6170063883457955,
+    4.400911339375812,
+    -0.47414128447705883,
+    1.389948973179981,
+    0.5604855252348818
+   ],
+   "grain_mtons_by_year": [
+    0.41085073164484276,
+    0.34950969624038786,
+    0.07469067772469856,
+    0.25018170769062265,
+    0.2806432161986865
+   ]
+  },
+  {
+   "river": "MI",
+   "segment": "L&D 24 Clarksville to L&D 25 Winfield",
+   "upper_lock": "L&D 24 Clarksville",
+   "lower_lock": "L&D 25 Winfield",
+   "grain_mtons": -0.17160104589124917,
+   "soy_mtons": -0.1508756594453686,
+   "soy_mbu": -5.029188648178954,
+   "soy_mbu_2025": -4.78623742411711,
+   "pins": [],
+   "soy_mbu_by_year": [
+    -0.47295780254917535,
+    -8.556100840972396,
+    -4.588873625054925,
+    -6.741773548201161,
+    -4.78623742411711
+   ],
+   "grain_mtons_by_year": [
+    -0.02134326966990158,
+    -0.4061801140435394,
+    -0.12992262791813164,
+    -0.2014724008116778,
+    -0.09908681701299549
+   ]
+  },
+  {
+   "river": "OH",
+   "segment": "above Markland",
+   "upper_lock": null,
+   "lower_lock": "Markland",
+   "grain_mtons": 2.2856319483568903,
+   "soy_mtons": 0.8851081150099852,
+   "soy_mbu": 29.503603833666176,
+   "soy_mbu_2025": 21.52485874615185,
+   "pins": [
+    "ADM Silver Grove, KY"
+   ],
+   "soy_mbu_by_year": [
+    29.518684259419775,
+    33.9711124363452,
+    31.935187373305492,
+    30.56817635310853,
+    21.52485874615185
+   ],
+   "grain_mtons_by_year": [
+    2.568252340451834,
+    2.491220179502961,
+    2.3265358898810864,
+    2.450700952182831,
+    1.591450379765737
+   ]
+  },
+  {
+   "river": "OH",
+   "segment": "Markland to McAlpine",
+   "upper_lock": "Markland",
+   "lower_lock": "McAlpine",
+   "grain_mtons": 0.8126076849536831,
+   "soy_mtons": 0.3153895670243594,
+   "soy_mbu": 10.512985567478646,
+   "soy_mbu_2025": 9.897668368824982,
+   "pins": [],
+   "soy_mbu_by_year": [
+    9.277224134866813,
+    11.005770321610703,
+    10.599060919164149,
+    11.785204092926588,
+    9.897668368824982
+   ],
+   "grain_mtons_by_year": [
+    0.8071583539386475,
+    0.8070915301212646,
+    0.7721606683943826,
+    0.9448391869561797,
+    0.7317886853579411
+   ]
+  },
+  {
+   "river": "OH",
+   "segment": "McAlpine to Cannelton",
+   "upper_lock": "McAlpine",
+   "lower_lock": "Cannelton",
+   "grain_mtons": -0.023273528364187758,
+   "soy_mtons": -0.008788099046684336,
+   "soy_mbu": -0.29293663488947785,
+   "soy_mbu_2025": -1.4026286063054112,
+   "pins": [],
+   "soy_mbu_by_year": [
+    -0.561640374532924,
+    -0.023487924466848685,
+    0.5480652060283504,
+    -0.024991475170555836,
+    -1.4026286063054112
+   ],
+   "grain_mtons_by_year": [
+    -0.048865125346029645,
+    -0.0017224514362341723,
+    0.03992753688634606,
+    -0.0020036076503037476,
+    -0.10370399427471728
+   ]
+  },
+  {
+   "river": "OH",
+   "segment": "Cannelton to Newburgh",
+   "upper_lock": "Cannelton",
+   "lower_lock": "Newburgh",
+   "grain_mtons": 1.9119321236494191,
+   "soy_mtons": 0.7422085300223104,
+   "soy_mbu": 24.74028433407701,
+   "soy_mbu_2025": 19.646763239946964,
+   "pins": [
+    "CGB OWENSBORO",
+    "ADM Rockport, IN"
+   ],
+   "soy_mbu_by_year": [
+    23.088844465988302,
+    27.345724984907065,
+    28.132929443358943,
+    25.487159536183796,
+    19.646763239946964
+   ],
+   "grain_mtons_by_year": [
+    2.008828656351108,
+    2.0053574057425827,
+    2.0495345548583894,
+    2.0433474807995715,
+    1.452592520495444
+   ]
+  },
+  {
+   "river": "OH",
+   "segment": "Newburgh to John T. Myers",
+   "upper_lock": "Newburgh",
+   "lower_lock": "John T. Myers",
+   "grain_mtons": 2.386639071325508,
+   "soy_mtons": 0.920951703256952,
+   "soy_mbu": 30.69839010856507,
+   "soy_mbu_2025": 25.81968083781701,
+   "pins": [
+    "ADM Evansville, IN (1st Ave.)",
+    "ADM Evansville, IN (Broadway)",
+    "ADM Evansville, IN (Ohio St.)",
+    "ADM Evansville, IN (River South)",
+    "ADM Henderson, KY",
+    "ADM Mt. Vernon, IN (Elevator)",
+    "ADM Newburgh, IN"
+   ],
+   "soy_mbu_by_year": [
+    32.50598933010904,
+    33.08439055972786,
+    28.32797256232224,
+    33.753917252849206,
+    25.81968083781701
+   ],
+   "grain_mtons_by_year": [
+    2.8281607148229937,
+    2.426193771057399,
+    2.0637437971915573,
+    2.706107037459761,
+    1.9089900360958278
+   ]
+  },
+  {
+   "river": "OH",
+   "segment": "John T. Myers to Smithland",
+   "upper_lock": "John T. Myers",
+   "lower_lock": "Smithland",
+   "grain_mtons": 0.6922007976202492,
+   "soy_mtons": 0.2708234938371546,
+   "soy_mbu": 9.02744979457182,
+   "soy_mbu_2025": 11.908475403782322,
+   "pins": [],
+   "soy_mbu_by_year": [
+    6.565395808902275,
+    10.90540498232764,
+    7.342541637166854,
+    8.415431140680006,
+    11.908475403782322
+   ],
+   "grain_mtons_by_year": [
+    0.5712176397843742,
+    0.7997313896780237,
+    0.5349173763136985,
+    0.6746789494819277,
+    0.8804586328432216
+   ]
+  },
+  {
+   "river": "OH",
+   "segment": "Smithland to Olmsted",
+   "upper_lock": "Smithland",
+   "lower_lock": "Olmsted",
+   "grain_mtons": 2.0052503024584385,
+   "soy_mtons": 0.7762180898959229,
+   "soy_mbu": 25.8739363298641,
+   "soy_mbu_2025": 19.088482009782304,
+   "pins": [
+    "ADM Paducah, KY"
+   ],
+   "soy_mbu_by_year": [
+    25.399302375246727,
+    27.026317972881724,
+    29.402776191987318,
+    28.45280309942244,
+    19.088482009782304
+   ],
+   "grain_mtons_by_year": [
+    2.209848419997072,
+    1.9819341753340027,
+    2.1420451764745394,
+    2.2811080007700326,
+    1.4113157397165466
+   ]
+  },
+  {
+   "river": "MI",
+   "segment": "Pool 26 + Illinois River below La Grange (Mel Price less Lock 25 less La Grange)",
+   "upper_lock": "L&D 25 + La Grange",
+   "lower_lock": "Mel Price (26)",
+   "grain_mtons": 0.6255282000000005,
+   "soy_mtons": 0.10127640000000018,
+   "soy_mbu": 3.3758800000000067,
+   "soy_mbu_2025": -1.8066666666666666,
+   "soy_mbu_by_year": [
+    11.653333333333318,
+    -7.546666666666667,
+    3.806066666666667,
+    10.773333333333381,
+    -1.8066666666666666
+   ],
+   "grain_mtons_by_year": [
+    1.873565,
+    -0.243602,
+    0.498049,
+    0.9191300000000028,
+    0.080499
+   ],
+   "pins": [],
+   "note": "Meredosia / Naples / Hardin / Alton; within the data's noise of zero"
+  },
+  {
+   "river": "MI",
+   "segment": "Pool 27 + Missouri River (Lock 27 less Mel Price)",
+   "upper_lock": "Mel Price",
+   "lower_lock": "Chain of Rocks (27)",
+   "grain_mtons": 0.8594551999999996,
+   "soy_mtons": 0.2899877999999998,
+   "soy_mbu": 9.666259999999994,
+   "soy_mbu_2025": 14.052200000000003,
+   "soy_mbu_by_year": [
+    4.872,
+    19.643866666666668,
+    5.706566666666667,
+    4.056666666666636,
+    14.052200000000003
+   ],
+   "grain_mtons_by_year": [
+    0.51491,
+    1.880188,
+    0.368062,
+    0.36654999999999816,
+    1.167566
+   ],
+   "pins": [],
+   "note": "Wood River / Granite City + all Missouri River grain barges"
+  },
+  {
+   "river": "MI",
+   "segment": "St. Louis harbor (below Lock 27, no lock measures it)",
+   "upper_lock": "Chain of Rocks (27)",
+   "lower_lock": null,
+   "grain_mtons": null,
+   "soy_mtons": null,
+   "soy_mbu": null,
+   "soy_mbu_2025": null,
+   "pins": [
+    "CGB - Cahokia",
+    "CHS Cahokia",
+    "Cargill East St. Louis",
+    "Bunge Fairmont City, IL",
+    "ADM Sauget, IL",
+    "ADM St. Louis, MO (Elevator)",
+    "ADM St. Louis"
+   ],
+   "note": "unmeasured by locks"
+  }
+ ],
+ "nodes": [
+  {
+   "node": "IL-1 Joliet / Morris / Seneca",
+   "river": "IL",
+   "soy_mbu": 16.686781171772466,
+   "soy_mbu_min": 13.939839515866684,
+   "soy_mbu_max": 20.90502150335675,
+   "soy_mbu_2025": 14.211789898668785,
+   "grain_mtons": 1.269106601521131,
+   "pins": [
+    "ADM Morris, IL",
+    "CHS Seneca"
+   ]
+  },
+  {
+   "node": "IL-2 Ottawa (Marseilles to Starved Rock)",
+   "river": "IL",
+   "soy_mbu": 5.634021911792833,
+   "soy_mbu_min": 3.5590232237828667,
+   "soy_mbu_max": 7.200717120225435,
+   "soy_mbu_2025": 7.043575710028102,
+   "grain_mtons": 0.42708677546526286,
+   "pins": [
+    "ADM Ottawa, IL (North Side)",
+    "ADM Ottawa, IL (South)",
+    "CGB - River Landing",
+    "CHS Ottawa River Mkt"
+   ]
+  },
+  {
+   "node": "IL-3 Peru / Spring Valley / Hennepin / Lacon (Starved Rock to Peoria)",
+   "river": "IL",
+   "soy_mbu": 48.601393358272524,
+   "soy_mbu_min": 43.715256996395226,
+   "soy_mbu_max": 56.43212413963082,
+   "soy_mbu_2025": 43.715256996395226,
+   "grain_mtons": 3.6695253590355206,
+   "pins": [
+    "ADM Hennepin, IL",
+    "ADM Lacon, IL",
+    "ADM Spring Valley, IL",
+    "CGB HENNEPIN",
+    "CHS Peru Marketstreet",
+    "Cargill Lacon",
+    "Cargill Spring Valley South"
+   ]
+  },
+  {
+   "node": "IL-4 Pekin / Havana / Beardstown (Peoria to La Grange)",
+   "river": "IL",
+   "soy_mbu": 27.825130224828843,
+   "soy_mbu_min": 16.827092607029655,
+   "soy_mbu_max": 34.22677739490789,
+   "soy_mbu_2025": 34.22677739490789,
+   "grain_mtons": 2.1002592639780855,
+   "pins": [
+    "ADM Creve Coeur, IL",
+    "ADM Havana, IL",
+    "CHS Havana/Beardstown",
+    "Cargill Beardstown",
+    "Cargill Havana"
+   ]
+  },
+  {
+   "node": "MS-1 Twin Cities / Winona / Clayton (above L&D 10)",
+   "river": "MI",
+   "soy_mbu": 62.60619993088621,
+   "soy_mbu_min": 51.45347474764091,
+   "soy_mbu_max": 85.33231141549658,
+   "soy_mbu_2025": 55.239037192041344,
+   "grain_mtons": 4.3631813470516345,
+   "pins": [
+    "ADM St. Paul, MN (Elevator D)",
+    "ADM Winona, MN",
+    "CGB CLAYTON",
+    "CGB SAVAGE",
+    "CHS Savage",
+    "CHS Winona",
+    "Cargill Savage"
+   ]
+  },
+  {
+   "node": "MS-2 Dubuque / Clinton / Quad Cities (L&D 10 to 15)",
+   "river": "MI",
+   "soy_mbu": 21.01205340244712,
+   "soy_mbu_min": 10.762599124452565,
+   "soy_mbu_max": 27.004255251170107,
+   "soy_mbu_2025": 23.21762947462533,
+   "grain_mtons": 1.391929852948366,
+   "pins": [
+    "ADM Clinton, IA (Elevator)",
+    "CGB ALBANY",
+    "CHS Davenport",
+    "Cargill Bettendorf"
+   ]
+  },
+  {
+   "node": "MS-3 Muscatine / Burlington (L&D 15 to 19)",
+   "river": "MI",
+   "soy_mbu": 34.098698460863034,
+   "soy_mbu_min": 29.83472833077043,
+   "soy_mbu_max": 41.86684215981485,
+   "soy_mbu_2025": 33.71805669549087,
+   "grain_mtons": 2.7102182693795465,
+   "pins": [
+    "ADM Burlington, IA",
+    "ADM Gulfport, IL",
+    "CGB - Dallas City",
+    "CGB - Meekers Landing",
+    "CGB - Nauvoo",
+    "CGB - Oquawka",
+    "Cargill Keithsburg",
+    "Cargill Muscatine",
+    "Cargill New Boston"
+   ]
+  },
+  {
+   "node": "MS-4 Keokuk / Quincy / Hannibal (L&D 19 to 25)",
+   "river": "MI",
+   "soy_mbu": 27.86254153913697,
+   "soy_mbu_min": 22.9696125598102,
+   "soy_mbu_max": 33.65672450685181,
+   "soy_mbu_2025": 26.28427663784246,
+   "grain_mtons": 2.606341930620453,
+   "pins": [
+    "ADM Quincy, IL (Barge Dock)",
+    "CGB - East Hannibal",
+    "CGB - Lagrange",
+    "CHS Quincy Elevator",
+    "Cargill Buffalo Island"
+   ]
+  },
+  {
+   "node": "MS-5 Alton / Grafton / IL River below La Grange (Pool 26)",
+   "river": "MI",
+   "soy_mbu": 3.3758800000000067,
+   "soy_mbu_min": -7.546666666666667,
+   "soy_mbu_max": 11.653333333333318,
+   "soy_mbu_2025": -1.8066666666666666,
+   "grain_mtons": 0.6255282000000005,
+   "pins": []
+  },
+  {
+   "node": "MS-6 Wood River / Granite City + Missouri River (Pool 27)",
+   "river": "MI",
+   "soy_mbu": 9.666259999999994,
+   "soy_mbu_min": 4.056666666666636,
+   "soy_mbu_max": 19.643866666666668,
+   "soy_mbu_2025": 14.052200000000003,
+   "grain_mtons": 0.8594551999999996,
+   "pins": []
+  },
+  {
+   "node": "OH-1 Cincinnati to Cannelton (above Cannelton)",
+   "river": "OH",
+   "soy_mbu": 39.72365276625534,
+   "soy_mbu_min": 30.019898508671417,
+   "soy_mbu_max": 44.95339483348906,
+   "soy_mbu_2025": 30.019898508671417,
+   "grain_mtons": 3.074966104946385,
+   "pins": [
+    "ADM Silver Grove, KY"
+   ]
+  },
+  {
+   "node": "OH-2 Owensboro / Rockport (Cannelton to Newburgh)",
+   "river": "OH",
+   "soy_mbu": 24.740284334077014,
+   "soy_mbu_min": 19.646763239946964,
+   "soy_mbu_max": 28.132929443358943,
+   "soy_mbu_2025": 19.646763239946964,
+   "grain_mtons": 1.9119321236494191,
+   "pins": [
+    "ADM Rockport, IN",
+    "CGB OWENSBORO"
+   ]
+  },
+  {
+   "node": "OH-3 Evansville / Mt. Vernon / Henderson (Newburgh to Myers)",
+   "river": "OH",
+   "soy_mbu": 30.69839010856507,
+   "soy_mbu_min": 25.81968083781701,
+   "soy_mbu_max": 33.753917252849206,
+   "soy_mbu_2025": 25.81968083781701,
+   "grain_mtons": 2.386639071325508,
+   "pins": [
+    "ADM Evansville, IN (1st Ave.)",
+    "ADM Evansville, IN (Broadway)",
+    "ADM Evansville, IN (Ohio St.)",
+    "ADM Evansville, IN (River South)",
+    "ADM Henderson, KY",
+    "ADM Mt. Vernon, IN (Elevator)",
+    "ADM Newburgh, IN"
+   ]
+  },
+  {
+   "node": "OH-4 Paducah (Myers to Olmsted)",
+   "river": "OH",
+   "soy_mbu": 34.901386124435916,
+   "soy_mbu_min": 30.996957413564626,
+   "soy_mbu_max": 37.931722955209366,
+   "soy_mbu_2025": 30.996957413564626,
+   "grain_mtons": 2.697451100078688,
+   "pins": [
+    "ADM Paducah, KY"
+   ]
+  }
+ ],
+ "totals": {
+  "soy_mbu_at_L27": 257.36896,
+  "soy_mbu_at_Olmsted": 130.06371333333334,
+  "soy_mbu_at_LaGrange": 98.74732666666667
+ }
+}
