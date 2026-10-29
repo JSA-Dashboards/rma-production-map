@@ -3,8 +3,10 @@ Interactive rail map for the Map tab: Class I + CN, TPW, Iowa Interstate and Wat
 the navigable grain rivers highlighted, and markers for crush plants, ethanol / corn processors and the railroads' grain shippers.
 Data files are built by build_rail_lines.py, build_waterways.py and build_map_points.py.
 """
+import gzip
 import json
 import os
+import re
 
 import plotly.graph_objects as go
 import streamlit as st
@@ -48,6 +50,39 @@ def _load(name):
         return json.load(fh)
 
 
+KIND_NAME = {"z": "ZIP", "c": "county", "p": "town"}
+KIND_ZOOM = {"z": 10, "c": 8, "p": 10}
+
+
+@st.cache_data(show_spinner=False)
+def _geo_index():
+    """US towns, counties and ZIP areas (Census gazetteer; build_geo_search.py): the rows and their lower-cased search keys."""
+    with gzip.open(os.path.join(_DATA, "geo_search.json.gz"), "rt", encoding="utf8") as fh:
+        rows = json.load(fh)
+    return rows, [re.sub(r"\s+", " ", r[0].lower().replace(",", " ")).strip() for r in rows]
+
+
+def search_places(query, limit=12):
+    """Rows for a town ("Peoria IL", "peoria, il"), a county ("Story County IA") or a ZIP (or its first digits), best matches first."""
+    q = re.sub(r"\s+", " ", query.lower().replace(",", " ")).strip()
+    if not q:
+        return []
+    rows, keys = _geo_index()
+    digits = q.isdigit()
+    hits = []
+    for r, k in zip(rows, keys):
+        if digits:
+            if r[3] == "z" and k.startswith(q):
+                hits.append((0, k, r))
+        elif r[3] != "z":
+            if k.startswith(q):
+                hits.append((0, k, r))
+            elif q in k:
+                hits.append((1, k, r))
+    hits.sort(key=lambda h: (h[0], h[2][3] != "c", len(h[1]), h[1]))
+    return [h[2] for h in hits[:limit]]
+
+
 def _line_xy(paths, step=0.1):
     """Paths as one None-separated line. With `step`, long straight stretches get extra points so a hover (which only
     fires on a vertex) finds the line wherever the mouse is on it."""
@@ -86,7 +121,7 @@ def _production_layer(crop):
         hovertemplate="%{customdata[0]}<br>" + crop + " 5-yr avg: %{customdata[1]} M bu<extra></extra>", name=f"{crop} 5-yr avg")
 
 
-def build_figure(rails, rivers, show_crush, show_ethanol, shipper_roads, height=720, crop=None, states=True, show_closed=False):
+def build_figure(rails, rivers, show_crush, show_ethanol, shipper_roads, height=720, crop=None, states=True, show_closed=False, focus=None):
     fig = go.Figure()
     if crop:
         fig.add_trace(_production_layer(crop))
@@ -142,13 +177,30 @@ def build_figure(rails, rivers, show_crush, show_ethanol, shipper_roads, height=
             fig.add_trace(go.Scattermap(
                 lon=[r["lon"] for r in rows], lat=[r["lat"] for r in rows], mode="markers",
                 marker=dict(size=sizes, color=gcolor, opacity=0.85), name=f"{name}: {label} ({len(rows)})", text=text, hoverinfo="text"))
-    fig.update_layout(map=dict(style="carto-positron", center=dict(lat=40.5, lon=-91), zoom=4.6), height=height,
+    view = dict(center=dict(lat=40.5, lon=-91), zoom=4.6)
+    if focus:                                                    # a searched place: pin it and zoom to it
+        label, lat, lon, kind = focus
+        fig.add_trace(go.Scattermap(lon=[lon], lat=[lat], mode="markers+text", text=[label], textposition="top center",
+                                    marker=dict(size=16, color="#e4002b"), name=f"Search: {label}", hovertext=label, hoverinfo="text"))
+        view = dict(center=dict(lat=lat, lon=lon), zoom=KIND_ZOOM[kind])
+    fig.update_layout(map=dict(style="carto-positron", **view), height=height,
                       margin=dict(l=0, r=0, t=0, b=0), legend=dict(orientation="h", y=1.0, font=dict(size=11), bgcolor="rgba(255,255,255,0.85)"))
     return fig
 
 
 def render():
     st.markdown("### Rail Network Map")
+    q_col, pick_col = st.columns([2, 3])
+    query = q_col.text_input("Search a town, county or ZIP", placeholder="e.g. Peoria IL, Story County IA, 61602", key="railmap_search")
+    focus = None
+    if query.strip():
+        found = search_places(query)
+        if found:
+            i = pick_col.selectbox("Matches", range(len(found)), key="railmap_pick",
+                                   format_func=lambda j: f"{found[j][0]} ({KIND_NAME[found[j][3]]})")
+            focus = tuple(found[i])
+        else:
+            pick_col.caption("No match. Try a town and state (Peoria IL), a county (Story County IA) or a 5-digit ZIP.")
     c1, c2, c3 = st.columns([3, 2, 2])
     rails = c1.multiselect("Railroads", list(RAILROADS), default=DEFAULT_ON, format_func=lambda k: RAILROADS[k][0], key="railmap_rails")
     with c2:
@@ -160,7 +212,7 @@ def render():
                         format_func=lambda c: "None" if c is None else c)
     states = c2.checkbox("State boundaries", value=True, key="railmap_states")
     shippers = c3.multiselect("Grain shippers by railroad", list(SHIPPER_COLORS), default=list(SHIPPER_COLORS), key="railmap_ship")
-    st.plotly_chart(build_figure(rails, rivers, crush, ethanol, shippers, crop=crop, states=states, show_closed=closed), use_container_width=True, key="railmap_fig")
+    st.plotly_chart(build_figure(rails, rivers, crush, ethanol, shippers, crop=crop, states=states, show_closed=closed, focus=focus), use_container_width=True, key="railmap_fig")
     st.caption("Rail lines: US DOT BTS North American Rail Network (NTAD); rivers: USACE navigable waterway network via BTS NTAD (2018). "
                "Shippers: BNSF and CN directories with coordinates; CSX and NS only where the station's city is geocoded. "
                "County overlay: NASS county production, 5-year average of the last five crop years (counties NASS withheld are filled by the basis tracker's heat builder). Crush and ethanol markers are JSA's plant lists, placed by city (live plants in colour, proposed or under construction in gold, idled in grey; includes Canadian plants near the border), sized by annual capacity in bushels (ethanol gallons ÷ 3.0 gal/bu, crush as listed). "
