@@ -41,7 +41,7 @@ PROPOSED_COLOR, IDLE_COLOR, CLOSED_COLOR = "#f2b705", "#9aa0a6", "#d3d6da"
 STATUS_GROUP = {"Run": "live", "Expand": "live", "Proposed": "proposed", "Build": "proposed", "Idle": "idle", "Idled": "idle", "Hold": "idle",
                 "Closed": "closed", "Repurposed": "closed"}
 MIN_DOT, MAX_DOT = 5, 26                          # plant marker diameters (px)
-SHIPPER_COLORS = {"BNSF": "#f26b21", "CN": "#d4272e", "CSX": "#1f4e9c", "NS": "#2d2d2d"}
+SHIPPER_COLORS = {"UP": "#e8a317", "BNSF": "#f26b21", "CN": "#d4272e", "CSX": "#1f4e9c", "NS": "#2d2d2d"}
 
 
 @st.cache_data(show_spinner=False)
@@ -155,7 +155,7 @@ def build_figure(rails, rivers, show_crush, show_ethanol, shipper_roads, height=
         fig.add_trace(go.Scattermap(
             lon=[r["lon"] for r in rows], lat=[r["lat"] for r in rows], mode="markers",
             marker=dict(size=6, color=SHIPPER_COLORS[road]), name=f"{road} grain shippers ({len(rows)})",
-            text=[f'{r["name"]}, {r["state"]}' + (" (shuttle)" if r.get("shuttle") else "") for r in rows], hoverinfo="text"))
+            text=[f'{r["name"]}, {r["state"]}' + (f' ({r["cars"]}-car shuttle)' if r.get("cars") else " (shuttle)" if r.get("shuttle") else "") for r in rows], hoverinfo="text"))
     # marker area follows capacity in bushels a year: crush as listed, ethanol converted from gallons at GAL_PER_BU (or the corn use quoted
     # for a Canadian plant). Colour follows status: live (the type's colour), proposed / under construction (gold), idled / on hold (grey).
     for flag, key, name, color, cap, div, ref in ((show_ethanol, "ethanol", "Ethanol / corn processing", "#2e9e4f", "mgy", GAL_PER_BU, 50.0),
