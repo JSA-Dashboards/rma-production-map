@@ -1,0 +1,93 @@
+"""
+Builds data/draw/draw_inputs.json from data/draw/osrm_ring.json: the whole country's soybean counties and crush plants.
+
+Road miles are OSRM's where build_draw_lanes.py has them (Illinois and its neighbours to the buyers near them); everywhere else
+(the western plants, the far counties) it is straight-line miles x a circuity factor fitted to the OSRM pairs, so the plants
+out west have western beans to draw on and don't pull Illinois beans across the country. Buyers added: every live crush plant
+in Kolten's Crush Downtime Calculator, the basis tracker's river terminals, and one Pacific Northwest export node that shares
+the 'residual' group with the river (beans that leave by rail to the coast, not by barge).
+    python assemble_draw_inputs.py
+"""
+import io
+import json
+import math
+import os
+import urllib.request
+import zipfile
+
+import numpy as np
+import pandas as pd
+
+import build_draw_lanes as B
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+D = os.path.join(HERE, "data")
+PNW = {"key": "PNW export (rail)", "state": "OR", "lat": 45.6, "lon": -122.7}
+
+
+def hav(lat1, lon1, lat2, lon2):
+    """Great-circle miles, broadcasting."""
+    p1, p2 = np.radians(lat1), np.radians(lat2)
+    dl = np.radians(lon2 - lon1)
+    a = np.sin((p2 - p1) / 2) ** 2 + np.cos(p1) * np.cos(p2) * np.sin(dl / 2) ** 2
+    return 3958.8 * 2 * np.arcsin(np.sqrt(a))
+
+
+def main():
+    core = json.load(open(os.path.join(D, "draw", "osrm_ring.json")))
+    supply = json.load(open(os.path.join(D, "rail_map", "county_prod_avg.json")))["avg"]["Soybeans"]
+    z = zipfile.ZipFile(io.BytesIO(urllib.request.urlopen(B.GAZ, timeout=120).read()))
+    g = pd.read_csv(z.open(z.namelist()[0]), sep="\t", encoding="latin1", dtype={"GEOID": str})
+    g.columns = [c.strip() for c in g.columns]
+    g = g[g["USPS"].isin(set(pd.Series(["AL","AR","DE","GA","IL","IN","IA","KS","KY","LA","MD","MI","MN","MS","MO","NE","NJ","NY","NC","ND","OH","OK","PA","SC","SD","TN","TX","VA","WI","CO","FL","WV","NM","ID","MT","WA","OR"])))]
+    cty = [{"fips": r.GEOID, "name": r.NAME, "state": r.USPS, "lat": round(r.INTPTLAT, 4), "lon": round(r.INTPTLONG, 4),
+            "supply_bu": supply[r.GEOID]} for r in g.itertuples() if supply.get(r.GEOID, 0) > 0]
+
+    B.BUYER_STATES = {"AL","AR","DE","GA","IL","IN","IA","KS","KY","LA","MD","MI","MN","MS","MO","NE","NJ","NY","NC","ND","OH","OK","PA","SC","SD","TN","TX","VA","WI","CO","FL","WV","NM","ID","MT","WA","OR"}
+    plants = B.plants()
+    pts = json.load(open(os.path.join(D, "rail_map", "map_points.json")))
+    river = [{"key": r["name"], "state": r.get("state", ""), "lat": r["lat"], "lon": r["lon"]} for r in pts["river"]]
+    buyers = plants + river + [PNW]
+
+    # core OSRM lookup: (county fips, buyer lat/lon key) -> miles
+    ck = {c["fips"]: i for i, c in enumerate(core["counties"])}
+    core_buyers = [("p", p) for p in core["plants"]] + [("r", r) for r in core["river"]]
+    bk = {(round(b["lat"], 3), round(b["lon"], 3)): j for j, (_, b) in enumerate(core_buyers)}
+
+    clat = np.array([c["lat"] for c in cty])[:, None]
+    clon = np.array([c["lon"] for c in cty])[:, None]
+    blat = np.array([b["lat"] for b in buyers])[None, :]
+    blon = np.array([b["lon"] for b in buyers])[None, :]
+    straight = hav(clat, clon, blat, blon)
+
+    ratios = []
+    for i, c in enumerate(cty):
+        for j, b in enumerate(buyers):
+            ci, bj = ck.get(c["fips"]), bk.get((round(b["lat"], 3), round(b["lon"], 3)))
+            if ci is not None and bj is not None and 30 < straight[i, j] < 400:
+                m = core["miles"][ci][bj]
+                if m:
+                    ratios.append(m / straight[i, j])
+    circ = float(np.median(ratios))
+    miles = np.round(straight * circ)
+    used = 0
+    for i, c in enumerate(cty):
+        ci = ck.get(c["fips"])
+        if ci is None:
+            continue
+        for j, b in enumerate(buyers):
+            bj = bk.get((round(b["lat"], 3), round(b["lon"], 3)))
+            if bj is not None and core["miles"][ci][bj] is not None:
+                miles[i, j] = core["miles"][ci][bj]
+                used += 1
+    out = {"built": core["built"], "source": f"OSRM road miles where built ({used:,} pairs), else straight-line x {circ:.3f} (median OSRM / straight-line)",
+           "run_rate": core["run_rate"], "run_days": core["run_days"], "counties": cty, "plants": plants, "river": river + [PNW],
+           "miles": miles.astype(int).tolist()}
+    with open(os.path.join(D, "draw", "draw_inputs.json"), "w") as fh:
+        json.dump(out, fh, separators=(",", ":"))
+    print(len(cty), "counties,", len(plants), "plants,", len(river), "river terminals + PNW; circuity", round(circ, 3), "; OSRM pairs", used,
+          f"; US supply {sum(c['supply_bu'] for c in cty) / 1e6:,.0f} M, plant need {sum(p['need_bu'] for p in plants) / 1e6:,.0f} M")
+
+
+if __name__ == "__main__":
+    main()
