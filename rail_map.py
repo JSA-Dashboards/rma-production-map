@@ -173,7 +173,7 @@ def build_figure(rails, rivers, show_crush, show_ethanol, shipper_roads, height=
             sizes = [MIN_DOT + (MAX_DOT - MIN_DOT) * min(1.0, (b or 0) / ref) ** 0.5 for b in bu]
             text = [f'{r["name"]}, {r["city"]} {r["state"]}' + (" (Canada)" if r.get("country") == "CA" else "") + "<br>"
                     + (f'{b:,.1f} M bu/yr' + (f' of corn ({r[cap]:,.0f} M gal ÷ {GAL_PER_BU:g})' if key == "ethanol" and r.get(cap) else "")
-                    if b else "capacity not listed") + f' · {r.get("status") or label}' for r, b in zip(rows, bu)]
+                    if b else "capacity not listed") + f' · {r.get("status") or label}' + (f'<br>{r["note"]}' if r.get("note") else "") for r, b in zip(rows, bu)]
             fig.add_trace(go.Scattermap(
                 lon=[r["lon"] for r in rows], lat=[r["lat"] for r in rows], mode="markers",
                 marker=dict(size=sizes, color=gcolor, opacity=0.85), name=f"{name}: {label} ({len(rows)})", text=text, hoverinfo="text"))
