@@ -19,13 +19,25 @@ RAILROADS = {
     "CPKC": ("CPKC", "#7a1f2b", 1.0), "CSXT": ("CSX", "#1f4e9c", 1.1), "NS": ("NS", "#2d2d2d", 1.1),
     "TPW": ("Toledo, Peoria & Western", "#0a9396", 2.4), "IAIS": ("Iowa Interstate", "#7b2cbf", 2.4),
     "WSOR": ("Watco: Wisconsin & Southern", "#2a9d8f", 2.2), "KO": ("Watco: Kansas & Oklahoma", "#8ab17d", 2.2),
+    # short lines serving plants and shippers in the belt (codes are the NTAD owner marks; names are our reading of them)
+    "RRVW": ("Red River Valley & Western", "#c2185b", 2.0), "NKCR": ("Nebraska Kansas & Colorado RailNet", "#6d4c41", 2.0),
+    "IORY": ("Indiana & Ohio Railway", "#00897b", 2.0), "RCPE": ("Rapid City, Pierre & Eastern", "#5e35b1", 2.0),
+    "DMVW": ("Dakota, Missouri Valley & Western", "#039be5", 2.0), "CVR": ("Cimarron Valley", "#7cb342", 2.0),
+    "CFE": ("Chicago, Fort Wayne & Eastern", "#ef6c00", 2.0), "INRD": ("Indiana Rail Road", "#d81b60", 2.0),
+    "TRRA": ("Terminal Railroad Assn of St. Louis", "#455a64", 2.0), "KCTL": ("Kansas City Terminal", "#8d6e63", 2.0),
+    "ALS": ("Alton & Southern", "#546e7a", 2.0), "DN": ("Dakota Northern", "#3949ab", 2.0), "KYLE": ("Kyle Railroad", "#827717", 2.0),
+    "RJCW": ("R.J. Corman (RJCW)", "#00acc1", 2.0), "RJCC": ("R.J. Corman (RJCC)", "#26a69a", 2.0), "RJCM": ("R.J. Corman (RJCM)", "#43a047", 2.0),
 }
 DEFAULT_ON = list(RAILROADS)
+SHORT_GRAIN_LINES = ["RRVW", "NKCR", "IORY", "RCPE", "DMVW", "CVR", "CFE", "INRD", "TRRA", "KCTL", "ALS", "DN", "KYLE", "RJCW", "RJCC", "RJCM"]
 # Grain rivers drawn as the highlighted system (NTAD river names)
 GRAIN_RIVERS = ["MISSISSIPPI RIVER", "ILLINOIS RIVER", "OHIO RIVER", "MISSOURI RIVER", "ARKANSAS RIVER", "TENNESSEE RIVER",
                 "CUMBERLAND RIVER", "KENTUCKY RIVER", "MONONGAHELA RIVER", "ALLEGHENY RIVER", "KANAWHA RIVER", "COLUMBIA RIVER",
                 "SNAKE RIVER", "WHITE RIVER", "ATCHAFALAYA RIVER", "MINNESOTA RIVER", "GULF INTRACOASTAL WATERWAY"]
 GAL_PER_BU = 3.0                                  # ethanol gallons per bushel of corn, to put ethanol capacity in bushels
+PROPOSED_COLOR, IDLE_COLOR, CLOSED_COLOR = "#f2b705", "#9aa0a6", "#d3d6da"
+STATUS_GROUP = {"Run": "live", "Expand": "live", "Proposed": "proposed", "Build": "proposed", "Idle": "idle", "Idled": "idle", "Hold": "idle",
+                "Closed": "closed", "Repurposed": "closed"}
 MIN_DOT, MAX_DOT = 5, 26                          # plant marker diameters (px)
 SHIPPER_COLORS = {"BNSF": "#f26b21", "CN": "#d4272e", "CSX": "#1f4e9c", "NS": "#2d2d2d"}
 
@@ -74,7 +86,7 @@ def _production_layer(crop):
         hovertemplate="%{customdata[0]}<br>" + crop + " 5-yr avg: %{customdata[1]} M bu<extra></extra>", name=f"{crop} 5-yr avg")
 
 
-def build_figure(rails, rivers, show_crush, show_ethanol, shipper_roads, height=720, crop=None, states=True):
+def build_figure(rails, rivers, show_crush, show_ethanol, shipper_roads, height=720, crop=None, states=True, show_closed=False):
     fig = go.Figure()
     if crop:
         fig.add_trace(_production_layer(crop))
@@ -92,8 +104,16 @@ def build_figure(rails, rivers, show_crush, show_ethanol, shipper_roads, height=
     for code in rails:
         label, color, width = RAILROADS[code]
         lon, lat = _line_xy(lines.get(code, []))
+        short = code in SHORT_GRAIN_LINES                  # one legend entry for the 16 short lines (hover still names each; the entry toggles them all)
+        first = short and code == next(c for c in SHORT_GRAIN_LINES if c in rails)
         fig.add_trace(go.Scattermap(lon=lon, lat=lat, mode="lines", line=dict(width=width, color=color), name=label,
-                                    hovertemplate="%{fullData.name}<extra></extra>"))
+                                    hovertemplate="%{fullData.name}<extra></extra>",
+                                    legendgroup="shortlines" if short else None, showlegend=(not short) or first))
+        if first:
+            fig.data[-1].name = "Other short lines (hover for names)"
+            fig.data[-1].hovertemplate = label + "<extra></extra>"
+        elif short:
+            fig.data[-1].hovertemplate = label + "<extra></extra>"
     pts = _load("map_points.json")
     for road in shipper_roads:
         rows = [r for r in pts["shipper"] if r["road"] == road]
@@ -101,21 +121,29 @@ def build_figure(rails, rivers, show_crush, show_ethanol, shipper_roads, height=
             lon=[r["lon"] for r in rows], lat=[r["lat"] for r in rows], mode="markers",
             marker=dict(size=6, color=SHIPPER_COLORS[road]), name=f"{road} grain shippers ({len(rows)})",
             text=[f'{r["name"]}, {r["state"]}' + (" (shuttle)" if r.get("shuttle") else "") for r in rows], hoverinfo="text"))
-    # marker area follows capacity in bushels a year: crush as listed, ethanol converted from gallons at GAL_PER_BU
+    # marker area follows capacity in bushels a year: crush as listed, ethanol converted from gallons at GAL_PER_BU (or the corn use quoted
+    # for a Canadian plant). Colour follows status: live (the type's colour), proposed / under construction (gold), idled / on hold (grey).
     for flag, key, name, color, cap, div, ref in ((show_ethanol, "ethanol", "Ethanol / corn processing", "#2e9e4f", "mgy", GAL_PER_BU, 50.0),
                                                   (show_crush, "crush", "Crush plants", "#7b3fbf", "mbu", 1.0, 70.0)):
-        if flag:
-            rows = pts[key]
-            bu = [(r[cap] / div) if r.get(cap) else None for r in rows]
+        if not flag:
+            continue
+        for group, label, gcolor in (("live", "live", color), ("proposed", "proposed / building", PROPOSED_COLOR),
+                                     ("idle", "idled / on hold", IDLE_COLOR), ("closed", "closed", CLOSED_COLOR)):
+            if group == "closed" and not show_closed:
+                continue
+            rows = [r for r in pts[key] if STATUS_GROUP.get(r.get("status"), "live") == group]
+            if not rows:
+                continue
+            bu = [r["mbu"] if r.get("mbu") else ((r[cap] / div) if r.get(cap) else None) for r in rows]
             sizes = [MIN_DOT + (MAX_DOT - MIN_DOT) * min(1.0, (b or 0) / ref) ** 0.5 for b in bu]
-            text = [f'{r["name"]}, {r["city"]} {r["state"]}<br>'
-                    + (f'{b:,.1f} M bu/yr' + (f' of corn ({r[cap]:,.0f} M gal ÷ {GAL_PER_BU:g})' if key == "ethanol" else "") if b else "capacity not listed")
-                    + (f' · {r["status"]}' if r.get("status") else "") for r, b in zip(rows, bu)]
+            text = [f'{r["name"]}, {r["city"]} {r["state"]}' + (" (Canada)" if r.get("country") == "CA" else "") + "<br>"
+                    + (f'{b:,.1f} M bu/yr' + (f' of corn ({r[cap]:,.0f} M gal ÷ {GAL_PER_BU:g})' if key == "ethanol" and r.get(cap) else "")
+                    if b else "capacity not listed") + f' · {r.get("status") or label}' for r, b in zip(rows, bu)]
             fig.add_trace(go.Scattermap(
                 lon=[r["lon"] for r in rows], lat=[r["lat"] for r in rows], mode="markers",
-                marker=dict(size=sizes, color=color, opacity=0.85), name=f"{name} ({len(rows)})", text=text, hoverinfo="text"))
+                marker=dict(size=sizes, color=gcolor, opacity=0.85), name=f"{name}: {label} ({len(rows)})", text=text, hoverinfo="text"))
     fig.update_layout(map=dict(style="carto-positron", center=dict(lat=40.5, lon=-91), zoom=4.6), height=height,
-                      margin=dict(l=0, r=0, t=0, b=0), legend=dict(orientation="h", y=1.0, bgcolor="rgba(255,255,255,0.85)"))
+                      margin=dict(l=0, r=0, t=0, b=0), legend=dict(orientation="h", y=1.0, font=dict(size=11), bgcolor="rgba(255,255,255,0.85)"))
     return fig
 
 
@@ -127,13 +155,14 @@ def render():
         rivers = st.checkbox("Highlight grain rivers", value=True, key="railmap_rivers")
         crush = st.checkbox("Crush plants", value=True, key="railmap_crush")
         ethanol = st.checkbox("Ethanol / corn processing", value=True, key="railmap_eth")
+        closed = st.checkbox("Include closed plants", value=False, key="railmap_closed")
     crop = c1.selectbox("County production overlay (5-yr avg)", [None, "Corn", "Soybeans", "Wheat"], key="railmap_crop",
                         format_func=lambda c: "None" if c is None else c)
     states = c2.checkbox("State boundaries", value=True, key="railmap_states")
     shippers = c3.multiselect("Grain shippers by railroad", list(SHIPPER_COLORS), default=list(SHIPPER_COLORS), key="railmap_ship")
-    st.plotly_chart(build_figure(rails, rivers, crush, ethanol, shippers, crop=crop, states=states), use_container_width=True, key="railmap_fig")
+    st.plotly_chart(build_figure(rails, rivers, crush, ethanol, shippers, crop=crop, states=states, show_closed=closed), use_container_width=True, key="railmap_fig")
     st.caption("Rail lines: US DOT BTS North American Rail Network (NTAD); rivers: USACE navigable waterway network via BTS NTAD (2018). "
                "Shippers: BNSF and CN directories with coordinates; CSX and NS only where the station's city is geocoded. "
-               "County overlay: NASS county production, 5-year average of the last five crop years (counties NASS withheld are filled by the basis tracker's heat builder). Crush and ethanol markers are JSA's plant lists, placed by city, sized by annual capacity in bushels (ethanol gallons ÷ 3.0 gal/bu, crush as listed). "
+               "County overlay: NASS county production, 5-year average of the last five crop years (counties NASS withheld are filled by the basis tracker's heat builder). Crush and ethanol markers are JSA's plant lists, placed by city (live plants in colour, proposed or under construction in gold, idled in grey; includes Canadian plants near the border), sized by annual capacity in bushels (ethanol gallons ÷ 3.0 gal/bu, crush as listed). "
                "[CN GeoMapGuide](https://cnebusiness.geomapguide.ca/) · [TPW](https://www.gwrr.com/railroads/toledo-peoria-and-western-railway) · "
                "[Iowa Interstate](https://iaisrr.com/ship-with-iais/what-where-how/) · [Watco system map](https://www.watco.com/system-map/)")
