@@ -20,6 +20,8 @@ LOCATIONS = [   # id, name, type
     (2367, "St. Louis Metro Port, IL and MO", "PORT"), (2341, "St. Louis City Port, MO", "PORT"), (2342, "St. Louis County, MO", "PORT"),
     (2307, "Kaskaskia Regional Port, IL", "PORT"), (2308, "Alexandria-Cairo Port, IL", "PORT"), (2312, "Heart of Illinois Port, IL", "PORT"),
     (2313, "Illinois Valley Port, IL", "PORT"), (7713, "Illinois Waterway Ports, IL", "PORT"), (2350, "E Iowa and W Illinois, IA IL", "PORT"),
+    (2309, "America's Central Port, IL", "PORT"), (2319, "Southwest Regional Port, IL", "PORT"), (2344, "Jefferson County Port, MO", "PORT"),
+    (2368, "Southeast Missouri Port, MO", "PORT"), (2351, "New Bourbon Port Authority, MO", "PORT"),
     (2294, "Memphis-Shelby County Port, TN", "PORT"), (2304, "Hickman-Fulton County Port, KY", "PORT"), (2288, "New Madrid County Port, MO", "PORT"),
     (6080, "Mississippi River, Minneapolis to Mouth of Missouri River", "WATERWAY"),
     (6079, "Mississippi River, Mouth of Missouri River to Mouth of Ohio River", "WATERWAY"),

@@ -36,7 +36,7 @@ def load_nodes(path: str = NODES) -> dict:
 
 
 def solve(inputs: dict, *, rate=CENTS_PER_BU_MILE, tau=1.0, river_premium=0.0, plant_premium=None, util=1.0, river_share=1.0, iters=400,
-          nodes=None, lock_scale=1.0, below_mbu=None, pnw_mbu=None, stl_mbu=0.0):
+          nodes=None, lock_scale=1.0, pnw_mbu=None, area_mbu=None):
     """Flows (bu) county x buyer.
 
     rate           freight, cents per bushel-mile
@@ -51,9 +51,9 @@ def solve(inputs: dict, *, rate=CENTS_PER_BU_MILE, tau=1.0, river_premium=0.0, p
                    Upriver nodes are the soybeans the Corps/USDA lock tonnage says load in that pool; 'Below Lock 27' is East Gulf soybean
                    inspections less the barge arrivals the locks measure; PNW is West Coast inspections. A node's pins share its target by proximity.
     lock_scale     multiplies the lock-implied upriver targets (1.0 = the 2021-25 average)
-    below_mbu      override for the below-Lock-27 / Lower Mississippi loadings (M bu/yr)
     pnw_mbu        override for beans railed to the Pacific Northwest (M bu/yr)
-    stl_mbu        if > 0, the St. Louis harbor pins get this much (M bu/yr) and the rest of 'below Lock 27' gets the balance
+    area_mbu       {area name: M bu/yr} overrides for the below-Lock-27 areas (St. Louis City, East St. Louis area, Cape Girardeau to Chester,
+                   Lower Mississippi), whose defaults are the Corps' WCUS port tonnage, 2021-24 average
     """
     cty, plants, river = inputs["counties"], inputs["plants"], inputs["river"]
     miles = np.array([[np.nan if m is None else m for m in row] for row in inputs["miles"]], float)
@@ -73,7 +73,7 @@ def solve(inputs: dict, *, rate=CENTS_PER_BU_MILE, tau=1.0, river_premium=0.0, p
     b = need * scale
     residual = max(0.0, total - plant_need)
     if nodes is not None:
-        groups = _groups(inputs, nodes, n_p, lock_scale, below_mbu, pnw_mbu, stl_mbu)
+        groups = _groups(inputs, nodes, n_p, lock_scale, pnw_mbu, area_mbu or {})
         want = sum(g["target_bu"] for g in groups)
         tscale = min(1.0, residual / want) if want else 1.0                   # targets can't exceed what is left after crush
         for g in groups:
@@ -120,29 +120,21 @@ def solve(inputs: dict, *, rate=CENTS_PER_BU_MILE, tau=1.0, river_premium=0.0, p
     return out
 
 
-def _groups(inputs, nodes, n_p, lock_scale, below_mbu, pnw_mbu, stl_mbu):
+def _groups(inputs, nodes, n_p, lock_scale, pnw_mbu, area_mbu):
     """Group columns (index on the buyer axis) and targets (bu) from river_nodes.json plus the sliders."""
     col = {r["key"]: n_p + j for j, r in enumerate(inputs["river"])}
     out = []
-    stl = set(nodes.get("stl_harbor_pins", []))
-    below_t = (below_mbu if below_mbu is not None else next(g["target_mbu"] for g in nodes["groups"] if g["kind"] == "below")) * 1e6
     for g in nodes["groups"]:
         cols = [col[k] for k in g["pins"] if k in col]
         if not cols:
             continue
         if g["kind"] == "lock":
-            tgt = g["target_mbu"] * lock_scale * 1e6
+            tgt = g["target_mbu"] * lock_scale
         elif g["kind"] == "pnw":
-            tgt = (pnw_mbu if pnw_mbu is not None else g["target_mbu"]) * 1e6
+            tgt = pnw_mbu if pnw_mbu is not None else g["target_mbu"]
         else:
-            tgt = below_t
-        if g["kind"] == "below" and stl_mbu > 0:
-            sc = [col[k] for k in g["pins"] if k in col and k in stl]
-            rest = [c for c in cols if c not in sc]
-            out.append({"name": "St. Louis harbor", "kind": "below", "cols": sc, "target_bu": min(stl_mbu * 1e6, tgt)})
-            out.append({"name": "Lower Mississippi below St. Louis", "kind": "below", "cols": rest, "target_bu": max(0.0, tgt - stl_mbu * 1e6)})
-            continue
-        out.append({"name": g["name"], "kind": g["kind"], "cols": cols, "target_bu": tgt})
+            tgt = area_mbu.get(g["name"], g["target_mbu"])
+        out.append({"name": g["name"], "kind": g["kind"], "cols": cols, "target_bu": tgt * 1e6})
     return out
 
 

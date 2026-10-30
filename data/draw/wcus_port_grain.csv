@@ -247,6 +247,126 @@ location_id,location,type,commodity,year,total_tons,shipments_tons,receipts_tons
 2350,"E Iowa and W Illinois, IA IL",PORT,Soybeans,2019,0,0,0,0,0
 2350,"E Iowa and W Illinois, IA IL",PORT,Vegetable Oils,2019,0,0,0,0,0
 2350,"E Iowa and W Illinois, IA IL",PORT,Grain Mill Products,2019,0,0,0,0,0
+2309,"America's Central Port, IL",PORT,Wheat,2024,23935,17499,6436,0,0
+2309,"America's Central Port, IL",PORT,Wheat,2023,72124,51435,20689,0,0
+2309,"America's Central Port, IL",PORT,Wheat,2022,87904,78497,9407,0,0
+2309,"America's Central Port, IL",PORT,Wheat,2021,97740,97740,0,0,0
+2309,"America's Central Port, IL",PORT,Wheat,2020,16628,15045,1583,0,0
+2309,"America's Central Port, IL",PORT,Corn,2024,77621,71390,6231,0,0
+2309,"America's Central Port, IL",PORT,Corn,2023,105446,105446,0,0,0
+2309,"America's Central Port, IL",PORT,Corn,2022,143407,128997,14410,0,0
+2309,"America's Central Port, IL",PORT,Corn,2021,182490,179249,3241,0,0
+2309,"America's Central Port, IL",PORT,Corn,2020,149718,145679,4039,0,0
+2309,"America's Central Port, IL",PORT,Soybeans,2024,43666,43666,0,0,0
+2309,"America's Central Port, IL",PORT,Soybeans,2023,77557,68007,9550,0,0
+2309,"America's Central Port, IL",PORT,Soybeans,2022,72844,46982,25862,0,0
+2309,"America's Central Port, IL",PORT,Soybeans,2021,38230,38230,0,0,0
+2309,"America's Central Port, IL",PORT,Soybeans,2020,49226,49226,0,0,0
+2309,"America's Central Port, IL",PORT,Vegetable Oils,2024,0,0,0,0,0
+2309,"America's Central Port, IL",PORT,Vegetable Oils,2023,9256,0,9256,0,0
+2309,"America's Central Port, IL",PORT,Vegetable Oils,2022,11336,1437,9899,0,0
+2309,"America's Central Port, IL",PORT,Vegetable Oils,2021,0,0,0,0,0
+2309,"America's Central Port, IL",PORT,Vegetable Oils,2020,0,0,0,0,0
+2309,"America's Central Port, IL",PORT,Grain Mill Products,2024,4502,4502,0,0,0
+2309,"America's Central Port, IL",PORT,Grain Mill Products,2023,23432,23432,0,0,0
+2309,"America's Central Port, IL",PORT,Grain Mill Products,2022,0,0,0,0,0
+2309,"America's Central Port, IL",PORT,Grain Mill Products,2021,0,0,0,0,0
+2309,"America's Central Port, IL",PORT,Grain Mill Products,2020,11591,8524,3067,0,0
+2309,"America's Central Port, IL",PORT,Wheat,2019,88660,87014,1646,0,0
+2309,"America's Central Port, IL",PORT,Corn,2019,181326,179464,1862,0,0
+2309,"America's Central Port, IL",PORT,Soybeans,2019,120126,109189,10937,0,0
+2309,"America's Central Port, IL",PORT,Vegetable Oils,2019,0,0,0,0,0
+2309,"America's Central Port, IL",PORT,Grain Mill Products,2019,0,0,0,0,0
+2319,"Southwest Regional Port, IL",PORT,Wheat,2024,676608,676608,0,0,0
+2319,"Southwest Regional Port, IL",PORT,Wheat,2023,150101,150101,0,0,0
+2319,"Southwest Regional Port, IL",PORT,Wheat,2022,164763,164763,0,0,0
+2319,"Southwest Regional Port, IL",PORT,Wheat,2021,125380,125380,0,0,0
+2319,"Southwest Regional Port, IL",PORT,Wheat,2020,357203,357203,0,0,0
+2319,"Southwest Regional Port, IL",PORT,Corn,2024,2065395,2063820,1575,0,0
+2319,"Southwest Regional Port, IL",PORT,Corn,2023,1943016,1940932,0,2084,0
+2319,"Southwest Regional Port, IL",PORT,Corn,2022,2440438,2440438,0,0,0
+2319,"Southwest Regional Port, IL",PORT,Corn,2021,3748611,3743127,5484,0,0
+2319,"Southwest Regional Port, IL",PORT,Corn,2020,3326707,3326707,0,0,0
+2319,"Southwest Regional Port, IL",PORT,Sorghum,2024,0,0,0,0,0
+2319,"Southwest Regional Port, IL",PORT,Sorghum,2023,0,0,0,0,0
+2319,"Southwest Regional Port, IL",PORT,Sorghum,2022,1756,1756,0,0,0
+2319,"Southwest Regional Port, IL",PORT,Sorghum,2021,0,0,0,0,0
+2319,"Southwest Regional Port, IL",PORT,Sorghum,2020,16143,16143,0,0,0
+2319,"Southwest Regional Port, IL",PORT,Soybeans,2024,1365044,1365044,0,0,0
+2319,"Southwest Regional Port, IL",PORT,Soybeans,2023,1372151,1372151,0,0,0
+2319,"Southwest Regional Port, IL",PORT,Soybeans,2022,1604125,1602584,1541,0,0
+2319,"Southwest Regional Port, IL",PORT,Soybeans,2021,1844214,1844214,0,0,0
+2319,"Southwest Regional Port, IL",PORT,Soybeans,2020,3482771,3482771,0,0,0
+2319,"Southwest Regional Port, IL",PORT,Vegetable Oils,2024,0,0,0,0,0
+2319,"Southwest Regional Port, IL",PORT,Vegetable Oils,2023,1600,1600,0,0,0
+2319,"Southwest Regional Port, IL",PORT,Vegetable Oils,2022,0,0,0,0,0
+2319,"Southwest Regional Port, IL",PORT,Vegetable Oils,2021,0,0,0,0,0
+2319,"Southwest Regional Port, IL",PORT,Vegetable Oils,2020,0,0,0,0,0
+2319,"Southwest Regional Port, IL",PORT,Grain Mill Products,2024,0,0,0,0,0
+2319,"Southwest Regional Port, IL",PORT,Grain Mill Products,2023,0,0,0,0,0
+2319,"Southwest Regional Port, IL",PORT,Grain Mill Products,2022,3967,3967,0,0,0
+2319,"Southwest Regional Port, IL",PORT,Grain Mill Products,2021,1584,1584,0,0,0
+2319,"Southwest Regional Port, IL",PORT,Grain Mill Products,2020,5714,0,5714,0,0
+2319,"Southwest Regional Port, IL",PORT,Wheat,2019,268981,268981,0,0,0
+2319,"Southwest Regional Port, IL",PORT,Corn,2019,2808732,2808732,0,0,0
+2319,"Southwest Regional Port, IL",PORT,Sorghum,2019,1787,1787,0,0,0
+2319,"Southwest Regional Port, IL",PORT,Soybeans,2019,3619368,3607024,12344,0,0
+2319,"Southwest Regional Port, IL",PORT,Vegetable Oils,2019,0,0,0,0,0
+2319,"Southwest Regional Port, IL",PORT,Grain Mill Products,2019,0,0,0,0,0
+2344,"Jefferson County Port, MO",PORT,Wheat,2024,16164,0,16164,0,0
+2344,"Jefferson County Port, MO",PORT,Wheat,2023,0,0,0,0,0
+2344,"Jefferson County Port, MO",PORT,Wheat,2022,7259,0,7259,0,0
+2344,"Jefferson County Port, MO",PORT,Wheat,2021,0,0,0,0,0
+2344,"Jefferson County Port, MO",PORT,Wheat,2020,0,0,0,0,0
+2344,"Jefferson County Port, MO",PORT,Corn,2024,1648,1648,0,0,0
+2344,"Jefferson County Port, MO",PORT,Corn,2023,0,0,0,0,0
+2344,"Jefferson County Port, MO",PORT,Corn,2022,0,0,0,0,0
+2344,"Jefferson County Port, MO",PORT,Corn,2021,139567,139567,0,0,0
+2344,"Jefferson County Port, MO",PORT,Corn,2020,0,0,0,0,0
+2344,"Jefferson County Port, MO",PORT,Soybeans,2024,20662,1601,19061,0,0
+2344,"Jefferson County Port, MO",PORT,Soybeans,2023,8425,1356,7069,0,0
+2344,"Jefferson County Port, MO",PORT,Soybeans,2022,3170,1585,1585,0,0
+2344,"Jefferson County Port, MO",PORT,Soybeans,2021,35631,21244,14387,0,0
+2344,"Jefferson County Port, MO",PORT,Soybeans,2020,22343,7808,14535,0,0
+2344,"Jefferson County Port, MO",PORT,Wheat,2019,3380,0,3380,0,0
+2344,"Jefferson County Port, MO",PORT,Corn,2019,1779,0,1779,0,0
+2344,"Jefferson County Port, MO",PORT,Soybeans,2019,15950,0,15950,0,0
+2368,"Southeast Missouri Port, MO",PORT,Wheat,2024,92257,92257,0,0,0
+2368,"Southeast Missouri Port, MO",PORT,Wheat,2023,64083,64083,0,0,0
+2368,"Southeast Missouri Port, MO",PORT,Wheat,2022,83068,83068,0,0,0
+2368,"Southeast Missouri Port, MO",PORT,Wheat,2021,98230,98230,0,0,0
+2368,"Southeast Missouri Port, MO",PORT,Wheat,2020,86162,86162,0,0,0
+2368,"Southeast Missouri Port, MO",PORT,Corn,2024,404287,404287,0,0,0
+2368,"Southeast Missouri Port, MO",PORT,Corn,2023,283759,283759,0,0,0
+2368,"Southeast Missouri Port, MO",PORT,Corn,2022,438232,435944,2288,0,0
+2368,"Southeast Missouri Port, MO",PORT,Corn,2021,403150,399779,3371,0,0
+2368,"Southeast Missouri Port, MO",PORT,Corn,2020,367200,367200,0,0,0
+2368,"Southeast Missouri Port, MO",PORT,Soybeans,2024,257009,257009,0,0,0
+2368,"Southeast Missouri Port, MO",PORT,Soybeans,2023,222820,222820,0,0,0
+2368,"Southeast Missouri Port, MO",PORT,Soybeans,2022,297431,297431,0,0,0
+2368,"Southeast Missouri Port, MO",PORT,Soybeans,2021,327725,327725,0,0,0
+2368,"Southeast Missouri Port, MO",PORT,Soybeans,2020,262307,262307,0,0,0
+2368,"Southeast Missouri Port, MO",PORT,Wheat,2019,102168,102168,0,0,0
+2368,"Southeast Missouri Port, MO",PORT,Corn,2019,275451,275451,0,0,0
+2368,"Southeast Missouri Port, MO",PORT,Soybeans,2019,231021,227641,3380,0,0
+2351,"New Bourbon Port Authority, MO",PORT,Wheat,2024,5521,5521,0,0,0
+2351,"New Bourbon Port Authority, MO",PORT,Wheat,2023,9583,9583,0,0,0
+2351,"New Bourbon Port Authority, MO",PORT,Wheat,2022,11233,11233,0,0,0
+2351,"New Bourbon Port Authority, MO",PORT,Wheat,2021,16845,16845,0,0,0
+2351,"New Bourbon Port Authority, MO",PORT,Wheat,2020,11432,11432,0,0,0
+2351,"New Bourbon Port Authority, MO",PORT,Corn,2024,64386,64386,0,0,0
+2351,"New Bourbon Port Authority, MO",PORT,Corn,2023,50251,50251,0,0,0
+2351,"New Bourbon Port Authority, MO",PORT,Corn,2022,88426,88426,0,0,0
+2351,"New Bourbon Port Authority, MO",PORT,Corn,2021,99954,99954,0,0,0
+2351,"New Bourbon Port Authority, MO",PORT,Corn,2020,70004,70004,0,0,0
+2351,"New Bourbon Port Authority, MO",PORT,Soybeans,2024,28475,28475,0,0,0
+2351,"New Bourbon Port Authority, MO",PORT,Soybeans,2023,26013,26013,0,0,0
+2351,"New Bourbon Port Authority, MO",PORT,Soybeans,2022,28187,28187,0,0,0
+2351,"New Bourbon Port Authority, MO",PORT,Soybeans,2021,43556,43556,0,0,0
+2351,"New Bourbon Port Authority, MO",PORT,Soybeans,2020,34087,34087,0,0,0
+2351,"New Bourbon Port Authority, MO",PORT,Wheat,2019,0,0,0,0,0
+2351,"New Bourbon Port Authority, MO",PORT,Corn,2019,11810,11810,0,0,0
+2351,"New Bourbon Port Authority, MO",PORT,Soybeans,2019,3968,3968,0,0,0
 2294,"Memphis-Shelby County Port, TN",PORT,Wheat,2024,33341,33341,0,0,0
 2294,"Memphis-Shelby County Port, TN",PORT,Wheat,2023,64259,64259,0,0,0
 2294,"Memphis-Shelby County Port, TN",PORT,Wheat,2022,36227,36227,0,0,0

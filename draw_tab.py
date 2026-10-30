@@ -25,10 +25,10 @@ def _in_box(paths, box):
 
 
 @st.cache_data(show_spinner="Solving the draw…")
-def _solve(rate, tau, river_premium, util, lock_scale, below_mbu, pnw_mbu, stl_mbu, plant_premium_items):
+def _solve(rate, tau, river_premium, util, lock_scale, pnw_mbu, area_items, plant_premium_items):
     inp = dm.load()
     res = dm.solve(inp, rate=rate, tau=tau, river_premium=river_premium, util=util, nodes=dm.load_nodes(), lock_scale=lock_scale,
-                   below_mbu=below_mbu, pnw_mbu=pnw_mbu, stl_mbu=stl_mbu, plant_premium=dict(plant_premium_items))
+                   pnw_mbu=pnw_mbu, area_mbu=dict(area_items), plant_premium=dict(plant_premium_items))
     return res
 
 
@@ -36,12 +36,12 @@ def render():
     inp = dm.load()
     st.markdown("### Draw Territory: soybeans")
     nodes = dm.load_nodes()
-    below_default = next(g["target_mbu"] for g in nodes["groups"] if g["kind"] == "below")
+    areas = [g for g in nodes["groups"] if g["kind"] == "area"]
     pnw_default = next(g["target_mbu"] for g in nodes["groups"] if g["kind"] == "pnw")
     st.caption("Where each county's beans go. Crush plants fill to their annual need (Daily Max × 88% × 350 days, from the Crush Downtime "
                "Calculator). The river is a set of regional nodes, each with the soybeans that actually load there: upriver pools are backed out of "
-               "Corps and USDA lock tonnage (2021-25 average), the St. Louis harbor and the Lower Mississippi take the East Gulf export "
-               "inspections the locks do not account for, and the Pacific Northwest takes the West Coast inspections. Beans go to the nearest "
+               "Corps and USDA lock tonnage (2021-25 average), below Lock 27 each area takes the Corps' port tonnage (St. Louis City, "
+               "the Illinois side of the harbor, Cape Girardeau to Chester, the Lower Mississippi), and the Pacific Northwest takes the West Coast inspections. Beans go to the nearest "
                "buyers with limited crossover. First pass: a model to set the structure, not a forecast.")
     c1, c2, c3, c4 = st.columns(4)
     state = c1.selectbox("Region to show", FOCUS_STATES, index=0, key="draw_state")
@@ -58,16 +58,17 @@ def render():
     river_prem = c6.number_input("River bid over crush bids (cents/bu)", -30.0, 30.0, 0.0, 1.0, key="draw_river_prem",
                                  help="How much more (or less) the river terminals pay for a bean than the crush plants, after their basis. "
                                       "Positive pulls beans toward the river.")
-    c7, c8, c9 = st.columns(3)
-    below_mbu = c7.number_input("Below Lock 27 / Lower Mississippi (M bu/yr)", 0.0, 1500.0, float(round(below_default)), 10.0, key="draw_below",
-                                help="Soybeans loaded below the last lock: St. Louis harbor, Cairo and the Delta ports. Default = East Gulf soybean "
-                                     "export inspections (2021-25 average) less the barge arrivals the locks measure, so it also holds beans "
-                                     "that reach the Gulf by rail. No lock measures it directly.")
-    stl_mbu = c8.number_input("of which St. Louis harbor (M bu/yr, 0 = let the map decide)", 0.0, 800.0, 0.0, 10.0, key="draw_stl",
-                              help="Your number for the St. Louis harbor. Left at 0, the harbor and the Lower Mississippi pins split the "
-                                   "total above by distance from each county.")
-    pnw_mbu = c9.number_input("Beans railed to the Pacific Northwest (M bu/yr)", 0.0, 800.0, float(round(pnw_default)), 10.0, key="draw_pnw",
+    pnw_mbu = st.number_input("Beans railed to the Pacific Northwest (M bu/yr)", 0.0, 800.0, float(round(pnw_default)), 10.0, key="draw_pnw",
                               help="Default = West Coast soybean ship inspections (2021-25 average).")
+    with st.expander("River area targets below Lock 27 (M bu/yr): default = the Corps' port tonnage, soybeans shipped, 2021-24 average"):
+        cols_a = st.columns(len(areas))
+        area_over = {}
+        for c_, g in zip(cols_a, areas):
+            v = c_.number_input(g["name"], 0.0, 1000.0, float(round(g["target_mbu"], 1)), 5.0, key=f"draw_area_{g['name']}", help=g.get("note", ""))
+            if abs(v - round(g["target_mbu"], 1)) > 1e-9:
+                area_over[g["name"]] = v
+        st.caption("Source: Corps Waterborne Commerce of the U.S., shipments (beans loaded out of the area). Nothing measures these below the last lock; "
+                   "the Lower Mississippi figure is the whole stretch from Cairo to Baton Rouge, split among every tracker pin on it by distance.")
     o1, o2 = st.columns([1, 3])
     show_rivers = o1.checkbox("Rivers", value=True, key="draw_rivers")
     rails = o2.multiselect("Railroads", list(rm.RAILROADS), default=["UP", "BNSF", "CSXT", "NS", "CN", "TPW", "IAIS"],
@@ -78,11 +79,11 @@ def render():
         cols = st.columns(3)
         for i, k in enumerate(keys):
             prem[k] = cols[i % 3].number_input(k, -20.0, 20.0, 0.0, 0.5, key=f"draw_prem_{k}")
-    res = _solve(rate, tau, river_prem, util, lock_scale, below_mbu, pnw_mbu, stl_mbu, tuple(sorted((k, v) for k, v in prem.items() if v)))
+    res = _solve(rate, tau, river_prem, util, lock_scale, pnw_mbu, tuple(sorted(area_over.items())), tuple(sorted((k, v) for k, v in prem.items() if v)))
     plants_t, river_t, cty_t = dm.summarize(inp, res, state)
     if res.get("target_scale", 1.0) < 0.999:
         st.warning(f"The river targets add up to more than the beans left after crush, so they were scaled to {res['target_scale']:.0%}. "
-                   "Lower the Below Lock 27 or PNW figure, or raise plant run rates.")
+                   "Lower the area or PNW figures, or raise plant run rates.")
 
     in_state = [c for c in inp["counties"] if c["state"] == state]
     supply = sum(c["supply_bu"] for c in in_state) / 1e6
@@ -174,8 +175,9 @@ def render():
                                                                         "from_state_mbu": f"From {state}"}).drop(columns=["kind"])
     st.dataframe(gt.style.format({"Loads here": "{:,.1f}", "Modeled draw": "{:,.1f}", f"From {state}": "{:,.1f}"}), hide_index=True, use_container_width=True)
     st.caption("Upriver nodes: Corps lock tonnage (Food and Farm Products, both directions) scaled to USDA downbound grain at the seven locks USDA "
-               "measures, soybeans = USDA's soy share; each pool = flow at its lower lock less flow at the upper one. Below Lock 27: East Gulf "
-               "soybean ship inspections less the barge arrivals measured at Lock 27, Olmsted and Arkansas Lock 1. See river_segments.json.")
+               "measures, soybeans = USDA's soy share; each pool = flow at its lower lock less flow at the upper one. Below Lock 27: Corps "
+               "Waterborne Commerce port tonnage (soybeans shipped, 2021-24 average). Whatever the East Gulf inspects beyond these barge loadings "
+               "(about 200M bu) reached the Gulf some other way and sits in 'other'. See river_segments.json and river_nodes.json.")
     st.caption(f"Supply: 5-year average NASS county soybean production. Plants: Crush Downtime Calculator (Gilman includes the 2026 expansion; "
                f"Marquis is left out until it runs). Road miles: {inp['source']}. Crush plants nationally compete for the same beans, so western plants "
                "draw western beans.")

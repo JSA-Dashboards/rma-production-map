@@ -139,14 +139,37 @@ def build_groups(segs, nodes, pins, usda, bu):
         placed.update(pl)
         groups.append({"name": name, "kind": kind, "pins": pl, "target_mbu": float(tgt)})
     measured = sum(g["target_mbu"] for g in groups if g["kind"] == "lock")
-    pinless = sum(g["target_mbu"] for g in groups if g["kind"] == "lock" and not g["pins"])
-    harbor = [p for p in segs if p["segment"].startswith("St. Louis harbor")][0]["pins"]
-    lower = [p["key"] for p in pins if p["key"] not in placed and p["key"] not in DROP_PINS]
+    unplaced = [{"name": g["name"], "target_mbu": g["target_mbu"]} for g in groups if g["kind"] == "lock" and not g["pins"]]
     groups = [g for g in groups if g["pins"]]
-    groups.append({"name": "Below Lock 27 / Lower Mississippi", "kind": "below", "pins": lower,
-                   "target_mbu": max(0.0, fg["east_gulf_mbu"] - measured + pinless),
-                   "note": "East Gulf soybean ship inspections less barge arrivals the locks measure; includes rail to the Gulf"})
-    return {"fgis": fg, "stl_harbor_pins": harbor, "measured_arrivals_mbu": measured, "groups": groups, "dropped": DROP_PINS}
+    # Below Lock 27 no lock measures anything, so these groups take the Corps' port tonnage (WCUS shipments, soybeans, 2021-24 average).
+    wc = pd.read_csv(os.path.join(D, "wcus_port_grain.csv"))
+    wc = wc[(wc.commodity == "Soybeans") & wc.year.between(2021, 2024)].groupby("location_id").shipments_tons.mean() * bu / 1e6
+
+    def port(*ids):
+        return float(sum(wc.get(i, 0.0) for i in ids))
+    areas = [
+        ("St. Louis City (MO)", ["ADM St. Louis"], port(2341),
+         "St. Louis City Port: the city of St. Louis"),
+        ("East St. Louis area (IL)", ["Cargill East St. Louis", "Bunge Fairmont City", "ADM Sauget", "Cahokia"], port(2319, 2309),
+         "Southwest Regional Port (East St. Louis, Centreville, Canteen, Stites, Sugar Loaf) + America's Central Port; the CGB/CHS Cahokia site is "
+         "assumed to be in here, but Cahokia is not one of the townships the Corps names"),
+        ("Cape Girardeau to Chester (Scott City, Grand Tower)", ["SCOTT CITY", "GRAND TOWER"], port(2368, 2307, 2351, 2308),
+         "Southeast Missouri + Kaskaskia Regional + New Bourbon + Alexandria-Cairo ports; the Kaskaskia and New Bourbon sites have no tracker pin"),
+    ]
+    in_area = set()
+    for name, tags, tgt, note in areas:
+        pl = [p["key"] for p in pins if p["key"] not in placed and p["key"] not in DROP_PINS and any(t.lower() in p["key"].lower() for t in tags)]
+        in_area.update(pl)
+        placed.update(pl)
+        groups.append({"name": name, "kind": "area", "pins": pl, "target_mbu": tgt, "note": note})
+    lower = [p["key"] for p in pins if p["key"] not in placed and p["key"] not in DROP_PINS]
+    groups.append({"name": "Lower Mississippi, Cairo to Baton Rouge", "kind": "area", "pins": lower, "target_mbu": port(6034),
+                   "note": "Waterway 6034 soybean shipments (Mouth of Ohio River to Baton Rouge); every remaining tracker pin below Lock 27"})
+    area_total = sum(g["target_mbu"] for g in groups if g["kind"] == "area")
+    return {"fgis": fg, "measured_arrivals_mbu": measured, "area_total_mbu": area_total, "unplaced_lock_nodes": unplaced, "groups": groups,
+            "dropped": DROP_PINS,
+            "east_gulf_other_mbu": fg["east_gulf_mbu"] - measured - area_total,
+            "note": "east_gulf_other_mbu = East Gulf soybean ship inspections less barge loadings above and below Lock 27: beans that reach the Gulf by rail or are otherwise unaccounted"}
 
 
 def main():

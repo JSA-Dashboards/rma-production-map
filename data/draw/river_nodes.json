@@ -4,16 +4,14 @@
   "west_coast_mbu": 377.00050364333333,
   "source": "FGIS ship inspections 2021-25 avg"
  },
- "stl_harbor_pins": [
-  "CGB - Cahokia",
-  "CHS Cahokia",
-  "Cargill East St. Louis",
-  "Bunge Fairmont City, IL",
-  "ADM Sauget, IL",
-  "ADM St. Louis, MO (Elevator)",
-  "ADM St. Louis"
- ],
  "measured_arrivals_mbu": 410.2194866666667,
+ "area_total_mbu": 404.76901666666674,
+ "unplaced_lock_nodes": [
+  {
+   "name": "MS-6 Wood River / Granite City + Missouri River (Pool 27)",
+   "target_mbu": 9.666259999999994
+  }
+ ],
  "groups": [
   {
    "name": "IL-1 Joliet / Morris / Seneca",
@@ -236,10 +234,42 @@
    "target_mbu": 377.00050364333333
   },
   {
-   "name": "Below Lock 27 / Lower Mississippi",
-   "kind": "below",
+   "name": "St. Louis City (MO)",
+   "kind": "area",
+   "pins": [
+    "ADM St. Louis, MO (Elevator)",
+    "ADM St. Louis"
+   ],
+   "target_mbu": 48.99051666666667,
+   "note": "St. Louis City Port: the city of St. Louis"
+  },
+  {
+   "name": "East St. Louis area (IL)",
+   "kind": "area",
    "pins": [
     "CGB - Cahokia",
+    "CHS Cahokia",
+    "Cargill East St. Louis",
+    "Bunge Fairmont City, IL",
+    "ADM Sauget, IL"
+   ],
+   "target_mbu": 53.17398333333334,
+   "note": "Southwest Regional Port (East St. Louis, Centreville, Canteen, Stites, Sugar Loaf) + America's Central Port; the CGB/CHS Cahokia site is assumed to be in here, but Cahokia is not one of the townships the Corps names"
+  },
+  {
+   "name": "Cape Girardeau to Chester (Scott City, Grand Tower)",
+   "kind": "area",
+   "pins": [
+    "CGB GRAND TOWER",
+    "CGB SCOTT CITY"
+   ],
+   "target_mbu": 18.270808333333335,
+   "note": "Southeast Missouri + Kaskaskia Regional + New Bourbon + Alexandria-Cairo ports; the Kaskaskia and New Bourbon sites have no tracker pin"
+  },
+  {
+   "name": "Lower Mississippi, Cairo to Baton Rouge",
+   "kind": "area",
+   "pins": [
     "CGB - Desoto Landing",
     "CGB - Friars Point",
     "CGB - Greenville",
@@ -255,16 +285,11 @@
     "CGB - Yazoo City",
     "CGB BIRDS POINT",
     "CGB DYERSBURG",
-    "CGB GRAND TOWER",
     "CGB HICKMAN",
     "CGB LINDA",
     "CGB MOUND CITY",
     "CGB OSCEOLA",
-    "CGB SCOTT CITY",
     "CHS Boyle Terminal",
-    "CHS Cahokia",
-    "Cargill East St. Louis",
-    "Bunge Fairmont City, IL",
     "Cargill New Madrid",
     "Cargill Hickman (Ashland)",
     "Cargill Hales Point",
@@ -276,18 +301,17 @@
     "ADM Memphis, TN",
     "ADM Mound City, IL",
     "ADM New Madrid, MO",
-    "ADM Sauget, IL",
-    "ADM St. Louis, MO (Elevator)",
     "ADM Vidalia, LA",
-    "ADM St. Louis",
     "ADM Heloise, TN"
    ],
-   "target_mbu": 616.7604156866666,
-   "note": "East Gulf soybean ship inspections less barge arrivals the locks measure; includes rail to the Gulf"
+   "target_mbu": 284.3337083333334,
+   "note": "Waterway 6034 soybean shipments (Mouth of Ohio River to Baton Rouge); every remaining tracker pin below Lock 27"
   }
  ],
  "dropped": [
   "CHS Macon",
   "ADM Livingston Point, KY"
- ]
+ ],
+ "east_gulf_other_mbu": 202.32513901999994,
+ "note": "east_gulf_other_mbu = East Gulf soybean ship inspections less barge loadings above and below Lock 27: beans that reach the Gulf by rail or are otherwise unaccounted"
 }
