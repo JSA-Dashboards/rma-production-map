@@ -34,6 +34,46 @@ def _solve(rate, tau, river_premium, util, lock_scale, pnw_mbu, area_items, cap_
     return res
 
 
+def _terminal_sites(inp, res, river_t, state):
+    """One entry per river site for the map: pins merged by site id (or by coordinates when none is given), the soybeans the solve gives it
+    (so the export scenario shows up in the dot sizes), its area, and any ceiling. Sites that share a point are spread on a small ring."""
+    n_p = len(inp["plants"])
+    group_of, kind_of = {}, {}
+    for g in res.get("groups", []):
+        for c in g["cols"]:
+            group_of[c - n_p], kind_of[c - n_p] = g["name"], g["kind"]
+    vol = {r["terminal"]: r for r in river_t}
+    sites = {}
+    for j, r in enumerate(inp["river"]):
+        if j not in group_of or r["key"] == "PNW export (rail)":
+            continue
+        if not (33.5 <= r["lat"] <= 46.5 and -95.5 <= r["lon"] <= -80):          # a few tracker pins sit far from any river
+            continue
+        k = r.get("site") or (round(r["lat"], 3), round(r["lon"], 3))
+        t = sites.setdefault(k, {"lat": r["lat"], "lon": r["lon"], "pins": [], "vol": 0.0, "from_state": 0.0, "group": group_of[j],
+                                 "kind": kind_of[j], "cap": None, "note": ""})
+        row = vol.get(r["key"], {})
+        t["pins"].append(r["key"])
+        t["vol"] += row.get("drawn_mbu", 0.0)
+        t["from_state"] += row.get("from_state_mbu", 0.0)
+        if r.get("cap_mbu") is not None:
+            t["cap"], t["note"] = r["cap_mbu"], r.get("cap_note", "")
+    at = {}
+    for t in sites.values():
+        at.setdefault((round(t["lat"], 3), round(t["lon"], 3)), []).append(t)
+    for ts in at.values():
+        if len(ts) > 1:
+            for i, t in enumerate(ts):                                            # distinct terminals the tracker geocodes to one point
+                a = 2 * np.pi * i / len(ts)
+                t["lat"] += 0.035 * np.sin(a)
+                t["lon"] += 0.045 * np.cos(a)
+    out = list(sites.values())
+    for t in out:
+        t["hover"] = (f"<b>{' / '.join(t['pins'])}</b><br>{t['group']}<br>Modeled: {t['vol']:.1f} M bu/yr ({t['from_state']:.1f} from {state})"
+                      + (f"<br>Ceiling {t['cap']:g} M bu/yr: {t['note']}" if t["cap"] is not None else ""))
+    return out
+
+
 def _reset_exports(key, value):
     st.session_state[key] = value
 
@@ -99,7 +139,11 @@ def _export_panel():
         st.caption("Shares are of soybeans inspected for export (USDA FGIS), by marketing year from September: East Gulf = the Mississippi River, West Coast = "
                    "the Pacific Northwest, interior = rail, truck and container loaded inland. USDA's export number is the PSD / WASDE estimate. Refresh with "
                    "build_soy_export_shares.py after each WASDE.")
-    return (round(sc["river_scale"], 4), round(sc["pnw_scale"], 4)) if apply_ else (1.0, 1.0)
+    if apply_:
+        text = (f"Export scenario {es.label(my)}: US exports {exports:,.0f}M bu, East Gulf {sc['east_gulf']:,.0f}M bu "
+                f"(x{sc['river_scale']:.2f} of the 2021-25 average)")
+        return round(sc["river_scale"], 4), round(sc["pnw_scale"], 4), text
+    return 1.0, 1.0, "River volumes at the 2021-25 average (no export scenario)"
 
 
 def render():
@@ -113,7 +157,7 @@ def render():
                "Corps and USDA lock tonnage (2021-25 average), below Lock 27 each area takes the Corps' port tonnage (St. Louis City, "
                "the Illinois side of the harbor, Cape Girardeau to Chester, the Lower Mississippi), and the Pacific Northwest takes the West Coast inspections. Beans go to the nearest "
                "buyers with limited crossover. First pass: a model to set the structure, not a forecast.")
-    river_scale, pnw_scale = _export_panel()
+    river_scale, pnw_scale, scenario_text = _export_panel()
     c1, c2, c3, c4 = st.columns(4)
     state = c1.selectbox("Region to show", FOCUS_STATES, index=0, key="draw_state")
     tau = c2.slider("Crossover (cents/bu)", 0.25, 4.0, 1.0, 0.25, key="draw_tau",
@@ -230,16 +274,31 @@ def render():
         lon=[p["lon"] for p in pts], lat=[p["lat"] for p in pts], mode="markers+text", marker=dict(size=[8 + 14 * (p["need_bu"] / 1e8) ** 0.5 for p in pts], color="#222"),
         text=[p["city"] for p in pts], textposition="top right", textfont=dict(size=10), name="Crush plants",
         hovertext=[f'{p["key"]}<br>need {p["need_bu"] / 1e6:,.1f} M bu/yr' for p in pts], hoverinfo="text"))
-    rv = [r for r in inp["river"] if 33.5 <= r["lat"] <= 46.5 and -95.5 <= r["lon"] <= -80 and r["key"] != "PNW export (rail)"]   # a few tracker pins sit far from any river
-    fig.add_trace(go.Scattermap(lon=[r["lon"] for r in rv], lat=[r["lat"] for r in rv], mode="markers", marker=dict(size=6, color="#08519c"),
-                                name="River terminals", hovertext=[r["key"] for r in rv], hoverinfo="text"))
+    sites = _terminal_sites(inp, res, river_t, state)
+    top = max([t["vol"] for t in sites] + [1.0])
+    ref = 2.0 * top / (34 ** 2)                                                  # the biggest site is about 34 px across
+    capped = [t for t in sites if t["cap"] is not None]
+    if capped:                                                                   # a red ring under every terminal that has a ceiling
+        fig.add_trace(go.Scattermap(lon=[t["lon"] for t in capped], lat=[t["lat"] for t in capped], mode="markers", name="Has a ceiling",
+                                    marker=dict(size=[max(t["vol"], 0.5) * 1.7 for t in capped], sizemode="area", sizeref=ref, sizemin=7, color="#d62728"),
+                                    hoverinfo="skip"))
+    for kind, label, color in (("lock", "River terminals above Lock 27 (area = M bu/yr loaded)", "#2b6cb0"),
+                               ("area", "River terminals below Lock 27 (area = M bu/yr loaded)", "#00897b")):
+        ts = [t for t in sites if t["kind"] == kind]
+        if ts:
+            fig.add_trace(go.Scattermap(lon=[t["lon"] for t in ts], lat=[t["lat"] for t in ts], mode="markers", name=label,
+                                        marker=dict(size=[max(t["vol"], 0.5) for t in ts], sizemode="area", sizeref=ref, sizemin=4, color=color, opacity=0.85),
+                                        hovertext=[t["hover"] for t in ts], hoverinfo="text"))
+    fig.add_annotation(text=scenario_text, xref="paper", yref="paper", x=0.01, y=0.01, xanchor="left", yanchor="bottom", showarrow=False,
+                       font=dict(size=11, color="#222"), bgcolor="rgba(255,255,255,0.85)", borderpad=4)
     sc = [c for c in inp["counties"] if c["state"] == state]
     fig.update_layout(map=dict(style="carto-positron", center=dict(lat=float(np.mean([c["lat"] for c in sc])), lon=float(np.mean([c["lon"] for c in sc]))),
                                zoom=5.4 if state in ("IL", "IN", "OH", "KY") else 5.0),
                       height=640, margin=dict(l=0, r=0, t=0, b=0), legend=dict(orientation="h", y=1.0, bgcolor="rgba(255,255,255,0.85)", font=dict(size=11)))
     st.plotly_chart(fig, use_container_width=True, key="draw_map")
     st.caption("Fill = where most of a county's beans go (colour = that crush plant; light blue = a river terminal; grey = a plant outside the list). "
-               "Counties spread beans across several buyers: hover for the top buyer's share.")
+               "Counties spread beans across several buyers: hover for the top buyer's share. River dots are sized by the soybeans each terminal loads a year "
+               "under the export scenario above (hover for the volume, its area and any ceiling); a red ring marks a terminal with a ceiling.")
 
     st.markdown(f"**Plants that draw {state} beans** (annual, M bu)")
     df = pd.DataFrame(plants_t)
