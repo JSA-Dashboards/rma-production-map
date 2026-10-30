@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # run_soy_export_refresh.sh: refresh the US soybean export numbers behind the Draw Territory tab's export scenario panel
-# (data/draw/soy_exports_wasde.json and data/draw/soy_export_shares_by_my.csv). Run by cron on the JSA droplet through
+# (data/draw/soy_exports_wasde.json, soy_export_shares_by_my.csv and the balance sheet soy_balance_wasde.json). Run by cron on the JSA droplet through
 # /opt/alerting/cron-alert on the 12th (15:30 CT) and the 14th (09:00 CT), right after the WASDE and the PSD history refreshes.
 # The droplet job clone is /opt/rma-export-refresh, a clone of this repo that only this job commits to.
 #
@@ -38,14 +38,15 @@ main() {
   key=$(sed -n 's/^FAS_API_KEY=//p' "$ENV_FILE" | head -n 1 | tr -d "\"'\r")
   [ -n "$key" ] || { echo "no FAS_API_KEY in $ENV_FILE"; return 1; }
   FAS_API_KEY="$key" "$PY" build_soy_export_shares.py
+  "$PY" build_soy_balance.py          # US balance sheet (carry-in stocks, production, imports, crush) from the WASDE report files; no key
 
-  if git diff --quiet -- data/draw/soy_exports_wasde.json data/draw/soy_export_shares_by_my.csv; then
+  if git diff --quiet -- data/draw/soy_exports_wasde.json data/draw/soy_export_shares_by_my.csv data/draw/soy_balance_wasde.json; then
     echo "nothing to commit"
   else
     git config user.email '275148418+koltenpostin93-blip@users.noreply.github.com'
     git config user.name 'JSA Droplet'
-    git add data/draw/soy_exports_wasde.json data/draw/soy_export_shares_by_my.csv
-    git commit -q -m "data: refresh US soybean export numbers and Gulf shares from USDA PSD and FGIS ($(date +%F))"
+    git add data/draw/soy_exports_wasde.json data/draw/soy_export_shares_by_my.csv data/draw/soy_balance_wasde.json
+    git commit -q -m "data: refresh US soybean export numbers, Gulf shares and the balance sheet from USDA PSD, FGIS and the WASDE files ($(date +%F))"
     if [ "${SOY_NO_PUSH:-0}" = 1 ]; then
       echo "SOY_NO_PUSH=1: committed locally, not pushed"
       return 0

@@ -28,12 +28,12 @@ def _in_box(paths, box):
 
 
 @st.cache_data(show_spinner="Solving the draw…")
-def _solve(rate, tau, river_premium, util, lock_scale, area_items, cap_items, plant_premium_items, river_scale=1.0, scale_items=(), rate_items=(), pnw_reach=30.0, barge_items=(), tau_items=(), extra_items=()):
+def _solve(rate, tau, river_premium, util, lock_scale, area_items, cap_items, plant_premium_items, river_scale=1.0, scale_items=(), rate_items=(), pnw_reach=30.0, barge_items=(), tau_items=(), extra_items=(), supply_total=None):
     inp = dm.load()
     res = dm.solve(inp, rate=rate, tau=tau, river_premium=river_premium, util=util, nodes=dm.load_nodes(), lock_scale=lock_scale,
                    area_mbu=dict(area_items), pin_cap_mbu=dict(cap_items), plant_premium=dict(plant_premium_items),
                    river_scale=river_scale, rail_scales=dict(scale_items), rail_rates=dict(rate_items), pnw_reach_miles=pnw_reach, barge_fed=dict(barge_items),
-                   rail_tau=dict(tau_items), plant_extra_mbu=dict(extra_items))
+                   rail_tau=dict(tau_items), plant_extra_mbu=dict(extra_items), supply_total_bu=supply_total)
     return res
 
 
@@ -134,6 +134,26 @@ def _export_panel():
         m2_[4].metric("Containers", f"{sc['container']:,.0f} M bu", f"{sc['container'] / b['container'] - 1:+.0%} vs 2021-25" if b["container"] else "",
                       delta_color="off", help="Soybeans inspected into containers (FGIS), loaded at the inland hubs and the East Coast ports. A share of the interior "
                                               f"number; x{sc['container_scale']:.2f} on every container hub below.")
+        bal = es.balance().get(str(my))
+        base_prod = sum(c["supply_bu"] for c in dm.load()["counties"]) / 1e6
+        st.markdown("**Supply the model draws from**")
+        s1, s2, s3, s4 = st.columns(4)
+        prod_basis = s1.selectbox("Production", ["5-year average (NASS counties)", "USDA estimate for the year"], key="draw_sup_prod",
+                                  index=0 if not bal else 0,
+                                  help=f"The counties' 5-year average production is {base_prod:,.0f}M bu. USDA's production for {es.label(my)} is "
+                                       f"{bal['production']:,.0f}M bu (WASDE {bal['as_of']}); choosing it scales every county pro rata." if bal else
+                                       "The counties' 5-year average production.")
+        carry = s2.number_input("Carry-in stocks (M bu)", 0.0, 2000.0, float(bal["beginning_stocks"]) if bal else 0.0, 5.0, key=f"draw_sup_carry_{my}",
+                                help="Soybeans left over from the year before (USDA's beginning stocks, farm and commercial). They add to the supply the plants and "
+                                     "hubs draw from, spread pro rata over the counties: stocks sit where beans are grown.")
+        imports_ = s3.number_input("Imports (M bu)", 0.0, 500.0, float(bal["imports"]) if bal else 0.0, 1.0, key=f"draw_sup_imp_{my}",
+                                   help="USDA's soybean imports, mostly Canadian beans crushed in the northern plants. Spread pro rata over the counties because "
+                                        "nothing here records where they enter.")
+        add_stocks = s4.checkbox("Add carry-in and imports to supply", value=True, key="draw_sup_on")
+        prod_mbu = float(bal["production"]) if (bal and prod_basis.startswith("USDA")) else base_prod
+        supply_mbu = prod_mbu + ((carry + imports_) if add_stocks else 0.0)
+        supply_info = {"total_bu": supply_mbu * 1e6, "production": prod_mbu, "carry": carry if add_stocks else 0.0, "imports": imports_ if add_stocks else 0.0,
+                       "bal": bal, "my": my}
         apply_ = st.checkbox("Apply to the hub targets below", value=True, key="draw_exp_apply",
                              help="Off = the hub targets stay at their 2021-25 averages.")
         fig = go.Figure()
@@ -164,8 +184,8 @@ def _export_panel():
         text = (f"Export scenario {es.label(my)}: US exports {exports:,.0f}M bu, East Gulf {sc['east_gulf']:,.0f}M bu "
                 f"(x{sc['river_scale']:.2f} of the 2021-25 average)")
         return {"river": round(sc["river_scale"], 4), "pnw": round(sc["pnw_scale"], 4), "txg": round(sc["txgulf_scale"], 4),
-                "mex": round(sc["mexico_scale"], 4), "satl": round(sc["satl_scale"], 4), "ctn": round(sc["container_scale"], 4)}, text
-    return {"river": 1.0, "pnw": 1.0, "txg": 1.0, "mex": 1.0, "satl": 1.0, "ctn": 1.0}, "Hub volumes at the 2021-25 average (no export scenario)"
+                "mex": round(sc["mexico_scale"], 4), "satl": round(sc["satl_scale"], 4), "ctn": round(sc["container_scale"], 4), "supply": supply_info}, text
+    return {"river": 1.0, "pnw": 1.0, "txg": 1.0, "mex": 1.0, "satl": 1.0, "ctn": 1.0, "supply": supply_info}, "Hub volumes at the 2021-25 average (no export scenario)"
 
 
 def _hub_markers(inp, res, hubs):
@@ -207,6 +227,7 @@ def render():
     scales, scenario_text = _export_panel()
     river_scale, pnw_scale, txg_scale, mex_scale, satl_scale, ctn_scale = (scales["river"], scales["pnw"], scales["txg"], scales["mex"], scales["satl"],
                                                                          scales["ctn"])
+    supply_info = scales["supply"]
     c1, c2, c3, c4 = st.columns(4)
     region = c1.selectbox("Region to show", ["All US"] + FOCUS_STATES, index=1, key="draw_state")
     state = None if region == "All US" else region
@@ -330,7 +351,7 @@ def render():
                  (("pnw", pnw_scale), ("txgulf", txg_scale), ("mexico", mex_scale), ("satl", satl_scale), ("container", ctn_scale)),
                  (("pnw", pnw_rate), ("txgulf", txg_rate), ("mexico", mex_rate), ("lagulf", la_rate), ("mobile", mob_rate), ("satl", satl_rate), ("cont_east", satl_rate)), pnw_reach,
                  tuple(sorted(barge_fed.items())), (("lagulf", la_tau), ("mobile", la_tau), ("satl", la_tau), ("cont_east", la_tau)),
-                 (("Bunge North America Destrehan LA", dest_add),))
+                 (("Bunge North America Destrehan LA", dest_add),), supply_info["total_bu"])
     plants_t, river_t, cty_t = dm.summarize(inp, res, state)
     if any(abs(x - 1.0) > 1e-3 for x in (river_scale, pnw_scale, txg_scale, mex_scale, satl_scale, ctn_scale)):
         st.caption(f"Export scenario applied: barge-loading and East Gulf rail targets ×{river_scale:.2f}, Pacific Northwest rail ×{pnw_scale:.2f}, "
@@ -340,7 +361,7 @@ def render():
                    "Lower the hub targets or raise plant run rates.")
 
     in_state = [c for c in inp["counties"] if state is None or c["state"] == state]
-    supply = sum(c["supply_bu"] for c in in_state) / 1e6
+    supply = sum(c["supply_bu"] for c in in_state) / 1e6 * res.get("supply_scale", 1.0)
     st_plants = [r for r in plants_t if state is None or r["state"] == state]
     need_local = sum(r["need_mbu"] for r in st_plants)
     to_pl = sum(r["from_state_mbu"] for r in plants_t)
@@ -348,11 +369,30 @@ def render():
     to_rv = sum(r["from_state_mbu"] for r in river_t)
     other = supply - to_pl - to_rv
     m1, m2, m3, m4, m5 = st.columns(5)
-    m1.metric(f"{label} soybean supply", f"{supply:,.0f} M bu", help="5-year average NASS county production")
+    m1.metric(f"{label} soybean supply", f"{supply:,.0f} M bu", help="Production (5-year average NASS county production, or USDA's for the year) plus carry-in "
+                                                                       "stocks and imports, as set in the export scenario box")
     m2.metric(f"{label} crush need", f"{need_local:,.0f} M bu", help="Plants in the region, at the run rate above")
     m3.metric(f"{label} beans to crush", f"{to_pl:,.0f} M bu", f"{to_local:,.0f} to {label} plants", delta_color="off")
     m4.metric(f"{label} beans to export hubs", f"{to_rv:,.0f} M bu")
     m5.metric("Other (feed, rail export, stocks)", f"{max(other, 0):,.0f} M bu")
+
+    bal_ = supply_info["bal"]
+    if bal_:
+        n_p0 = len(inp["plants"])
+        crush_model = (float(res["need"].sum()) + float(res["barge_in"].sum())) / 1e6
+        chk = pd.DataFrame({
+            "USDA": [bal_["beginning_stocks"] + bal_["imports"], bal_["production"], bal_["supply_total"], bal_["crush"], bal_["exports"],
+                     bal_["seed"] + bal_["residual"] + bal_["ending_stocks"]],
+            "Model": [supply_info["carry"] + supply_info["imports"], supply_info["production"], supply_info["total_bu"] / 1e6, crush_model,
+                      float(res["flow"][:, n_p0:].sum()) / 1e6, float(res["other_total"]) / 1e6]},
+            index=["Carry-in stocks + imports", "Production", "Total supply", "Crush (plants, incl. barge-fed)", "Exports (export and container hubs)",
+                   "Seed + residual + ending stocks (model: what is left)"])
+        with st.expander(f"Supply and use check against USDA, national ({es.label(supply_info['my'])}, WASDE {bal_['as_of']}), M bu"):
+            st.dataframe(chk.style.format("{:,.0f}"), use_container_width=True)
+            st.caption(f"USDA's crush for the year is {bal_['crush']:,.0f}M bu against {crush_model:,.0f}M for the plants at the run rate above "
+                       f"(x{bal_['crush'] / max(crush_model, 1) * util:,.2f} of the workbook): the plant run-rate slider is where to close that gap. The model's hubs "
+                       "run on inspections, about 3% below USDA's export number. 'What is left' is seed, feed and residual use plus ending stocks, so it should land near "
+                       "USDA's last line; a bigger gap says supply is too high or the uses are too low.")
 
     # ---- the map: counties by the hub or plant they draw to, one marker per hub
     n_p = len(inp["plants"])
@@ -361,7 +401,7 @@ def render():
     hubs = [h for h in hubs_in_order if h in hub_flow]
     H = np.column_stack([hub_flow[h] for h in hubs])
     P = res["flow"][:, :n_p]
-    sup = np.array([c["supply_bu"] for c in cty], float)
+    sup = np.array([c["supply_bu"] for c in cty], float) * res.get("supply_scale", 1.0)
     top_load = {r["plant"]: r["from_state_mbu"] for r in plants_t}
     ranked = [k for k, _ in sorted(top_load.items(), key=lambda kv: -kv[1]) if top_load[k] > 0][:len(PALETTE)]
     color_of = {k: PALETTE[i] for i, k in enumerate(ranked)}

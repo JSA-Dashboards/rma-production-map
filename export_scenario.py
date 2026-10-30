@@ -47,6 +47,15 @@ def wasde() -> dict:
     return _read("soy_exports_wasde.json", lambda p: json.load(open(p, encoding="utf8")))
 
 
+def balance() -> dict:
+    """US soybean balance sheet by marketing year (M bu), keyed by the year it starts: beginning stocks, production, imports, crush, exports, seed, residual,
+    ending stocks (build_soy_balance.py, from the WASDE report files). {} when the file is missing."""
+    try:
+        return _read("soy_balance_wasde.json", lambda p: json.load(open(p, encoding="utf8")))["years"]
+    except OSError:
+        return {}
+
+
 def label(my: int) -> str:
     return f"{my}/{str(my + 1)[2:]}"
 

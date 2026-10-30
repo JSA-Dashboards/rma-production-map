@@ -62,7 +62,7 @@ EAST_GULF_KINDS = ("lagulf", "mobile")         # East Gulf beans that did not ar
 
 
 def solve(inputs: dict, *, rate=CENTS_PER_BU_MILE, tau=1.0, river_premium=0.0, plant_premium=None, util=1.0, river_share=1.0, iters=400,
-          nodes=None, lock_scale=1.0, area_mbu=None, pin_cap_mbu=None, river_scale=1.0, pnw_reach_miles=30.0, rail_scales=None, rail_rates=None, barge_fed=None, rail_tau=None, plant_extra_mbu=None):
+          nodes=None, lock_scale=1.0, area_mbu=None, pin_cap_mbu=None, river_scale=1.0, pnw_reach_miles=30.0, rail_scales=None, rail_rates=None, barge_fed=None, rail_tau=None, plant_extra_mbu=None, supply_total_bu=None):
     """Flows (bu) county x buyer.
 
     rate           freight, cents per bushel-mile
@@ -92,6 +92,9 @@ def solve(inputs: dict, *, rate=CENTS_PER_BU_MILE, tau=1.0, river_premium=0.0, p
                    of 20-30 cents, so the hubs fed from many states (Louisiana, Mobile) need a wider crossover
     plant_extra_mbu  {plant key: M bu/yr} soybeans a plant crushes beyond the workbook (a plant that expanded since): added to its need before the
                    barge-fed share is taken
+    supply_total_bu  total soybeans the counties supply, in bushels (None = the sum of the counties' 5-year average production). The tab passes production
+                   (5-year average or USDA's) plus the carry-in stocks and imports; every county's supply is scaled pro rata, since stocks sit where beans
+                   are grown and nothing here records where imports enter
     barge_fed      {plant key: share of its need that arrives by barge} (None = BARGE_FED_DEFAULT). That part is not drawn from counties by truck: it comes
                    out of the barge loadings, so it is taken off what reaches the export elevators and, for a plant with a BARGE_POOL, added back to that
                    pool's loadings. The Louisiana rail and truck hub's target is an explicit estimate (LA_RAIL_TRUCK_MBU in build_river_segments.py)
@@ -101,6 +104,8 @@ def solve(inputs: dict, *, rate=CENTS_PER_BU_MILE, tau=1.0, river_premium=0.0, p
     cty, plants, river = inputs["counties"], inputs["plants"], inputs["river"]
     miles = np.array([[np.nan if m is None else m for m in row] for row in inputs["miles"]], float)
     supply = np.array([c["supply_bu"] for c in cty], float)
+    supply_scale = float(supply_total_bu) / supply.sum() if supply_total_bu else 1.0
+    supply = supply * supply_scale
     need = np.array([p["need_bu"] for p in plants], float) * util
     need = need + np.array([float((plant_extra_mbu or {}).get(p["key"], 0.0)) * 1e6 for p in plants])
     bf = BARGE_FED_DEFAULT if barge_fed is None else barge_fed
@@ -206,7 +211,7 @@ def solve(inputs: dict, *, rate=CENTS_PER_BU_MILE, tau=1.0, river_premium=0.0, p
             if n_r:
                 v[n_p:] = (river_total / max(rv, 1e-300)) if river_total > 0 else 0.0
     flow = u[:, None] * K * v[None, :]
-    out = {"flow": flow, "supply": supply, "need": need, "barge_in": barge_in, "scale": scale, "river_total": river_total, "other_total": other_total,
+    out = {"flow": flow, "supply": supply, "supply_scale": supply_scale, "need": need, "barge_in": barge_in, "scale": scale, "river_total": river_total, "other_total": other_total,
            "miles": miles, "cost": cost}
     if groups is not None:
         out["groups"] = [{"name": g["name"], "kind": g["kind"], "hub": g["hub"], "anchor": g.get("anchor"), "cols": g["cols"], "target_bu": g["target_bu"],
