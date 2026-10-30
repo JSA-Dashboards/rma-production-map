@@ -48,6 +48,8 @@ EXTRA_RIVER_PINS = [
     # East Gulf export elevators that beans reach by rail or truck instead of barge: Louisiana (Reserve to Destrehan) and Mobile, each one hub point.
     {"key": "Louisiana rail hub (Reserve/Convent)", "state": "LA", "lat": 30.06, "lon": -90.55, "site": "la-rail-hub"},
     {"key": "Mobile hub (Mobile/Pascagoula)", "state": "AL", "lat": 30.70, "lon": -88.04, "site": "mobile-hub"},
+    # The South Atlantic ports (Norfolk/Chesapeake, Charleston, Savannah) as one hub point at Norfolk, fed by CSX and NS.
+    {"key": "South Atlantic hub (Norfolk/Chesapeake)", "state": "VA", "lat": 36.85, "lon": -76.30, "site": "south-atlantic-hub"},
     {"key": "Louis Dreyfus Cahokia IL", "state": "IL", "lat": 38.5662, "lon": -90.1794, "site": "ldc-cahokia"},
     {"key": "Bruce Oakley Cahokia IL", "state": "IL", "lat": 38.5662, "lon": -90.1794, "site": "oakley-cahokia"},
 ]

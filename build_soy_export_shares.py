@@ -65,8 +65,17 @@ def fgis_by_region():
 
 def fgis_mexico_rail():
     """Soybeans inspected for Mexico on a railcar (any region), M bu by marketing year. Truck crossings are not inspected, so this is the rail share only."""
+    return _fgis_series("type_carrier_text='RAIL' and destination like '%MEXICO%'")
+
+
+def fgis_south_atlantic():
+    """Soybeans loaded on ships at the South Atlantic ports (Norfolk/Chesapeake, Charleston, Savannah...), M bu by marketing year. Containers are left out."""
+    return _fgis_series("fgis_reg='EAST COAST' and port='S. ATLANTIC' and type_carrier_text='SHIP'")
+
+
+def _fgis_series(cond):
     q = {"$select": "year,month,sum(pounds) as lbs", "$group": "year,month", "$limit": "50000",
-         "$where": "grain='SOYBEANS' and year>=2003 and type_carrier_text='RAIL' and destination like '%MEXICO%'"}
+         "$where": "grain='SOYBEANS' and year>=2003 and " + cond}
     f = pd.DataFrame(json.load(urllib.request.urlopen(FGIS + urllib.parse.urlencode(q), timeout=180)))
     f["year"], f["month"] = f.year.astype(int), f.month.astype(int)
     f["my"] = f.year.where(f.month >= 9, f.year - 1)
@@ -100,6 +109,7 @@ def main(psd_json=None, from_wasde=False):
     inter = f[f.ams_reg == "INTERIOR"].groupby("my").mbu.sum()
     t = pd.DataFrame({"east_gulf_mbu": by["EAST GULF"], "west_gulf_mbu": by["WEST GULF"], "west_coast_mbu": by["WEST COAST"], "interior_mbu": inter})
     t["mexico_rail_mbu"] = fgis_mexico_rail().reindex(t.index).fillna(0.0)
+    t["south_atlantic_mbu"] = fgis_south_atlantic().reindex(t.index).fillna(0.0)
     t["fgis_inspected_mbu"] = by.sum(axis=1)
     t = t.join(ex.set_index("marketYear").exports_mbu.rename("usda_exports_mbu"), how="inner")
     last_full = datetime.date.today().year - (0 if datetime.date.today().month >= 9 else 1) - 1      # the marketing year that just ended
@@ -110,9 +120,11 @@ def main(psd_json=None, from_wasde=False):
     t["us_gulf_share_pct"] = (t.east_gulf_mbu + t.west_gulf_mbu) / t.fgis_inspected_mbu * 100
     t["west_gulf_share_pct"] = t.west_gulf_mbu / t.fgis_inspected_mbu * 100
     t["mexico_rail_share_pct"] = t.mexico_rail_mbu / t.fgis_inspected_mbu * 100
+    t["south_atlantic_share_pct"] = t.south_atlantic_mbu / t.fgis_inspected_mbu * 100
     t.index.name = "marketing_year_start"
     cols = ["usda_exports_mbu", "fgis_inspected_mbu", "inspected_over_usda", "east_gulf_mbu", "west_gulf_mbu", "west_coast_mbu", "interior_mbu", "mexico_rail_mbu",
-            "east_gulf_share_pct", "us_gulf_share_pct", "west_coast_share_pct", "interior_share_pct", "west_gulf_share_pct", "mexico_rail_share_pct"]
+            "south_atlantic_mbu", "east_gulf_share_pct", "us_gulf_share_pct", "west_coast_share_pct", "interior_share_pct", "west_gulf_share_pct",
+            "mexico_rail_share_pct", "south_atlantic_share_pct"]
     csv_text = t[cols].round(3).to_csv()
     if os.path.exists(cpath) and len(t) < sum(1 for _ in open(cpath)) - 1:
         _fail(f"the share table would shrink from {sum(1 for _ in open(cpath)) - 1} to {len(t)} marketing years")

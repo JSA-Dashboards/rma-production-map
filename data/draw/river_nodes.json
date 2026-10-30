@@ -7,6 +7,7 @@
   "west_gulf_mbu": 30.109004696666666,
   "mexico_rail_mbu": 126.38779999999998,
   "east_gulf_port_mbu": 18.5844591,
+  "south_atlantic_mbu": 47.94728985666667,
   "mexico_rail_states_mbu": {
    "MO": 31.79,
    "NE": 24.6,
@@ -49,6 +50,10 @@
   "mobile": [
    "CSXT",
    "CN",
+   "NS"
+  ],
+  "satl": [
+   "CSXT",
    "NS"
   ]
  },
@@ -474,6 +479,34 @@
    ],
    "note": "FGIS soybean ship inspections at the East Gulf ports other than the Mississippi River.",
    "hub": "Mobile"
+  },
+  {
+   "name": "South Atlantic (Norfolk, Chesapeake, Charleston, Savannah)",
+   "kind": "satl",
+   "pins": [
+    "South Atlantic hub (Norfolk/Chesapeake)"
+   ],
+   "target_mbu": 47.94728985666667,
+   "anchor": "South Atlantic hub (Norfolk/Chesapeake)",
+   "origin_states": [
+    "OH",
+    "IN",
+    "MI",
+    "IL",
+    "KY",
+    "TN",
+    "VA",
+    "NC",
+    "SC",
+    "MD",
+    "DE",
+    "PA",
+    "NJ",
+    "WV",
+    "GA"
+   ],
+   "note": "FGIS soybean ship inspections at the South Atlantic ports, 2021-25 average (down from 67M bu in 2021/22 to about 35M in 2025/26). Containers (16M bu) are not in it.",
+   "hub": "South Atlantic"
   }
  ],
  "dropped": [

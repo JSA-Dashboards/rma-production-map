@@ -45,8 +45,8 @@ def load_nodes(path: str = NODES) -> dict:
 
 # Hubs the model feeds by rail rather than by barge: which railroads reach them (indices into county_rail_service.json's [BNSF, UP, CPKC, CN, CSXT, NS]).
 # The Pacific Northwest is fed almost entirely by BNSF and UP; Texas Gulf and the Mexican border take BNSF, UP and CPKC (the former KCS, strong at Laredo);
-# Louisiana's export elevators take UP, CPKC and CN (the old Illinois Central, the line down from Illinois and Iowa); Mobile takes CSX, CN and NS.
-RAIL_KINDS = {"pnw": (0, 1), "txgulf": (0, 1, 2), "mexico": (0, 1, 2), "lagulf": (1, 2, 3), "mobile": (3, 4, 5)}
+# Louisiana's export elevators take UP, CPKC and CN (the old Illinois Central, the line down from Illinois and Iowa); Mobile takes CSX, CN and NS; the South Atlantic (Norfolk) takes CSX and NS.
+RAIL_KINDS = {"pnw": (0, 1), "txgulf": (0, 1, 2), "mexico": (0, 1, 2), "lagulf": (1, 2, 3), "mobile": (3, 4, 5), "satl": (4, 5)}
 
 # Crush plants fed by barge from upriver instead of (or as well as) county trucks, as a share of the plant's need. Bunge Destrehan takes the barge and
 # stops it before export; ADM Quincy and Cargill Owensboro take some, from north of where they sit. A barge bean a plant takes is a bean the Gulf export
