@@ -146,6 +146,13 @@ CENSUS_COAST = {"LOS ANGELES": "West", "LONG BEACH": "West", "OAKLAND": "West", 
 # rail-reach limit; FGIS records the port, not the farm state, so the origin states are an assumption.
 LAKES_ORIGIN_STATES = ["OH", "IN", "MI", "IL"]
 LAKES_PINS = ["Great Lakes hub"]
+# Canada: soybeans that cross by truck or rail (Census customs district of exit, build_canada_exports.py); FGIS does not inspect them. Each gateway draws from the states
+# behind it: Detroit from Michigan, Ohio and Indiana; Buffalo (with Ogdensburg and the New England ports) from New York and its neighbours; Pembina from North Dakota and
+# Minnesota. The district is where the shipment left, not where it grew, so the origin states are an assumption.
+CANADA_HUBS = [("Canada: via Detroit (MI, OH, IN)", "detroit_mbu", "Canada hub: Detroit MI", ["MI", "OH", "IN"]),
+               ("Canada: via Buffalo and Ogdensburg (NY)", "buffalo_mbu", "Canada hub: Buffalo NY", ["NY", "PA", "OH", "MI"]),
+               ("Canada: via Pembina (ND)", "pembina_mbu", "Canada hub: Pembina ND", ["ND", "MN"])]
+CANADA_FALLBACK = {"detroit_mbu": 4.6, "buffalo_mbu": 5.9, "pembina_mbu": 0.5}
 TXG_PINS = ["Texas Gulf hub"]
 LA_PINS = ["Louisiana rail hub"]                                                       # export elevators below Baton Rouge fed by rail and truck rather than barge
 MOBILE_PINS = ["Mobile hub"]                                                          # Houston / Galveston / Corpus Christi, modeled as one hub
@@ -285,7 +292,7 @@ def build_groups(segs, nodes, pins, usda, bu):
     mob_pl = [p["key"] for p in pins if any(t.lower() in p["key"].lower() for t in MOBILE_PINS)]
     sa_pl = [p["key"] for p in pins if any(t.lower() in p["key"].lower() for t in SATL_PINS)]
     lk_pl = [p["key"] for p in pins if any(t.lower() in p["key"].lower() for t in LAKES_PINS)]
-    placed.update(la_pl + mob_pl + sa_pl + lk_pl + [p["key"] for p in pins if p["key"].startswith("Container hub:")])
+    placed.update(la_pl + mob_pl + sa_pl + lk_pl + [p["key"] for p in pins if p["key"].startswith(("Container hub:", "Canada hub:"))])
     lower = [p["key"] for p in pins if p["key"] not in placed and p["key"] not in DROP_PINS]
     groups.append({"name": "Lower Mississippi, Cairo to Baton Rouge", "kind": "area", "pins": lower, "target_mbu": port(6034),
                    "note": "Waterway 6034 soybean shipments (Mouth of Ohio River to Baton Rouge); every remaining tracker pin below Lock 27"})
@@ -311,6 +318,14 @@ def build_groups(segs, nodes, pins, usda, bu):
     groups.append({"name": ename, "kind": "cont_east", "pins": epins, "origin_states": SATL_ORIGIN_STATES,
                    "target_mbu": float(sum(sm.get(s_, 0.0) for s_ in estates) + ct["atlantic_port_mbu"]),
                    "note": "Containers loaded in the East Coast port states (SC, MD, NC, VA, NJ, PA, DE) plus those inspected at the South and North Atlantic ports, 2021-25 average"})
+    try:
+        cdf = pd.read_csv(os.path.join(D, "canada_soy_by_my.csv"), index_col=0)
+        cavg = {k: float(cdf.loc[2021:2025, k].mean()) for k in CANADA_FALLBACK}
+    except OSError:
+        cavg = dict(CANADA_FALLBACK)
+    for cname, ccol, cpin, cstates in CANADA_HUBS:
+        groups.append({"name": cname, "kind": "canada", "pins": [cpin], "target_mbu": cavg[ccol], "anchor": cpin, "origin_states": cstates,
+                       "note": "US soybeans exported to Canada by truck and rail through this gateway (Census customs district of exit), 2021/22-2025/26 average. FGIS does not inspect them."})
     groups.append({"name": "Great Lakes (Toledo, Chicago, Lake Ontario)", "kind": "lakes", "pins": lk_pl, "target_mbu": float(fg["lakes_mbu"]),
                    "anchor": "Great Lakes hub (Toledo)", "origin_states": LAKES_ORIGIN_STATES,
                    "note": "FGIS soybean ship inspections at the Great Lakes ports, 2021-25 average. Toledo is 11M bu of it. It fell from 22M bu in 2021/22 to 4-6M bu in "

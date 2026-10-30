@@ -72,6 +72,7 @@ def baseline(h=None) -> dict:
             "south_atlantic": float(b.south_atlantic_mbu.mean()) if "south_atlantic_mbu" in b else 0.0,
             "container": float(b.container_mbu.mean()) if "container_mbu" in b else 0.0,
             "lakes": float(b.lakes_mbu.mean()) if "lakes_mbu" in b else 0.0,
+            "canada": float(b.canada_mbu.mean()) if "canada_mbu" in b else 0.0,
             "inspected": float(b.fgis_inspected_mbu.mean()), "usda": float(b.usda_exports_mbu.mean()), "ratio": float(b.inspected_over_usda.mean())}
 
 
@@ -79,7 +80,7 @@ def _slopes(h) -> dict:
     x = _years(h, MARGINAL_FROM, 9999)
     return {k: float(np.polyfit(x.fgis_inspected_mbu, x[c], 1)[0]) for k, c in (("east_gulf", "east_gulf_mbu"), ("west_coast", "west_coast_mbu"),
                                                                               ("interior", "interior_mbu"), ("west_gulf", "west_gulf_mbu"),
-                                                                              ("mexico_rail", "mexico_rail_mbu"), ("south_atlantic", "south_atlantic_mbu"), ("container", "container_mbu"), ("lakes", "lakes_mbu")) if c in x}
+                                                                              ("mexico_rail", "mexico_rail_mbu"), ("south_atlantic", "south_atlantic_mbu"), ("container", "container_mbu"), ("lakes", "lakes_mbu"), ("canada", "canada_mbu")) if c in x}
 
 
 def scenario(exports_mbu: float, basis: str = BASES[0], *, year: int | None = None, manual: tuple | None = None) -> dict:
@@ -93,7 +94,8 @@ def scenario(exports_mbu: float, basis: str = BASES[0], *, year: int | None = No
     if basis == BASES[3]:                                          # marginal: each region moves by its OLS slope times the change in the total
         s = _slopes(h)
         d = insp - base["inspected"]
-        eg, wc, it, tg, mx, sa, ct, lk = (max(0.0, base[k] + s.get(k, 0.0) * d) for k in ("east_gulf", "west_coast", "interior", "west_gulf", "mexico_rail", "south_atlantic", "container", "lakes"))
+        eg, wc, it, tg, mx, sa, ct, lk, cn = (max(0.0, base[k] + s.get(k, 0.0) * d) for k in ("east_gulf", "west_coast", "interior", "west_gulf", "mexico_rail", "south_atlantic",
+                                                                                              "container", "lakes", "canada"))
     else:
         if basis == BASES[4]:
             r = h.loc[year if year in h.index else h.index[-1]]
@@ -102,6 +104,7 @@ def scenario(exports_mbu: float, basis: str = BASES[0], *, year: int | None = No
             sas = r.get("south_atlantic_share_pct", 0.0)
             cts = r.get("container_share_pct", 0.0)
             lks = r.get("lakes_share_pct", 0.0)
+            cns = r.get("canada_share_pct", 0.0)
         elif basis == BASES[5]:
             egs, wcs = manual
             its = None
@@ -110,6 +113,7 @@ def scenario(exports_mbu: float, basis: str = BASES[0], *, year: int | None = No
             sas = x.south_atlantic_share_pct.mean() if "south_atlantic_share_pct" in x else 0.0
             cts = x.container_share_pct.mean() if "container_share_pct" in x else 0.0
             lks = x.lakes_share_pct.mean() if "lakes_share_pct" in x else 0.0
+            cns = x.canada_share_pct.mean() if "canada_share_pct" in x else 0.0
         else:
             a = {BASES[0]: 2021, BASES[1]: 2016, BASES[2]: 2011}[basis]
             x = _years(h, a, h.index.max())
@@ -118,10 +122,12 @@ def scenario(exports_mbu: float, basis: str = BASES[0], *, year: int | None = No
             sas = x.south_atlantic_share_pct.mean() if "south_atlantic_share_pct" in x else 0.0
             cts = x.container_share_pct.mean() if "container_share_pct" in x else 0.0
             lks = x.lakes_share_pct.mean() if "lakes_share_pct" in x else 0.0
-        eg, wc, tg, mx, sa, ct, lk = (insp * egs / 100, insp * wcs / 100, insp * tgs / 100, insp * mxs / 100, insp * sas / 100, insp * cts / 100,
-                                      insp * lks / 100)
+            cns = x.canada_share_pct.mean() if "canada_share_pct" in x else 0.0
+        eg, wc, tg, mx, sa, ct, lk, cn = (insp * egs / 100, insp * wcs / 100, insp * tgs / 100, insp * mxs / 100, insp * sas / 100, insp * cts / 100,
+                                          insp * lks / 100, insp * cns / 100)
         it = insp * its / 100 if its is not None else max(0.0, insp - eg - wc)
-    return {"exports": exports_mbu, "inspected": insp, "east_gulf": eg, "west_coast": wc, "interior": it, "west_gulf": tg, "mexico_rail": mx, "south_atlantic": sa, "container": ct, "lakes": lk,
+    return {"exports": exports_mbu, "inspected": insp, "east_gulf": eg, "west_coast": wc, "interior": it, "west_gulf": tg, "mexico_rail": mx, "south_atlantic": sa, "container": ct, "lakes": lk, "canada": cn,
+            "canada_scale": cn / base["canada"] if base["canada"] else 1.0,
             "lakes_scale": lk / base["lakes"] if base["lakes"] else 1.0,
             "container_scale": ct / base["container"] if base["container"] else 1.0,
             "satl_scale": sa / base["south_atlantic"] if base["south_atlantic"] else 1.0,

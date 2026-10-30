@@ -122,6 +122,8 @@ def main(psd_json=None, from_wasde=False):
     t["south_atlantic_mbu"] = fgis_south_atlantic().reindex(t.index).fillna(0.0)
     t["container_mbu"] = fgis_containers().reindex(t.index).fillna(0.0)
     t["lakes_mbu"] = fgis_lakes().reindex(t.index).fillna(0.0)
+    cpath_c = os.path.join(D, "canada_soy_by_my.csv")                     # trucks and railcars into Canada: Census, not FGIS (build_canada_exports.py)
+    t["canada_mbu"] = (pd.read_csv(cpath_c, index_col=0).canada_modeled_mbu.reindex(t.index).fillna(0.0) if os.path.exists(cpath_c) else 0.0)
     t["fgis_inspected_mbu"] = by.sum(axis=1)
     t = t.join(ex.set_index("marketYear").exports_mbu.rename("usda_exports_mbu"), how="inner")
     last_full = datetime.date.today().year - (0 if datetime.date.today().month >= 9 else 1) - 1      # the marketing year that just ended
@@ -135,10 +137,11 @@ def main(psd_json=None, from_wasde=False):
     t["south_atlantic_share_pct"] = t.south_atlantic_mbu / t.fgis_inspected_mbu * 100
     t["container_share_pct"] = t.container_mbu / t.fgis_inspected_mbu * 100
     t["lakes_share_pct"] = t.lakes_mbu / t.fgis_inspected_mbu * 100
+    t["canada_share_pct"] = t.canada_mbu / t.fgis_inspected_mbu * 100
     t.index.name = "marketing_year_start"
     cols = ["usda_exports_mbu", "fgis_inspected_mbu", "inspected_over_usda", "east_gulf_mbu", "west_gulf_mbu", "west_coast_mbu", "interior_mbu", "mexico_rail_mbu",
-            "south_atlantic_mbu", "container_mbu", "lakes_mbu", "east_gulf_share_pct", "us_gulf_share_pct", "west_coast_share_pct", "interior_share_pct", "west_gulf_share_pct",
-            "mexico_rail_share_pct", "south_atlantic_share_pct", "container_share_pct", "lakes_share_pct"]
+            "south_atlantic_mbu", "container_mbu", "lakes_mbu", "canada_mbu", "east_gulf_share_pct", "us_gulf_share_pct", "west_coast_share_pct", "interior_share_pct", "west_gulf_share_pct",
+            "mexico_rail_share_pct", "south_atlantic_share_pct", "container_share_pct", "lakes_share_pct", "canada_share_pct"]
     csv_text = t[cols].round(3).to_csv()
     if os.path.exists(cpath) and len(t) < sum(1 for _ in open(cpath)) - 1:
         _fail(f"the share table would shrink from {sum(1 for _ in open(cpath)) - 1} to {len(t)} marketing years")

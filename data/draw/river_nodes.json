@@ -638,6 +638,54 @@
    "hub": "Container: East Coast port transloads (Baltimore to Charleston)"
   },
   {
+   "name": "Canada: via Detroit (MI, OH, IN)",
+   "kind": "canada",
+   "pins": [
+    "Canada hub: Detroit MI"
+   ],
+   "target_mbu": 4.6659999999999995,
+   "anchor": "Canada hub: Detroit MI",
+   "origin_states": [
+    "MI",
+    "OH",
+    "IN"
+   ],
+   "note": "US soybeans exported to Canada by truck and rail through this gateway (Census customs district of exit), 2021/22-2025/26 average. FGIS does not inspect them.",
+   "hub": "Canada: via Detroit (MI, OH, IN)"
+  },
+  {
+   "name": "Canada: via Buffalo and Ogdensburg (NY)",
+   "kind": "canada",
+   "pins": [
+    "Canada hub: Buffalo NY"
+   ],
+   "target_mbu": 5.9033999999999995,
+   "anchor": "Canada hub: Buffalo NY",
+   "origin_states": [
+    "NY",
+    "PA",
+    "OH",
+    "MI"
+   ],
+   "note": "US soybeans exported to Canada by truck and rail through this gateway (Census customs district of exit), 2021/22-2025/26 average. FGIS does not inspect them.",
+   "hub": "Canada: via Buffalo and Ogdensburg (NY)"
+  },
+  {
+   "name": "Canada: via Pembina (ND)",
+   "kind": "canada",
+   "pins": [
+    "Canada hub: Pembina ND"
+   ],
+   "target_mbu": 0.5114,
+   "anchor": "Canada hub: Pembina ND",
+   "origin_states": [
+    "ND",
+    "MN"
+   ],
+   "note": "US soybeans exported to Canada by truck and rail through this gateway (Census customs district of exit), 2021/22-2025/26 average. FGIS does not inspect them.",
+   "hub": "Canada: via Pembina (ND)"
+  },
+  {
    "name": "Great Lakes (Toledo, Chicago, Lake Ontario)",
    "kind": "lakes",
    "pins": [

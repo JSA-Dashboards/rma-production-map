@@ -68,6 +68,10 @@ EXTRA_RIVER_PINS = [
     {"key": "Container hub: New Jersey", "state": "NJ", "lat": 40.67, "lon": -74.20, "site": "cont-nj"},
     # The Great Lakes ports (Toledo, Chicago, Lake Ontario) as one hub point at Toledo, where almost all the soybeans load.
     {"key": "Great Lakes hub (Toledo)", "state": "OH", "lat": 41.68, "lon": -83.46, "site": "great-lakes-hub"},
+    # Canada: truck and rail shipments leave the US at these gateways (Census customs district of exit). Detroit and Buffalo carry nearly all of it.
+    {"key": "Canada hub: Detroit MI", "state": "MI", "lat": 42.31, "lon": -83.07, "site": "canada-detroit"},
+    {"key": "Canada hub: Buffalo NY", "state": "NY", "lat": 42.90, "lon": -78.90, "site": "canada-buffalo"},
+    {"key": "Canada hub: Pembina ND", "state": "ND", "lat": 48.97, "lon": -97.24, "site": "canada-pembina"},
     {"key": "Louis Dreyfus Cahokia IL", "state": "IL", "lat": 38.5662, "lon": -90.1794, "site": "ldc-cahokia"},
     {"key": "Bruce Oakley Cahokia IL", "state": "IL", "lat": 38.5662, "lon": -90.1794, "site": "oakley-cahokia"},
 ]
