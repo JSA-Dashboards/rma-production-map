@@ -19,11 +19,13 @@ import numpy as np
 
 INPUTS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "draw", "draw_inputs.json")
 NODES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "draw", "river_nodes.json")
+INPUTS_CORN = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "draw", "draw_inputs_corn.json")        # the corn model: same solver, other inputs
+NODES_CORN = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "draw", "river_nodes_corn.json")
 RAIL_SERVICE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "draw", "county_rail_service.json")
 CENTS_PER_BU_MILE = 0.02            # Kolten's NY note: 3 cents/bu for 152 miles
 
 
-@lru_cache(maxsize=1)
+@lru_cache(maxsize=4)
 def load(path: str = INPUTS) -> dict:
     with open(path, encoding="utf8") as fh:
         return json.load(fh)
@@ -36,7 +38,7 @@ def load_rail_service(path: str = RAIL_SERVICE) -> dict:
         return json.load(fh)["counties"]
 
 
-@lru_cache(maxsize=1)
+@lru_cache(maxsize=4)
 def load_nodes(path: str = NODES) -> dict:
     """River pin groups with annual soybean targets, from build_river_segments.py (lock tonnage + Gulf inspections)."""
     with open(path, encoding="utf8") as fh:

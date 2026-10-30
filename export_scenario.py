@@ -38,20 +38,20 @@ def _read(name, loader):
     return value
 
 
-def history() -> pd.DataFrame:
-    """One row per completed marketing year (index = the year it starts): USDA exports, FGIS inspected bushels by region, shares."""
-    return _read("soy_export_shares_by_my.csv", lambda p: pd.read_csv(p, index_col=0))
+def history(crop: str = "soy") -> pd.DataFrame:
+    """One row per completed marketing year (index = the year it starts): USDA exports, FGIS inspected bushels by region, shares. crop = "soy" or "corn"."""
+    return _read(f"{crop}_export_shares_by_my.csv", lambda p: pd.read_csv(p, index_col=0))
 
 
 def wasde() -> dict:
     return _read("soy_exports_wasde.json", lambda p: json.load(open(p, encoding="utf8")))
 
 
-def balance() -> dict:
-    """US soybean balance sheet by marketing year (M bu), keyed by the year it starts: beginning stocks, production, imports, crush, exports, seed, residual,
-    ending stocks (build_soy_balance.py, from the WASDE report files). {} when the file is missing."""
+def balance(crop: str = "soy") -> dict:
+    """US balance sheet by marketing year (M bu), keyed by the year it starts: beginning stocks, production, imports, exports, ending stocks and the uses (soybeans: crush, seed,
+    residual; corn: ethanol, feed and residual, food/seed/industrial), from the WASDE report files (build_soy_balance.py [--crop corn]). {} when the file is missing."""
     try:
-        return _read("soy_balance_wasde.json", lambda p: json.load(open(p, encoding="utf8")))["years"]
+        return _read(f"{crop}_balance_wasde.json", lambda p: json.load(open(p, encoding="utf8")))["years"]
     except OSError:
         return {}
 
@@ -83,12 +83,12 @@ def _slopes(h) -> dict:
                                                                               ("mexico_rail", "mexico_rail_mbu"), ("south_atlantic", "south_atlantic_mbu"), ("container", "container_mbu"), ("lakes", "lakes_mbu"), ("canada", "canada_mbu")) if c in x}
 
 
-def scenario(exports_mbu: float, basis: str = BASES[0], *, year: int | None = None, manual: tuple | None = None) -> dict:
+def scenario(exports_mbu: float, basis: str = BASES[0], *, year: int | None = None, manual: tuple | None = None, crop: str = "soy") -> dict:
     """USDA export number (M bu) -> inspected bushels -> East Gulf / West Coast / interior bushels, and the scale factors for the model.
 
     The export number is USDA's; inspections run about 3% below it (inspected_over_usda, 2021-25 average), so it is converted first.
     """
-    h = history()
+    h = history(crop)
     base = baseline(h)
     insp = exports_mbu * base["ratio"]
     if basis == BASES[3]:                                          # marginal: each region moves by its OLS slope times the change in the total
@@ -136,12 +136,12 @@ def scenario(exports_mbu: float, basis: str = BASES[0], *, year: int | None = No
             "river_scale": eg / base["east_gulf"], "pnw_scale": wc / base["west_coast"], "base": base}
 
 
-def sensitivity(exports_mbu: float) -> pd.DataFrame:
+def sensitivity(exports_mbu: float, crop: str = "soy") -> pd.DataFrame:
     """The same export number under each share basis, so the spread from the share assumption alone is visible."""
-    h = history()
+    h = history(crop)
     rows = []
     for b in BASES[:4]:
-        s = scenario(exports_mbu, b)
+        s = scenario(exports_mbu, b, crop=crop)
         rows.append((b if b != BASES[3] else "Marginal", s["east_gulf_share"], s["east_gulf"], s["west_coast"], s["river_scale"]))
     x = _years(h, MARGINAL_FROM, h.index.max())
     insp = exports_mbu * baseline(h)["ratio"]

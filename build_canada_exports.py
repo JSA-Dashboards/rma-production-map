@@ -25,11 +25,13 @@ import pandas as pd
 HERE = os.path.dirname(os.path.abspath(__file__))
 SRC = os.path.join(HERE, "data", "draw", "canada_soy_census.json")
 OUT = os.path.join(HERE, "data", "draw", "canada_soy_by_my.csv")
+CORN_SRC = os.path.join(HERE, "data", "draw", "canada_corn_census.json")
+CORN_OUT = os.path.join(HERE, "data", "draw", "canada_corn_by_my.csv")
 GROUPS = {"detroit_mbu": ["38", "41"], "buffalo_mbu": ["09", "07", "02", "01"], "pembina_mbu": ["34", "36", "35", "33"]}
-BU_PER_KT = 36.7437 / 1000            # thousand tonnes -> M bu
+BU_PER_KT = 36.7437 / 1000            # thousand tonnes -> M bu (soybeans; corn is 39.3680 bushels a tonne)
 
 
-def main(src=SRC):
+def main(src=SRC, out_path=OUT, bu_per_kt=BU_PER_KT):
     d = json.load(open(src))
     rows = []
     for ym, v in d["months"].items():
@@ -43,14 +45,17 @@ def main(src=SRC):
     for name, dists in GROUPS.items():
         cols = [c for c in dists if c in df]
         used.update(cols)
-        out[name] = df.groupby("my")[cols].sum().sum(axis=1) * BU_PER_KT
+        out[name] = df.groupby("my")[cols].sum().sum(axis=1) * bu_per_kt
     other = [c for c in df.columns if c not in used and c not in ("my", "ym")]
-    out["other_mbu"] = df.groupby("my")[other].sum().sum(axis=1) * BU_PER_KT
+    out["other_mbu"] = df.groupby("my")[other].sum().sum(axis=1) * bu_per_kt
     out["canada_modeled_mbu"] = out[list(GROUPS)].sum(axis=1)
     out.index.name = "marketing_year_start"
-    out.round(3).to_csv(OUT)
+    out.round(3).to_csv(out_path)
     print(out.round(1).tail(8).to_string())
 
 
 if __name__ == "__main__":
-    main(sys.argv[1] if len(sys.argv) > 1 else SRC)
+    if "corn" in sys.argv:
+        main(CORN_SRC, CORN_OUT, 39.368 / 1000)
+    else:
+        main(sys.argv[1] if len(sys.argv) > 1 else SRC)

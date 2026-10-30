@@ -37,6 +37,10 @@ def seg_dist(clat, clon, segs):
 def main():
     lines = json.load(open(os.path.join(D, "rail_map", "rail_lines.json")))
     cty = json.load(open(os.path.join(D, "draw", "draw_inputs.json")))["counties"]
+    corn = os.path.join(D, "draw", "draw_inputs_corn.json")                  # the corn model has more counties (Texas, Kansas, the Dakotas, the west)
+    if os.path.exists(corn):
+        have = {c["fips"] for c in cty}
+        cty = cty + [c for c in json.load(open(corn))["counties"] if c["fips"] not in have]
     clat = np.array([c["lat"] for c in cty])
     clon = np.array([c["lon"] for c in cty])
     cols = []

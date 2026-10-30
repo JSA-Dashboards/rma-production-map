@@ -35,21 +35,30 @@ main() {
   key=$(sed -n 's/^CENSUS_API_KEY=//p' "$ENV_FILE" | head -n 1 | tr -d "\"'\r")
   [ -n "$key" ] || { echo "no CENSUS_API_KEY in $ENV_FILE"; return 1; }
   CENSUS_API_KEY="$key" "$PY" build_canada_census.py
+  CENSUS_API_KEY="$key" "$PY" build_canada_census.py corn
 
-  if git diff --quiet -- data/draw/canada_soy_census.json; then
+  if git diff --quiet -- data/draw/canada_soy_census.json data/draw/canada_corn_census.json; then
     echo "nothing to commit"
     return 0
   fi
-  "$PY" build_canada_exports.py > /dev/null
-  "$PY" build_soy_export_shares.py --from-wasde
-  "$PY" build_river_segments.py > /dev/null          # the Canada hub targets (river_nodes.json) are the 2021-25 average of the new table
-
-  local files="data/draw/canada_soy_census.json data/draw/canada_soy_by_my.csv data/draw/soy_export_shares_by_my.csv data/draw/river_nodes.json"
+  local files="data/draw/canada_soy_census.json data/draw/canada_corn_census.json"
+  if ! git diff --quiet -- data/draw/canada_soy_census.json; then
+    "$PY" build_canada_exports.py > /dev/null
+    "$PY" build_soy_export_shares.py --from-wasde
+    "$PY" build_river_segments.py > /dev/null          # the Canada hub targets (river_nodes.json) are the 2021-25 average of the new table
+    files="$files data/draw/canada_soy_by_my.csv data/draw/soy_export_shares_by_my.csv data/draw/river_nodes.json"
+  fi
+  if ! git diff --quiet -- data/draw/canada_corn_census.json; then
+    "$PY" build_canada_exports.py corn > /dev/null
+    "$PY" build_corn_export_shares.py > /dev/null
+    "$PY" build_corn_nodes.py > /dev/null              # the corn Canada hub targets (river_nodes_corn.json), with the rest of the corn hubs refreshed from FGIS
+    files="$files data/draw/canada_corn_by_my.csv data/draw/corn_export_shares_by_my.csv data/draw/river_nodes_corn.json data/draw/river_segments_corn.json"
+  fi
   git config user.email '275148418+koltenpostin93-blip@users.noreply.github.com'
   git config user.name 'JSA Droplet'
   # shellcheck disable=SC2086
   git add $files
-  git commit -q -m "data: refresh US soybean exports to Canada by gateway from Census ($(date +%F))"
+  git commit -q -m "data: refresh US soybean and corn exports to Canada by gateway from Census ($(date +%F))"
   if [ "${CAN_NO_PUSH:-0}" = 1 ]; then
     echo "CAN_NO_PUSH=1: committed locally, not pushed"
     return 0

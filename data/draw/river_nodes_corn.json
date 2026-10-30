@@ -1,0 +1,596 @@
+{
+ "fgis": {
+  "east_gulf_mbu": 1208.1969151857143,
+  "west_coast_columbia_mbu": 361.1072835142857,
+  "west_coast_puget_mbu": 210.51572096428572,
+  "west_coast_mbu": 571.8399687642857,
+  "west_gulf_mbu": 28.5367199,
+  "mexico_rail_mbu": 463.6036428571428,
+  "mexico_rail_states_mbu": {
+   "IL": 134.18,
+   "IA": 91.02,
+   "KS": 88.2,
+   "MO": 59.01,
+   "NE": 55.71,
+   "MN": 14.11,
+   "WI": 8.3,
+   "LA": 8.16,
+   "ND": 3.54,
+   "SD": 0.83,
+   "CO": 0.36,
+   "OK": 0.09,
+   "IN": 0.08
+  },
+  "east_gulf_port_mbu": 0.0,
+  "south_atlantic_mbu": 21.435609535714285,
+  "lakes_mbu": 10.392123964285714,
+  "source": "FGIS corn inspections, marketing years 2021/22-2025/26 average"
+ },
+ "pnw_rail": {
+  "railroads": [
+   "BNSF",
+   "UP"
+  ],
+  "note": "BNSF and UP feed nearly all of the Pacific Northwest; CPKC is left out"
+ },
+ "containers": {
+  "states_mbu": {},
+  "atlantic_port_mbu": 0.0,
+  "source": "corn: no container hubs"
+ },
+ "rail_hubs": {
+  "txgulf": [
+   "BNSF",
+   "UP",
+   "CPKC"
+  ],
+  "mexico": [
+   "BNSF",
+   "UP",
+   "CPKC"
+  ],
+  "lagulf": [
+   "UP",
+   "CPKC",
+   "CN"
+  ],
+  "mobile": [
+   "CSXT",
+   "CN",
+   "NS"
+  ],
+  "satl": [
+   "CSXT",
+   "NS"
+  ],
+  "cont_east": [
+   "CSXT",
+   "NS"
+  ]
+ },
+ "measured_arrivals_mbu": 629.1087071428572,
+ "area_total_mbu": 335.6090535714286,
+ "unplaced_lock_nodes": [
+  {
+   "name": "MS-6 Wood River / Granite City + Missouri River (Pool 27)",
+   "target_mbu": 18.860978571428547
+  }
+ ],
+ "groups": [
+  {
+   "name": "IL-1 Joliet / Morris / Seneca",
+   "kind": "lock",
+   "pins": [
+    "ADM Morris, IL",
+    "CHS Seneca"
+   ],
+   "target_mbu": 27.060749849182486,
+   "range_mbu": [
+    15.780889550944016,
+    41.5291473324321
+   ],
+   "hub": "Illinois River"
+  },
+  {
+   "name": "IL-2 Ottawa (Marseilles to Starved Rock)",
+   "kind": "lock",
+   "pins": [
+    "ADM Ottawa, IL (North Side)",
+    "ADM Ottawa, IL (South)",
+    "CGB - River Landing",
+    "CHS Ottawa River Mkt"
+   ],
+   "target_mbu": 9.093569926160797,
+   "range_mbu": [
+    5.24825857478322,
+    16.321921322536575
+   ],
+   "hub": "Illinois River"
+  },
+  {
+   "name": "IL-3 Peru / Spring Valley / Hennepin / Lacon (Starved Rock to Peoria)",
+   "kind": "lock",
+   "pins": [
+    "ADM Hennepin, IL",
+    "ADM Lacon, IL",
+    "ADM Spring Valley, IL",
+    "CGB HENNEPIN",
+    "CHS Peru Marketstreet",
+    "Cargill Lacon",
+    "Cargill Spring Valley South"
+   ],
+   "target_mbu": 77.86073417051207,
+   "range_mbu": [
+    53.784828666302076,
+    107.14197456175056
+   ],
+   "hub": "Illinois River"
+  },
+  {
+   "name": "IL-4 Pekin / Havana / Beardstown (Peoria to La Grange)",
+   "kind": "lock",
+   "pins": [
+    "ADM Creve Coeur, IL",
+    "ADM Havana, IL",
+    "CHS Havana/Beardstown",
+    "Cargill Beardstown",
+    "Cargill Havana"
+   ],
+   "target_mbu": 44.58059605414464,
+   "range_mbu": [
+    29.872629387672024,
+    79.31294995073331
+   ],
+   "hub": "Illinois River"
+  },
+  {
+   "name": "MS-1 Twin Cities / Winona / Clayton (above L&D 10)",
+   "kind": "lock",
+   "pins": [
+    "ADM St. Paul, MN (Elevator D)",
+    "ADM Winona, MN",
+    "CGB CLAYTON",
+    "CGB SAVAGE",
+    "CHS Savage",
+    "CHS Winona",
+    "Cargill Savage"
+   ],
+   "target_mbu": 87.50051047817962,
+   "range_mbu": [
+    47.095925695708395,
+    159.13663039950873
+   ],
+   "hub": "Upper Mississippi"
+  },
+  {
+   "name": "MS-2 Dubuque / Clinton / Quad Cities (L&D 10 to 15)",
+   "kind": "lock",
+   "pins": [
+    "ADM Clinton, IA (Elevator)",
+    "CGB ALBANY",
+    "CHS Davenport",
+    "Cargill Bettendorf"
+   ],
+   "target_mbu": 26.834353807534647,
+   "range_mbu": [
+    19.511217161434462,
+    39.59851617479714
+   ],
+   "hub": "Upper Mississippi"
+  },
+  {
+   "name": "MS-3 Muscatine / Burlington (L&D 15 to 19)",
+   "kind": "lock",
+   "pins": [
+    "ADM Burlington, IA",
+    "ADM Gulfport, IL",
+    "CGB - Dallas City",
+    "CGB - Meekers Landing",
+    "CGB - Nauvoo",
+    "CGB - Oquawka",
+    "Cargill Keithsburg",
+    "Cargill Muscatine",
+    "Cargill New Boston"
+   ],
+   "target_mbu": 58.89891587195202,
+   "range_mbu": [
+    37.35230691536705,
+    82.87519303328023
+   ],
+   "hub": "Upper Mississippi"
+  },
+  {
+   "name": "MS-4 Keokuk / Quincy / Hannibal (L&D 19 to 25)",
+   "kind": "lock",
+   "pins": [
+    "ADM Quincy, IL (Barge Dock)",
+    "CGB - East Hannibal",
+    "CGB - Lagrange",
+    "CHS Quincy Elevator",
+    "Cargill Buffalo Island"
+   ],
+   "target_mbu": 61.30381269947655,
+   "range_mbu": [
+    39.64405022749009,
+    90.35108675716646
+   ],
+   "hub": "Upper Mississippi"
+  },
+  {
+   "name": "MS-5 Alton / Grafton / IL River below La Grange (Pool 26)",
+   "kind": "lock",
+   "pins": [
+    "CGB - Naples",
+    "Cargill Meredosia"
+   ],
+   "target_mbu": 18.567564285714305,
+   "range_mbu": [
+    0.9285000000000166,
+    53.809464285714284
+   ],
+   "hub": "Upper Mississippi"
+  },
+  {
+   "name": "OH-1 Cincinnati to Cannelton (above Cannelton)",
+   "kind": "lock",
+   "pins": [
+    "ADM Silver Grove, KY"
+   ],
+   "target_mbu": 60.08183774742257,
+   "range_mbu": [
+    42.359554703127806,
+    71.371148025873
+   ],
+   "hub": "Ohio River"
+  },
+  {
+   "name": "OH-2 Owensboro / Rockport (Cannelton to Newburgh)",
+   "kind": "lock",
+   "pins": [
+    "ADM Rockport, IN",
+    "CGB OWENSBORO"
+   ],
+   "target_mbu": 37.310230233910794,
+   "range_mbu": [
+    27.722550159906103,
+    43.099486964861924
+   ],
+   "hub": "Ohio River"
+  },
+  {
+   "name": "OH-3 Evansville / Mt. Vernon / Henderson (Newburgh to Myers)",
+   "kind": "lock",
+   "pins": [
+    "ADM Evansville, IN (1st Ave.)",
+    "ADM Evansville, IN (Broadway)",
+    "ADM Evansville, IN (Ohio St.)",
+    "ADM Evansville, IN (River South)",
+    "ADM Henderson, KY",
+    "ADM Mt. Vernon, IN (Elevator)",
+    "ADM Newburgh, IN"
+   ],
+   "target_mbu": 46.816826729333464,
+   "range_mbu": [
+    36.43284078894825,
+    60.67828407249858
+   ],
+   "hub": "Ohio River"
+  },
+  {
+   "name": "OH-4 Paducah (Myers to Olmsted)",
+   "kind": "lock",
+   "pins": [
+    "ADM Paducah, KY"
+   ],
+   "target_mbu": 52.655169575047466,
+   "range_mbu": [
+    43.73823291944643,
+    59.66786665105221
+   ],
+   "hub": "Ohio River"
+  },
+  {
+   "name": "AK Arkansas River (Lock 1)",
+   "kind": "lock",
+   "pins": [
+    "CGB - Pine Bluff",
+    "CGB - Port 33",
+    "CGB - Van Buren",
+    "CGB - Wagoner",
+    "CGB - Webbers Falls"
+   ],
+   "target_mbu": 1.682857142857143,
+   "hub": "Arkansas River"
+  },
+  {
+   "name": "Pacific Northwest: Columbia River (Portland, Vancouver, Kalama, Longview)",
+   "kind": "pnw",
+   "pins": [
+    "CHS Kennewick/LoMo",
+    "PNW export (rail)"
+   ],
+   "target_mbu": 361.1072835142857,
+   "anchor": "PNW export (rail)",
+   "hub": "Pacific Northwest"
+  },
+  {
+   "name": "Pacific Northwest: Puget Sound (Seattle, Tacoma)",
+   "kind": "pnw",
+   "pins": [
+    "PNW Puget Sound hub (Seattle/Tacoma)"
+   ],
+   "target_mbu": 210.51572096428572,
+   "anchor": "PNW Puget Sound hub (Seattle/Tacoma)",
+   "hub": "Pacific Northwest"
+  },
+  {
+   "name": "Texas Gulf (Houston, Galveston, Corpus Christi)",
+   "kind": "txgulf",
+   "pins": [
+    "Texas Gulf hub (Houston/Galveston)"
+   ],
+   "target_mbu": 28.5367199,
+   "anchor": "Texas Gulf hub (Houston/Galveston)",
+   "origin_states": [
+    "TX",
+    "OK",
+    "KS",
+    "NE",
+    "MO",
+    "IA",
+    "MN",
+    "SD",
+    "ND",
+    "CO",
+    "NM"
+   ],
+   "hub": "Texas Gulf"
+  },
+  {
+   "name": "Mexico by rail (Laredo, Eagle Pass, Brownsville, El Paso)",
+   "kind": "mexico",
+   "pins": [
+    "Mexico rail: Laredo TX",
+    "Mexico rail: Eagle Pass TX",
+    "Mexico rail: Brownsville TX",
+    "Mexico rail: El Paso TX"
+   ],
+   "target_mbu": 463.6036428571428,
+   "anchor": "Mexico rail: Laredo TX",
+   "origin_states_mbu": {
+    "IL": 134.18,
+    "IA": 91.02,
+    "KS": 88.2,
+    "MO": 59.01,
+    "NE": 55.71,
+    "MN": 14.11,
+    "WI": 8.3,
+    "LA": 8.16,
+    "ND": 3.54,
+    "SD": 0.83,
+    "CO": 0.36,
+    "OK": 0.09,
+    "IN": 0.08
+   },
+   "hub": "Mexico Rail"
+  },
+  {
+   "name": "St. Louis City (MO)",
+   "kind": "area",
+   "pins": [
+    "ADM St. Louis, MO (Elevator)",
+    "ADM St. Louis",
+    "Richardson Elevator (Italgrani), St. Louis MO",
+    "Ingram Tyler Street Terminal, St. Louis MO"
+   ],
+   "target_mbu": 67.04202678571428,
+   "note": "St. Louis City Port: the city of St. Louis. ADM St. Louis (ADM/Growmark River Systems wharf), Richardson Elevator (formerly Italgrani) and Ingram's Tyler Street terminal (formerly SCF Lewis & Clark; grain is a minor cargo there)",
+   "hub": "St. Louis"
+  },
+  {
+   "name": "East St. Louis area (IL)",
+   "kind": "area",
+   "pins": [
+    "CGB - Cahokia",
+    "CHS Cahokia",
+    "Cargill East St. Louis",
+    "Bunge Fairmont City, IL",
+    "ADM Sauget, IL",
+    "Louis Dreyfus Cahokia IL",
+    "Bruce Oakley Cahokia IL"
+   ],
+   "target_mbu": 95.29820535714285,
+   "note": "Southwest Regional Port (East St. Louis, Centreville, Canteen, Stites, Sugar Loaf) + America's Central Port. Cahokia holds four separate terminals (CGB, COFCO's terminal now operated by CHS, Louis Dreyfus, Bruce Oakley) and is not one of the townships the Corps names, so counting it here is an assumption",
+   "hub": "St. Louis"
+  },
+  {
+   "name": "Cape Girardeau to Chester (Scott City, Grand Tower)",
+   "kind": "area",
+   "pins": [
+    "CGB GRAND TOWER",
+    "CGB SCOTT CITY"
+   ],
+   "target_mbu": 30.482982142857146,
+   "note": "Southeast Missouri + Kaskaskia Regional + New Bourbon + Alexandria-Cairo ports; the Kaskaskia and New Bourbon sites have no tracker pin",
+   "hub": "Lower Mississippi"
+  },
+  {
+   "name": "Lower Mississippi, Cairo to Baton Rouge",
+   "kind": "area",
+   "pins": [
+    "CGB - Desoto Landing",
+    "CGB - Friars Point",
+    "CGB - Greenville",
+    "CGB - Helena North (River)",
+    "CGB - Jonesville",
+    "CGB - Louisiana",
+    "CGB - Mayersville",
+    "CGB - Old Town",
+    "CGB - Rosedale",
+    "CGB - Tallulah Port",
+    "CGB - Vicksburg",
+    "CGB - Vidalia",
+    "CGB - Yazoo City",
+    "CGB BIRDS POINT",
+    "CGB DYERSBURG",
+    "CGB HICKMAN",
+    "CGB LINDA",
+    "CGB MOUND CITY",
+    "CGB OSCEOLA",
+    "CHS Boyle Terminal",
+    "Cargill New Madrid",
+    "Cargill Hickman (Ashland)",
+    "Cargill Hales Point",
+    "Cargill West Memphis",
+    "LDC West Memphis",
+    "LDC Rosedale",
+    "LDC Port Allen",
+    "ADM Helena, AR",
+    "ADM Memphis, TN",
+    "ADM Mound City, IL",
+    "ADM New Madrid, MO",
+    "ADM Vidalia, LA",
+    "ADM Heloise, TN"
+   ],
+   "target_mbu": 142.7858392857143,
+   "note": "Waterway 6034 soybean shipments (Mouth of Ohio River to Baton Rouge); every remaining tracker pin below Lock 27",
+   "hub": "Lower Mississippi"
+  },
+  {
+   "name": "Louisiana rail and truck (Reserve, Convent, Ama, Destrehan, New Orleans)",
+   "kind": "lagulf",
+   "pins": [
+    "Louisiana rail hub (Reserve/Convent)"
+   ],
+   "target_mbu": 243.4791544714285,
+   "anchor": "Louisiana rail hub (Reserve/Convent)",
+   "origin_states": [
+    "IL",
+    "IA",
+    "WI",
+    "MN"
+   ],
+   "note": "East Gulf corn ship inspections (Mississippi River ports) less the barge loadings above and below Lock 27 and Mobile: corn that reached the Louisiana export elevators by rail or truck. A residual, so it carries the barge estimates' errors.",
+   "hub": "Louisiana Rail"
+  },
+  {
+   "name": "Mobile and the other non-Mississippi East Gulf ports",
+   "kind": "mobile",
+   "pins": [
+    "Mobile hub (Mobile/Pascagoula)"
+   ],
+   "target_mbu": 0.0,
+   "anchor": "Mobile hub (Mobile/Pascagoula)",
+   "origin_states": [
+    "IL",
+    "IN",
+    "OH",
+    "KY",
+    "TN",
+    "IA"
+   ],
+   "note": "FGIS soybean ship inspections at the East Gulf ports other than the Mississippi River.",
+   "hub": "Mobile"
+  },
+  {
+   "name": "Canada: via Detroit (MI, OH, IN)",
+   "kind": "canada",
+   "pins": [
+    "Canada hub: Detroit MI"
+   ],
+   "target_mbu": 6.961,
+   "anchor": "Canada hub: Detroit MI",
+   "origin_states": [
+    "MI",
+    "OH",
+    "IN"
+   ],
+   "note": "US soybeans exported to Canada by truck and rail through this gateway (Census customs district of exit), 2021/22-2025/26 average. FGIS does not inspect them.",
+   "hub": "Canada: via Detroit (MI, OH, IN)"
+  },
+  {
+   "name": "Canada: via Buffalo and Ogdensburg (NY)",
+   "kind": "canada",
+   "pins": [
+    "Canada hub: Buffalo NY"
+   ],
+   "target_mbu": 1.691,
+   "anchor": "Canada hub: Buffalo NY",
+   "origin_states": [
+    "NY",
+    "PA",
+    "OH",
+    "MI"
+   ],
+   "note": "US soybeans exported to Canada by truck and rail through this gateway (Census customs district of exit), 2021/22-2025/26 average. FGIS does not inspect them.",
+   "hub": "Canada: via Buffalo and Ogdensburg (NY)"
+  },
+  {
+   "name": "Canada: via Pembina (ND)",
+   "kind": "canada",
+   "pins": [
+    "Canada hub: Pembina ND"
+   ],
+   "target_mbu": 96.2284,
+   "anchor": "Canada hub: Pembina ND",
+   "origin_states": [
+    "ND",
+    "MN"
+   ],
+   "note": "US soybeans exported to Canada by truck and rail through this gateway (Census customs district of exit), 2021/22-2025/26 average. FGIS does not inspect them.",
+   "hub": "Canada: via Pembina (ND)"
+  },
+  {
+   "name": "Great Lakes (Toledo, Chicago, Lake Ontario)",
+   "kind": "lakes",
+   "pins": [
+    "Great Lakes hub (Toledo)"
+   ],
+   "target_mbu": 10.392123964285714,
+   "anchor": "Great Lakes hub (Toledo)",
+   "origin_states": [
+    "OH",
+    "IN",
+    "MI",
+    "IL"
+   ],
+   "note": "FGIS soybean ship inspections at the Great Lakes ports, 2021-25 average. Toledo is 11M bu of it. It fell from 22M bu in 2021/22 to 4-6M bu in 2023-25, so the average runs well above recent years.",
+   "hub": "Great Lakes"
+  },
+  {
+   "name": "South Atlantic (Norfolk, Chesapeake, Charleston, Savannah)",
+   "kind": "satl",
+   "pins": [
+    "South Atlantic hub (Norfolk/Chesapeake)"
+   ],
+   "target_mbu": 21.435609535714285,
+   "anchor": "South Atlantic hub (Norfolk/Chesapeake)",
+   "origin_states": [
+    "OH",
+    "IN",
+    "MI",
+    "IL",
+    "KY",
+    "TN",
+    "VA",
+    "NC",
+    "SC",
+    "MD",
+    "DE",
+    "PA",
+    "NJ",
+    "WV",
+    "GA"
+   ],
+   "note": "FGIS soybean ship inspections at the South Atlantic ports, 2021-25 average (down from 67M bu in 2021/22 to about 35M in 2025/26). Containers (16M bu) are not in it.",
+   "hub": "South Atlantic"
+  }
+ ],
+ "dropped": [
+  "CHS Macon",
+  "ADM Livingston Point, KY"
+ ],
+ "east_gulf_other_mbu": 243.4791544714285,
+ "note": "east_gulf_other_mbu = East Gulf soybean ship inspections less barge loadings above and below Lock 27: beans that reach the Gulf by rail or are otherwise unaccounted",
+ "crop": "corn"
+}
