@@ -36,7 +36,7 @@ def load_nodes(path: str = NODES) -> dict:
 
 
 def solve(inputs: dict, *, rate=CENTS_PER_BU_MILE, tau=1.0, river_premium=0.0, plant_premium=None, util=1.0, river_share=1.0, iters=400,
-          nodes=None, lock_scale=1.0, pnw_mbu=None, area_mbu=None, pin_cap_mbu=None):
+          nodes=None, lock_scale=1.0, pnw_mbu=None, area_mbu=None, pin_cap_mbu=None, river_scale=1.0, pnw_scale=1.0):
     """Flows (bu) county x buyer.
 
     rate           freight, cents per bushel-mile
@@ -54,6 +54,9 @@ def solve(inputs: dict, *, rate=CENTS_PER_BU_MILE, tau=1.0, river_premium=0.0, p
     pnw_mbu        override for beans railed to the Pacific Northwest (M bu/yr)
     area_mbu       {area name: M bu/yr} overrides for the below-Lock-27 areas (St. Louis City, East St. Louis area, Cape Girardeau to Chester,
                    Lower Mississippi), whose defaults are the Corps' WCUS port tonnage, 2021-24 average
+    river_scale    multiplies every barge-loading target (the lock-based nodes and the below-Lock-27 areas) after the overrides above, which are
+                   then read as baseline (2021-25) figures; export_scenario.py turns a US soybean export number into this factor
+    pnw_scale      the same for the Pacific Northwest rail node
     pin_cap_mbu    {river pin key: M bu/yr} ceilings, on top of any `cap_mbu` set on the pin in the inputs. A capped pin takes at most its cap
                    and the rest of its group's target spreads over the group's other pins (a ceiling, not a target)
     """
@@ -75,7 +78,7 @@ def solve(inputs: dict, *, rate=CENTS_PER_BU_MILE, tau=1.0, river_premium=0.0, p
     b = need * scale
     residual = max(0.0, total - plant_need)
     if nodes is not None:
-        groups = _groups(inputs, nodes, n_p, lock_scale, pnw_mbu, area_mbu or {})
+        groups = _groups(inputs, nodes, n_p, lock_scale, pnw_mbu, area_mbu or {}, river_scale, pnw_scale)
         want = sum(g["target_bu"] for g in groups)
         tscale = min(1.0, residual / want) if want else 1.0                   # targets can't exceed what is left after crush
         for g in groups:
@@ -148,7 +151,7 @@ def _fill(c, target, cap):
     return v
 
 
-def _groups(inputs, nodes, n_p, lock_scale, pnw_mbu, area_mbu):
+def _groups(inputs, nodes, n_p, lock_scale, pnw_mbu, area_mbu, river_scale=1.0, pnw_scale=1.0):
     """Group columns (index on the buyer axis) and targets (bu) from river_nodes.json plus the sliders."""
     col = {r["key"]: n_p + j for j, r in enumerate(inputs["river"])}
     out = []
@@ -157,11 +160,11 @@ def _groups(inputs, nodes, n_p, lock_scale, pnw_mbu, area_mbu):
         if not cols:
             continue
         if g["kind"] == "lock":
-            tgt = g["target_mbu"] * lock_scale
+            tgt = g["target_mbu"] * lock_scale * river_scale
         elif g["kind"] == "pnw":
-            tgt = pnw_mbu if pnw_mbu is not None else g["target_mbu"]
+            tgt = (pnw_mbu if pnw_mbu is not None else g["target_mbu"]) * pnw_scale
         else:
-            tgt = area_mbu.get(g["name"], g["target_mbu"])
+            tgt = area_mbu.get(g["name"], g["target_mbu"]) * river_scale
         out.append({"name": g["name"], "kind": g["kind"], "cols": cols, "target_bu": tgt * 1e6})
     return out
 

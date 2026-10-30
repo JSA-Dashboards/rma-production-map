@@ -10,6 +10,7 @@ import plotly.graph_objects as go
 import streamlit as st
 
 import draw_model as dm
+import export_scenario as es
 import rail_map as rm
 
 FOCUS_STATES = ["IL", "IN", "IA", "MO", "WI", "KY", "OH"]
@@ -25,11 +26,80 @@ def _in_box(paths, box):
 
 
 @st.cache_data(show_spinner="Solving the draw…")
-def _solve(rate, tau, river_premium, util, lock_scale, pnw_mbu, area_items, cap_items, plant_premium_items):
+def _solve(rate, tau, river_premium, util, lock_scale, pnw_mbu, area_items, cap_items, plant_premium_items, river_scale=1.0, pnw_scale=1.0):
     inp = dm.load()
     res = dm.solve(inp, rate=rate, tau=tau, river_premium=river_premium, util=util, nodes=dm.load_nodes(), lock_scale=lock_scale,
-                   pnw_mbu=pnw_mbu, area_mbu=dict(area_items), pin_cap_mbu=dict(cap_items), plant_premium=dict(plant_premium_items))
+                   pnw_mbu=pnw_mbu, area_mbu=dict(area_items), pin_cap_mbu=dict(cap_items), plant_premium=dict(plant_premium_items),
+                   river_scale=river_scale, pnw_scale=pnw_scale)
     return res
+
+
+def _reset_exports(key, value):
+    st.session_state[key] = value
+
+
+def _export_panel():
+    """US soybean export number -> East Gulf / West Coast bushels by the historical share -> scale factors for the river targets."""
+    wz, h = es.wasde()["years"], es.history()
+    years = sorted((int(k) for k in wz if int(k) >= 2015), reverse=True)
+    with st.expander("Export scenario: US soybean exports and the Gulf's share", expanded=True):
+        c1, c2, c3 = st.columns([1, 1.2, 2.2])
+        my = c1.selectbox("Marketing year", years, index=0, format_func=es.label, key="draw_exp_my")
+        usda = float(round(wz[str(my)]["exports_mbu"], 1))
+        key = f"draw_exp_val_{my}"
+        asof = wz[str(my)]["as_of"]
+        exports = c2.number_input("US soybean exports (M bu)", 0.0, 3500.0, usda, 10.0, key=key,
+                                  help=f"USDA's {es.label(my)} figure from the WASDE of {asof[4:]}/{asof[:4]} (a projection while the year is open, "
+                                       "USDA's final number once it is over). Type any number to test it.")
+        basis = c3.selectbox("Share basis", es.BASES, index=0, key="draw_exp_basis",
+                             help="How the export number is split by where it leaves from. The averages apply a fixed share; the marginal rule moves each "
+                                  "region by its historical response to a change in the total (the Gulf takes about 53 of every 100M bu, the West Coast 32, the interior 5).")
+        year, manual = None, None
+        if basis == es.BASES[4]:
+            year = st.selectbox("Use the shares of", sorted(h.index, reverse=True), format_func=es.label, key="draw_exp_year")
+        elif basis == es.BASES[5]:
+            m1, m2 = st.columns(2)
+            manual = (m1.number_input("East Gulf share (%)", 0.0, 100.0, 58.0, 0.5, key="draw_exp_eg"),
+                      m2.number_input("West Coast share (%)", 0.0, 100.0, 21.0, 0.5, key="draw_exp_wc"))
+        sc = es.scenario(exports, basis, year=year, manual=manual)
+        b = sc["base"]
+        if abs(exports - usda) > 0.05:
+            st.button(f"Reset to USDA ({usda:,.0f})", key="draw_exp_reset", on_click=_reset_exports, args=(key, usda))
+        m = st.columns(5)
+        m[0].metric("Inspected for export", f"{sc['inspected']:,.0f} M bu",
+                    help=f"Inspections run about {(1 - b['ratio']) * 100:.1f}% below USDA's export number (2021-25 average).")
+        m[1].metric("East Gulf", f"{sc['east_gulf']:,.0f} M bu", f"{sc['east_gulf'] / b['east_gulf'] - 1:+.0%} vs 2021-25", delta_color="off",
+                    help=f"{sc['east_gulf_share']:.1f}% of inspections. The 2021-25 average is {b['east_gulf']:,.0f}M bu.")
+        m[2].metric("West Coast", f"{sc['west_coast']:,.0f} M bu", f"{sc['west_coast'] / b['west_coast'] - 1:+.0%} vs 2021-25", delta_color="off",
+                    help=f"{sc['west_coast_share']:.1f}% of inspections. The 2021-25 average is {b['west_coast']:,.0f}M bu.")
+        m[3].metric("Interior (rail, truck, container)", f"{sc['interior']:,.0f} M bu", f"{sc['interior'] / b['interior'] - 1:+.0%} vs 2021-25",
+                    delta_color="off")
+        m[4].metric("River targets ×", f"{sc['river_scale']:.2f}", f"Pacific NW ×{sc['pnw_scale']:.2f}", delta_color="off",
+                    help="The scale applied to the barge-loading targets (East Gulf vs its 2021-25 average) and to the Pacific Northwest rail node "
+                         "(West Coast vs its average).")
+        apply_ = st.checkbox("Apply to the river targets below", value=True, key="draw_exp_apply",
+                             help="Off = the river targets stay at their 2021-25 averages.")
+        fig = go.Figure()
+        for col, name, color in (("east_gulf_share_pct", "East Gulf", "#1f77b4"), ("west_coast_share_pct", "West Coast", "#d95f02"),
+                                 ("interior_share_pct", "Interior", "#7f7f7f")):
+            fig.add_trace(go.Scatter(x=[es.label(i) for i in h.index], y=h[col], mode="lines+markers", name=name, line=dict(color=color, width=2),
+                                     marker=dict(size=5), hovertemplate=name + " %{y:.1f}%<extra>%{x}</extra>"))
+        it_share = sc["interior"] / sc["inspected"] * 100 if sc["inspected"] else 0
+        fig.add_trace(go.Scatter(x=[es.label(my)] * 3, y=[sc["east_gulf_share"], sc["west_coast_share"], it_share], mode="markers", name="This scenario",
+                                 marker=dict(symbol="diamond", size=11, color="white", line=dict(width=2, color="#222")),
+                                 hovertemplate="Scenario %{y:.1f}%<extra></extra>"))
+        fig.update_layout(height=250, margin=dict(l=10, r=10, t=10, b=30), legend=dict(orientation="h", y=1.15, x=0), paper_bgcolor="white",
+                          plot_bgcolor="white", yaxis=dict(title="% of soybeans inspected for export", ticksuffix="%", gridcolor="#e5e5e5"),
+                          xaxis=dict(type="category", tickangle=-45))
+        st.plotly_chart(fig, use_container_width=True, key="draw_exp_chart")
+        sens = es.sensitivity(exports).rename(columns={"East Gulf share %": "East Gulf share (%)"})
+        st.markdown(f"**The same {exports:,.0f}M bu under each share assumption** (the spread from the share alone)")
+        st.dataframe(sens.style.format({"East Gulf share (%)": "{:.1f}", "East Gulf (M bu)": "{:,.0f}", "West Coast (M bu)": "{:,.0f}",
+                                        "River scale": "{:.2f}"}, na_rep=""), hide_index=True, use_container_width=True)
+        st.caption("Shares are of soybeans inspected for export (USDA FGIS), by marketing year from September: East Gulf = the Mississippi River, West Coast = "
+                   "the Pacific Northwest, interior = rail, truck and container loaded inland. USDA's export number is the PSD / WASDE estimate. Refresh with "
+                   "build_soy_export_shares.py after each WASDE.")
+    return (round(sc["river_scale"], 4), round(sc["pnw_scale"], 4)) if apply_ else (1.0, 1.0)
 
 
 def render():
@@ -43,6 +113,7 @@ def render():
                "Corps and USDA lock tonnage (2021-25 average), below Lock 27 each area takes the Corps' port tonnage (St. Louis City, "
                "the Illinois side of the harbor, Cape Girardeau to Chester, the Lower Mississippi), and the Pacific Northwest takes the West Coast inspections. Beans go to the nearest "
                "buyers with limited crossover. First pass: a model to set the structure, not a forecast.")
+    river_scale, pnw_scale = _export_panel()
     c1, c2, c3, c4 = st.columns(4)
     state = c1.selectbox("Region to show", FOCUS_STATES, index=0, key="draw_state")
     tau = c2.slider("Crossover (cents/bu)", 0.25, 4.0, 1.0, 0.25, key="draw_tau",
@@ -59,8 +130,8 @@ def render():
                                  help="How much more (or less) the river terminals pay for a bean than the crush plants, after their basis. "
                                       "Positive pulls beans toward the river.")
     pnw_mbu = st.number_input("Beans railed to the Pacific Northwest (M bu/yr)", 0.0, 800.0, float(round(pnw_default)), 10.0, key="draw_pnw",
-                              help="Default = West Coast soybean ship inspections (2021-25 average).")
-    with st.expander("River area targets below Lock 27 (M bu/yr): default = the Corps' port tonnage, soybeans shipped, 2021-24 average"):
+                              help="Baseline = West Coast soybean ship inspections (2021-25 average). The export scenario above scales it.")
+    with st.expander("River area targets below Lock 27 (M bu/yr): baseline = the Corps' port tonnage, soybeans shipped, 2021-24 average; the export scenario scales them"):
         cols_a = st.columns(len(areas))
         area_over = {}
         for c_, g in zip(cols_a, areas):
@@ -89,8 +160,10 @@ def render():
         for i, k in enumerate(keys):
             prem[k] = cols[i % 3].number_input(k, -20.0, 20.0, 0.0, 0.5, key=f"draw_prem_{k}")
     res = _solve(rate, tau, river_prem, util, lock_scale, pnw_mbu, tuple(sorted(area_over.items())), tuple(sorted(cap_over.items())),
-                 tuple(sorted((k, v) for k, v in prem.items() if v)))
+                 tuple(sorted((k, v) for k, v in prem.items() if v)), river_scale, pnw_scale)
     plants_t, river_t, cty_t = dm.summarize(inp, res, state)
+    if abs(river_scale - 1.0) > 1e-3 or abs(pnw_scale - 1.0) > 1e-3:
+        st.caption(f"Export scenario applied: barge-loading targets ×{river_scale:.2f}, Pacific Northwest rail ×{pnw_scale:.2f}.")
     if res.get("target_scale", 1.0) < 0.999:
         st.warning(f"The river targets add up to more than the beans left after crush, so they were scaled to {res['target_scale']:.0%}. "
                    "Lower the area or PNW figures, or raise plant run rates.")

@@ -1,0 +1,102 @@
+"""
+Export scenario for the Draw Territory model: a US soybean export number (USDA's, or one you type) turned into bushels leaving the East Gulf and the
+West Coast using the share history in data/draw/soy_export_shares_by_my.csv, then into scale factors on the river targets.
+
+The model's river volumes are built on the 2021-25 average (BASE_YEARS). A scenario that has the East Gulf loading 10% more than that average scales
+every barge-loading target by 1.10; the West Coast ratio scales the Pacific Northwest rail node. Everything else (feed, rail to the Gulf, stocks) is the
+residual, so it absorbs the rest.
+
+Pure pandas / numpy; build_soy_export_shares.py refreshes the two data files.
+"""
+from __future__ import annotations
+
+import json
+import os
+from functools import lru_cache
+
+import numpy as np
+import pandas as pd
+
+D = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "draw")
+BASE_YEARS = (2021, 2025)                  # marketing years the river targets are built on (2021/22 ... 2025/26)
+BASES = ["Last 5 years' share", "Last 10 years' share", "Since 2011 share", "Marginal (moves with the change from the 2021-25 average)",
+         "A single year's share", "Manual shares"]
+MARGINAL_FROM = 2011
+
+
+@lru_cache(maxsize=1)
+def history() -> pd.DataFrame:
+    """One row per completed marketing year (index = the year it starts): USDA exports, FGIS inspected bushels by region, shares."""
+    return pd.read_csv(os.path.join(D, "soy_export_shares_by_my.csv"), index_col=0)
+
+
+@lru_cache(maxsize=1)
+def wasde() -> dict:
+    with open(os.path.join(D, "soy_exports_wasde.json"), encoding="utf8") as fh:
+        return json.load(fh)
+
+
+def label(my: int) -> str:
+    return f"{my}/{str(my + 1)[2:]}"
+
+
+def _years(h, a, b):
+    return h.loc[(h.index >= a) & (h.index <= b)]
+
+
+def baseline(h=None) -> dict:
+    h = history() if h is None else h
+    b = _years(h, *BASE_YEARS)
+    return {"east_gulf": float(b.east_gulf_mbu.mean()), "west_coast": float(b.west_coast_mbu.mean()), "interior": float(b.interior_mbu.mean()),
+            "inspected": float(b.fgis_inspected_mbu.mean()), "usda": float(b.usda_exports_mbu.mean()), "ratio": float(b.inspected_over_usda.mean())}
+
+
+def _slopes(h) -> dict:
+    x = _years(h, MARGINAL_FROM, 9999)
+    return {k: float(np.polyfit(x.fgis_inspected_mbu, x[c], 1)[0]) for k, c in (("east_gulf", "east_gulf_mbu"), ("west_coast", "west_coast_mbu"),
+                                                                              ("interior", "interior_mbu"), ("us_gulf", None)) if c}
+
+
+def scenario(exports_mbu: float, basis: str = BASES[0], *, year: int | None = None, manual: tuple | None = None) -> dict:
+    """USDA export number (M bu) -> inspected bushels -> East Gulf / West Coast / interior bushels, and the scale factors for the model.
+
+    The export number is USDA's; inspections run about 3% below it (inspected_over_usda, 2021-25 average), so it is converted first.
+    """
+    h = history()
+    base = baseline(h)
+    insp = exports_mbu * base["ratio"]
+    if basis == BASES[3]:                                          # marginal: each region moves by its OLS slope times the change in the total
+        s = _slopes(h)
+        d = insp - base["inspected"]
+        eg, wc, it = (max(0.0, base[k] + s[k] * d) for k in ("east_gulf", "west_coast", "interior"))
+    else:
+        if basis == BASES[4]:
+            r = h.loc[year if year in h.index else h.index[-1]]
+            egs, wcs, its = r.east_gulf_share_pct, r.west_coast_share_pct, r.interior_share_pct
+        elif basis == BASES[5]:
+            egs, wcs = manual
+            its = None
+        else:
+            a = {BASES[0]: 2021, BASES[1]: 2016, BASES[2]: 2011}[basis]
+            x = _years(h, a, h.index.max())
+            egs, wcs, its = x.east_gulf_share_pct.mean(), x.west_coast_share_pct.mean(), x.interior_share_pct.mean()
+        eg, wc = insp * egs / 100, insp * wcs / 100
+        it = insp * its / 100 if its is not None else max(0.0, insp - eg - wc)
+    return {"exports": exports_mbu, "inspected": insp, "east_gulf": eg, "west_coast": wc, "interior": it,
+            "east_gulf_share": eg / insp * 100 if insp else 0.0, "west_coast_share": wc / insp * 100 if insp else 0.0,
+            "river_scale": eg / base["east_gulf"], "pnw_scale": wc / base["west_coast"], "base": base}
+
+
+def sensitivity(exports_mbu: float) -> pd.DataFrame:
+    """The same export number under each share basis, so the spread from the share assumption alone is visible."""
+    h = history()
+    rows = []
+    for b in BASES[:4]:
+        s = scenario(exports_mbu, b)
+        rows.append((b if b != BASES[3] else "Marginal", s["east_gulf_share"], s["east_gulf"], s["west_coast"], s["river_scale"]))
+    x = _years(h, MARGINAL_FROM, h.index.max())
+    insp = exports_mbu * baseline(h)["ratio"]
+    lo, hi = x.east_gulf_share_pct.min(), x.east_gulf_share_pct.max()
+    rows.append((f"Lowest year since 2011 ({label(int(x.east_gulf_share_pct.idxmin()))})", lo, insp * lo / 100, np.nan, insp * lo / 100 / baseline(h)["east_gulf"]))
+    rows.append((f"Highest year since 2011 ({label(int(x.east_gulf_share_pct.idxmax()))})", hi, insp * hi / 100, np.nan, insp * hi / 100 / baseline(h)["east_gulf"]))
+    return pd.DataFrame(rows, columns=["Share basis", "East Gulf share %", "East Gulf (M bu)", "West Coast (M bu)", "River scale"])
