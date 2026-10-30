@@ -24,6 +24,16 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 D = os.path.join(HERE, "data")
 PNW = {"key": "PNW export (rail)", "state": "OR", "lat": 45.6, "lon": -122.7}
 
+# Terminals the tracker has no bids for but that load barges in the St. Louis area (owners checked 2026-10-29; see the draw-territory memory note).
+# `site` keeps pins that share a geocode apart: pins with the same site, or with no site and the same coordinates, count once in the model.
+SITE_OVERRIDES = {"CGB - Cahokia": "cgb-cahokia", "CHS Cahokia": "cofco-chs-cahokia"}     # CHS operates COFCO's Cahokia terminal (lease, Jan 2026)
+EXTRA_RIVER_PINS = [
+    {"key": "Richardson Elevator (Italgrani), St. Louis MO", "state": "MO", "lat": 38.5414, "lon": -90.2539, "site": "richardson-stl"},
+    {"key": "Ingram Tyler Street Terminal, St. Louis MO", "state": "MO", "lat": 38.6467, "lon": -90.1822, "site": "ingram-tyler-st"},
+    {"key": "Louis Dreyfus Cahokia IL", "state": "IL", "lat": 38.5662, "lon": -90.1794, "site": "ldc-cahokia"},
+    {"key": "Bruce Oakley Cahokia IL", "state": "IL", "lat": 38.5662, "lon": -90.1794, "site": "oakley-cahokia"},
+]
+
 
 def hav(lat1, lon1, lat2, lon2):
     """Great-circle miles, broadcasting."""
@@ -47,6 +57,10 @@ def main():
     plants = B.plants()
     pts = json.load(open(os.path.join(D, "rail_map", "map_points.json")))
     river = [{"key": r["name"], "state": r.get("state", ""), "lat": r["lat"], "lon": r["lon"]} for r in pts["river"]]
+    for r in river:                                       # the tracker geocodes several different Cahokia terminals to the same point
+        if r["key"] in SITE_OVERRIDES:
+            r["site"] = SITE_OVERRIDES[r["key"]]
+    river += [dict(p) for p in EXTRA_RIVER_PINS]
     buyers = plants + river + [PNW]
 
     # core OSRM lookup: (county fips, buyer lat/lon key) -> miles

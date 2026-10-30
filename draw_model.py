@@ -79,10 +79,11 @@ def solve(inputs: dict, *, rate=CENTS_PER_BU_MILE, tau=1.0, river_premium=0.0, p
         for g in groups:
             g["target_bu"] *= tscale
         river_total = sum(g["target_bu"] for g in groups)
-        for g in groups:                                                       # a site listed twice counts once within its group
+        for g in groups:                                                       # a site listed twice counts once within its group (same `site` id, or the same coordinates when none is given)
             xy = {}
             for j in g["cols"]:
-                xy.setdefault((round(river[j - n_p]["lat"], 3), round(river[j - n_p]["lon"], 3)), []).append(j)
+                r_ = river[j - n_p]
+                xy.setdefault(r_.get("site") or (round(r_["lat"], 3), round(r_["lon"], 3)), []).append(j)
             for js in xy.values():
                 K[:, js] *= 1.0 / len(js)
         dead = np.ones(n_p + n_r, bool)

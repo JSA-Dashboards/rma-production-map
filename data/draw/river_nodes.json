@@ -238,10 +238,12 @@
    "kind": "area",
    "pins": [
     "ADM St. Louis, MO (Elevator)",
-    "ADM St. Louis"
+    "ADM St. Louis",
+    "Richardson Elevator (Italgrani), St. Louis MO",
+    "Ingram Tyler Street Terminal, St. Louis MO"
    ],
    "target_mbu": 48.99051666666667,
-   "note": "St. Louis City Port: the city of St. Louis"
+   "note": "St. Louis City Port: the city of St. Louis. ADM St. Louis (ADM/Growmark River Systems wharf), Richardson Elevator (formerly Italgrani) and Ingram's Tyler Street terminal (formerly SCF Lewis & Clark; grain is a minor cargo there)"
   },
   {
    "name": "East St. Louis area (IL)",
@@ -251,10 +253,12 @@
     "CHS Cahokia",
     "Cargill East St. Louis",
     "Bunge Fairmont City, IL",
-    "ADM Sauget, IL"
+    "ADM Sauget, IL",
+    "Louis Dreyfus Cahokia IL",
+    "Bruce Oakley Cahokia IL"
    ],
    "target_mbu": 53.17398333333334,
-   "note": "Southwest Regional Port (East St. Louis, Centreville, Canteen, Stites, Sugar Loaf) + America's Central Port; the CGB/CHS Cahokia site is assumed to be in here, but Cahokia is not one of the townships the Corps names"
+   "note": "Southwest Regional Port (East St. Louis, Centreville, Canteen, Stites, Sugar Loaf) + America's Central Port. Cahokia holds four separate terminals (CGB, COFCO's terminal now operated by CHS, Louis Dreyfus, Bruce Oakley) and is not one of the townships the Corps names, so counting it here is an assumption"
   },
   {
    "name": "Cape Girardeau to Chester (Scott City, Grand Tower)",

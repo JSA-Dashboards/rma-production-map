@@ -148,11 +148,13 @@ def build_groups(segs, nodes, pins, usda, bu):
     def port(*ids):
         return float(sum(wc.get(i, 0.0) for i in ids))
     areas = [
-        ("St. Louis City (MO)", ["ADM St. Louis"], port(2341),
-         "St. Louis City Port: the city of St. Louis"),
-        ("East St. Louis area (IL)", ["Cargill East St. Louis", "Bunge Fairmont City", "ADM Sauget", "Cahokia"], port(2319, 2309),
-         "Southwest Regional Port (East St. Louis, Centreville, Canteen, Stites, Sugar Loaf) + America's Central Port; the CGB/CHS Cahokia site is "
-         "assumed to be in here, but Cahokia is not one of the townships the Corps names"),
+        ("St. Louis City (MO)", ["ADM St. Louis", "Richardson Elevator", "Ingram Tyler Street"], port(2341),
+         "St. Louis City Port: the city of St. Louis. ADM St. Louis (ADM/Growmark River Systems wharf), Richardson Elevator (formerly Italgrani) and Ingram's "
+         "Tyler Street terminal (formerly SCF Lewis & Clark; grain is a minor cargo there)"),
+        ("East St. Louis area (IL)", ["Cargill East St. Louis", "Bunge Fairmont City", "ADM Sauget", "Cahokia", "Louis Dreyfus Cahokia", "Bruce Oakley Cahokia"],
+         port(2319, 2309),
+         "Southwest Regional Port (East St. Louis, Centreville, Canteen, Stites, Sugar Loaf) + America's Central Port. Cahokia holds four separate terminals "
+         "(CGB, COFCO's terminal now operated by CHS, Louis Dreyfus, Bruce Oakley) and is not one of the townships the Corps names, so counting it here is an assumption"),
         ("Cape Girardeau to Chester (Scott City, Grand Tower)", ["SCOTT CITY", "GRAND TOWER"], port(2368, 2307, 2351, 2308),
          "Southeast Missouri + Kaskaskia Regional + New Bourbon + Alexandria-Cairo ports; the Kaskaskia and New Bourbon sites have no tracker pin"),
     ]
