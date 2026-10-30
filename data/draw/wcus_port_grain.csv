@@ -1,0 +1,518 @@
+location_id,location,type,commodity,year,total_tons,shipments_tons,receipts_tons,intra_tons,thru_tons
+2367,"St. Louis Metro Port, IL and MO",PORT,Wheat,2024,1127224,1104624,20695,1905,0
+2367,"St. Louis Metro Port, IL and MO",PORT,Wheat,2023,500268,479579,20689,0,0
+2367,"St. Louis Metro Port, IL and MO",PORT,Wheat,2022,540186,523520,16666,0,0
+2367,"St. Louis Metro Port, IL and MO",PORT,Wheat,2021,664815,664815,0,0,0
+2367,"St. Louis Metro Port, IL and MO",PORT,Wheat,2020,817628,816045,1583,0,0
+2367,"St. Louis Metro Port, IL and MO",PORT,Corn,2024,3926886,3919080,7806,0,0
+2367,"St. Louis Metro Port, IL and MO",PORT,Corn,2023,3495137,3493053,0,2084,0
+2367,"St. Louis Metro Port, IL and MO",PORT,Corn,2022,4512170,4497760,14410,0,0
+2367,"St. Louis Metro Port, IL and MO",PORT,Corn,2021,6425386,6413428,11958,0,0
+2367,"St. Louis Metro Port, IL and MO",PORT,Corn,2020,5127431,5123392,4039,0,0
+2367,"St. Louis Metro Port, IL and MO",PORT,Sorghum,2024,0,0,0,0,0
+2367,"St. Louis Metro Port, IL and MO",PORT,Sorghum,2023,0,0,0,0,0
+2367,"St. Louis Metro Port, IL and MO",PORT,Sorghum,2022,5689,5689,0,0,0
+2367,"St. Louis Metro Port, IL and MO",PORT,Sorghum,2021,0,0,0,0,0
+2367,"St. Louis Metro Port, IL and MO",PORT,Sorghum,2020,16143,16143,0,0,0
+2367,"St. Louis Metro Port, IL and MO",PORT,Soybeans,2024,3058335,3039274,19061,0,0
+2367,"St. Louis Metro Port, IL and MO",PORT,Soybeans,2023,2774590,2757971,16619,0,0
+2367,"St. Louis Metro Port, IL and MO",PORT,Soybeans,2022,3468391,3432712,35679,0,0
+2367,"St. Louis Metro Port, IL and MO",PORT,Soybeans,2021,3069956,3055569,14387,0,0
+2367,"St. Louis Metro Port, IL and MO",PORT,Soybeans,2020,5340007,5325472,14535,0,0
+2367,"St. Louis Metro Port, IL and MO",PORT,Vegetable Oils,2024,0,0,0,0,0
+2367,"St. Louis Metro Port, IL and MO",PORT,Vegetable Oils,2023,10856,1600,9256,0,0
+2367,"St. Louis Metro Port, IL and MO",PORT,Vegetable Oils,2022,11336,1437,9899,0,0
+2367,"St. Louis Metro Port, IL and MO",PORT,Vegetable Oils,2021,0,0,0,0,0
+2367,"St. Louis Metro Port, IL and MO",PORT,Vegetable Oils,2020,3142,3142,0,0,0
+2367,"St. Louis Metro Port, IL and MO",PORT,Grain Mill Products,2024,4502,4502,0,0,0
+2367,"St. Louis Metro Port, IL and MO",PORT,Grain Mill Products,2023,29083,29083,0,0,0
+2367,"St. Louis Metro Port, IL and MO",PORT,Grain Mill Products,2022,3967,3967,0,0,0
+2367,"St. Louis Metro Port, IL and MO",PORT,Grain Mill Products,2021,1584,1584,0,0,0
+2367,"St. Louis Metro Port, IL and MO",PORT,Grain Mill Products,2020,22043,8524,13519,0,0
+2367,"St. Louis Metro Port, IL and MO",PORT,Wheat,2019,700565,695539,5026,0,0
+2367,"St. Louis Metro Port, IL and MO",PORT,Corn,2019,3964626,3960985,3641,0,0
+2367,"St. Louis Metro Port, IL and MO",PORT,Sorghum,2019,7495,7495,0,0,0
+2367,"St. Louis Metro Port, IL and MO",PORT,Soybeans,2019,5119519,5078439,41080,0,0
+2367,"St. Louis Metro Port, IL and MO",PORT,Vegetable Oils,2019,19051,19051,0,0,0
+2367,"St. Louis Metro Port, IL and MO",PORT,Grain Mill Products,2019,3000,1500,1500,0,0
+2341,"St. Louis City Port, MO",PORT,Wheat,2024,412422,412422,0,0,0
+2341,"St. Louis City Port, MO",PORT,Wheat,2023,278043,278043,0,0,0
+2341,"St. Louis City Port, MO",PORT,Wheat,2022,280260,280260,0,0,0
+2341,"St. Louis City Port, MO",PORT,Wheat,2021,441695,441695,0,0,0
+2341,"St. Louis City Port, MO",PORT,Wheat,2020,443797,443797,0,0,0
+2341,"St. Louis City Port, MO",PORT,Corn,2024,1782222,1782222,0,0,0
+2341,"St. Louis City Port, MO",PORT,Corn,2023,1446675,1446675,0,0,0
+2341,"St. Louis City Port, MO",PORT,Corn,2022,1928325,1928325,0,0,0
+2341,"St. Louis City Port, MO",PORT,Corn,2021,2354718,2351485,3233,0,0
+2341,"St. Louis City Port, MO",PORT,Corn,2020,1651006,1651006,0,0,0
+2341,"St. Louis City Port, MO",PORT,Sorghum,2024,0,0,0,0,0
+2341,"St. Louis City Port, MO",PORT,Sorghum,2023,0,0,0,0,0
+2341,"St. Louis City Port, MO",PORT,Sorghum,2022,3933,3933,0,0,0
+2341,"St. Louis City Port, MO",PORT,Sorghum,2021,0,0,0,0,0
+2341,"St. Louis City Port, MO",PORT,Sorghum,2020,0,0,0,0,0
+2341,"St. Louis City Port, MO",PORT,Soybeans,2024,1628963,1628963,0,0,0
+2341,"St. Louis City Port, MO",PORT,Soybeans,2023,1316457,1316457,0,0,0
+2341,"St. Louis City Port, MO",PORT,Soybeans,2022,1788252,1781561,6691,0,0
+2341,"St. Louis City Port, MO",PORT,Soybeans,2021,1151881,1151881,0,0,0
+2341,"St. Louis City Port, MO",PORT,Soybeans,2020,1785667,1785667,0,0,0
+2341,"St. Louis City Port, MO",PORT,Grain Mill Products,2024,0,0,0,0,0
+2341,"St. Louis City Port, MO",PORT,Grain Mill Products,2023,5651,5651,0,0,0
+2341,"St. Louis City Port, MO",PORT,Grain Mill Products,2022,0,0,0,0,0
+2341,"St. Louis City Port, MO",PORT,Grain Mill Products,2021,0,0,0,0,0
+2341,"St. Louis City Port, MO",PORT,Grain Mill Products,2020,4738,0,4738,0,0
+2341,"St. Louis City Port, MO",PORT,Wheat,2019,339544,339544,0,0,0
+2341,"St. Louis City Port, MO",PORT,Corn,2019,970964,970964,0,0,0
+2341,"St. Louis City Port, MO",PORT,Sorghum,2019,5708,5708,0,0,0
+2341,"St. Louis City Port, MO",PORT,Soybeans,2019,1362122,1360273,1849,0,0
+2341,"St. Louis City Port, MO",PORT,Vegetable Oils,2023,0,0,0,0,0
+2341,"St. Louis City Port, MO",PORT,Vegetable Oils,2022,0,0,0,0,0
+2341,"St. Louis City Port, MO",PORT,Vegetable Oils,2021,0,0,0,0,0
+2341,"St. Louis City Port, MO",PORT,Vegetable Oils,2020,0,0,0,0,0
+2341,"St. Louis City Port, MO",PORT,Vegetable Oils,2019,15662,15662,0,0,0
+2341,"St. Louis City Port, MO",PORT,Grain Mill Products,2019,3000,1500,1500,0,0
+2342,"St. Louis County, MO",PORT,Vegetable Oils,2024,0,0,0,0,0
+2342,"St. Louis County, MO",PORT,Vegetable Oils,2023,0,0,0,0,0
+2342,"St. Louis County, MO",PORT,Vegetable Oils,2022,0,0,0,0,0
+2342,"St. Louis County, MO",PORT,Vegetable Oils,2021,0,0,0,0,0
+2342,"St. Louis County, MO",PORT,Vegetable Oils,2020,3142,3142,0,0,0
+2342,"St. Louis County, MO",PORT,Corn,2023,0,0,0,0,0
+2342,"St. Louis County, MO",PORT,Corn,2022,0,0,0,0,0
+2342,"St. Louis County, MO",PORT,Corn,2021,0,0,0,0,0
+2342,"St. Louis County, MO",PORT,Corn,2020,0,0,0,0,0
+2342,"St. Louis County, MO",PORT,Corn,2019,1825,1825,0,0,0
+2342,"St. Louis County, MO",PORT,Soybeans,2023,0,0,0,0,0
+2342,"St. Louis County, MO",PORT,Soybeans,2022,0,0,0,0,0
+2342,"St. Louis County, MO",PORT,Soybeans,2021,0,0,0,0,0
+2342,"St. Louis County, MO",PORT,Soybeans,2020,0,0,0,0,0
+2342,"St. Louis County, MO",PORT,Soybeans,2019,1953,1953,0,0,0
+2342,"St. Louis County, MO",PORT,Vegetable Oils,2019,3389,3389,0,0,0
+2307,"Kaskaskia Regional Port, IL",PORT,Wheat,2024,57628,57628,0,0,0
+2307,"Kaskaskia Regional Port, IL",PORT,Wheat,2023,87671,87671,0,0,0
+2307,"Kaskaskia Regional Port, IL",PORT,Wheat,2022,51092,51092,0,0,0
+2307,"Kaskaskia Regional Port, IL",PORT,Wheat,2021,45787,45787,0,0,0
+2307,"Kaskaskia Regional Port, IL",PORT,Wheat,2020,11458,11458,0,0,0
+2307,"Kaskaskia Regional Port, IL",PORT,Corn,2024,338229,338229,0,0,0
+2307,"Kaskaskia Regional Port, IL",PORT,Corn,2023,307098,307098,0,0,0
+2307,"Kaskaskia Regional Port, IL",PORT,Corn,2022,340894,339197,1697,0,0
+2307,"Kaskaskia Regional Port, IL",PORT,Corn,2021,346626,346626,0,0,0
+2307,"Kaskaskia Regional Port, IL",PORT,Corn,2020,263201,263201,0,0,0
+2307,"Kaskaskia Regional Port, IL",PORT,Soybeans,2024,194733,194733,0,0,0
+2307,"Kaskaskia Regional Port, IL",PORT,Soybeans,2023,219241,219241,0,0,0
+2307,"Kaskaskia Regional Port, IL",PORT,Soybeans,2022,209905,209905,0,0,0
+2307,"Kaskaskia Regional Port, IL",PORT,Soybeans,2021,210977,210977,0,0,0
+2307,"Kaskaskia Regional Port, IL",PORT,Soybeans,2020,155291,155291,0,0,0
+2307,"Kaskaskia Regional Port, IL",PORT,Wheat,2019,3916,3916,0,0,0
+2307,"Kaskaskia Regional Port, IL",PORT,Corn,2019,234696,234696,0,0,0
+2307,"Kaskaskia Regional Port, IL",PORT,Soybeans,2019,184173,184173,0,0,0
+2308,"Alexandria-Cairo Port, IL",PORT,Wheat,2024,3750,3750,0,0,0
+2308,"Alexandria-Cairo Port, IL",PORT,Wheat,2023,36134,36134,0,0,0
+2308,"Alexandria-Cairo Port, IL",PORT,Wheat,2022,18985,18985,0,0,0
+2308,"Alexandria-Cairo Port, IL",PORT,Wheat,2021,13366,13366,0,0,0
+2308,"Alexandria-Cairo Port, IL",PORT,Wheat,2020,8404,8404,0,0,0
+2308,"Alexandria-Cairo Port, IL",PORT,Corn,2024,28283,28283,0,0,0
+2308,"Alexandria-Cairo Port, IL",PORT,Corn,2023,36055,36055,0,0,0
+2308,"Alexandria-Cairo Port, IL",PORT,Corn,2022,97592,97592,0,0,0
+2308,"Alexandria-Cairo Port, IL",PORT,Corn,2021,95870,94228,1642,0,0
+2308,"Alexandria-Cairo Port, IL",PORT,Corn,2020,102193,100193,2000,0,0
+2308,"Alexandria-Cairo Port, IL",PORT,Soybeans,2024,32530,29206,3324,0,0
+2308,"Alexandria-Cairo Port, IL",PORT,Soybeans,2023,66934,17156,49778,0,0
+2308,"Alexandria-Cairo Port, IL",PORT,Soybeans,2022,70493,40350,30143,0,0
+2308,"Alexandria-Cairo Port, IL",PORT,Soybeans,2021,71304,39713,31591,0,0
+2308,"Alexandria-Cairo Port, IL",PORT,Soybeans,2020,91380,36348,55032,0,0
+2308,"Alexandria-Cairo Port, IL",PORT,Vegetable Oils,2024,178082,178082,0,0,0
+2308,"Alexandria-Cairo Port, IL",PORT,Vegetable Oils,2023,196153,196153,0,0,0
+2308,"Alexandria-Cairo Port, IL",PORT,Vegetable Oils,2022,202437,202437,0,0,0
+2308,"Alexandria-Cairo Port, IL",PORT,Vegetable Oils,2021,201785,201785,0,0,0
+2308,"Alexandria-Cairo Port, IL",PORT,Vegetable Oils,2020,237448,237448,0,0,0
+2308,"Alexandria-Cairo Port, IL",PORT,Wheat,2019,16645,16645,0,0,0
+2308,"Alexandria-Cairo Port, IL",PORT,Corn,2019,68670,68670,0,0,0
+2308,"Alexandria-Cairo Port, IL",PORT,Soybeans,2019,85038,83400,1638,0,0
+2308,"Alexandria-Cairo Port, IL",PORT,Vegetable Oils,2019,213269,213269,0,0,0
+2312,"Heart of Illinois Port, IL",PORT,Wheat,2024,17977,17977,0,0,0
+2312,"Heart of Illinois Port, IL",PORT,Wheat,2023,6541,6541,0,0,0
+2312,"Heart of Illinois Port, IL",PORT,Wheat,2022,12261,12261,0,0,0
+2312,"Heart of Illinois Port, IL",PORT,Wheat,2021,1614,1614,0,0,0
+2312,"Heart of Illinois Port, IL",PORT,Wheat,2020,3343,3343,0,0,0
+2312,"Heart of Illinois Port, IL",PORT,Corn,2024,304212,302686,1526,0,0
+2312,"Heart of Illinois Port, IL",PORT,Corn,2023,273644,273644,0,0,0
+2312,"Heart of Illinois Port, IL",PORT,Corn,2022,395993,395993,0,0,0
+2312,"Heart of Illinois Port, IL",PORT,Corn,2021,739734,719004,20730,0,0
+2312,"Heart of Illinois Port, IL",PORT,Corn,2020,466439,466439,0,0,0
+2312,"Heart of Illinois Port, IL",PORT,Soybeans,2024,925391,925391,0,0,0
+2312,"Heart of Illinois Port, IL",PORT,Soybeans,2023,671416,671416,0,0,0
+2312,"Heart of Illinois Port, IL",PORT,Soybeans,2022,976307,976307,0,0,0
+2312,"Heart of Illinois Port, IL",PORT,Soybeans,2021,564375,564375,0,0,0
+2312,"Heart of Illinois Port, IL",PORT,Soybeans,2020,1118991,1118991,0,0,0
+2312,"Heart of Illinois Port, IL",PORT,Vegetable Oils,2024,0,0,0,0,0
+2312,"Heart of Illinois Port, IL",PORT,Vegetable Oils,2023,36323,0,36323,0,0
+2312,"Heart of Illinois Port, IL",PORT,Vegetable Oils,2022,0,0,0,0,0
+2312,"Heart of Illinois Port, IL",PORT,Vegetable Oils,2021,17010,17010,0,0,0
+2312,"Heart of Illinois Port, IL",PORT,Vegetable Oils,2020,10938,10938,0,0,0
+2312,"Heart of Illinois Port, IL",PORT,Grain Mill Products,2024,4056,4056,0,0,0
+2312,"Heart of Illinois Port, IL",PORT,Grain Mill Products,2023,10730,10730,0,0,0
+2312,"Heart of Illinois Port, IL",PORT,Grain Mill Products,2022,0,0,0,0,0
+2312,"Heart of Illinois Port, IL",PORT,Grain Mill Products,2021,0,0,0,0,0
+2312,"Heart of Illinois Port, IL",PORT,Grain Mill Products,2020,58305,58305,0,0,0
+2312,"Heart of Illinois Port, IL",PORT,Wheat,2019,38302,38302,0,0,0
+2312,"Heart of Illinois Port, IL",PORT,Corn,2019,341117,317759,20278,3080,0
+2312,"Heart of Illinois Port, IL",PORT,Soybeans,2019,694208,694208,0,0,0
+2312,"Heart of Illinois Port, IL",PORT,Vegetable Oils,2019,20438,20438,0,0,0
+2312,"Heart of Illinois Port, IL",PORT,Grain Mill Products,2019,112062,112062,0,0,0
+2313,"Illinois Valley Port, IL",PORT,Wheat,2024,3010,3010,0,0,0
+2313,"Illinois Valley Port, IL",PORT,Wheat,2023,1815,1815,0,0,0
+2313,"Illinois Valley Port, IL",PORT,Wheat,2022,15034,15034,0,0,0
+2313,"Illinois Valley Port, IL",PORT,Wheat,2021,0,0,0,0,0
+2313,"Illinois Valley Port, IL",PORT,Wheat,2020,13516,13516,0,0,0
+2313,"Illinois Valley Port, IL",PORT,Corn,2024,770651,770651,0,0,0
+2313,"Illinois Valley Port, IL",PORT,Corn,2023,660668,660668,0,0,0
+2313,"Illinois Valley Port, IL",PORT,Corn,2022,1071259,1071259,0,0,0
+2313,"Illinois Valley Port, IL",PORT,Corn,2021,2110404,1959537,150867,0,0
+2313,"Illinois Valley Port, IL",PORT,Corn,2020,1280521,1280521,0,0,0
+2313,"Illinois Valley Port, IL",PORT,Soybeans,2024,1632791,1632791,0,0,0
+2313,"Illinois Valley Port, IL",PORT,Soybeans,2023,1409204,1406159,3045,0,0
+2313,"Illinois Valley Port, IL",PORT,Soybeans,2022,1824738,1812405,12333,0,0
+2313,"Illinois Valley Port, IL",PORT,Soybeans,2021,1120988,1099744,21244,0,0
+2313,"Illinois Valley Port, IL",PORT,Soybeans,2020,1474346,1463655,10691,0,0
+2313,"Illinois Valley Port, IL",PORT,Vegetable Oils,2024,0,0,0,0,0
+2313,"Illinois Valley Port, IL",PORT,Vegetable Oils,2023,22649,22649,0,0,0
+2313,"Illinois Valley Port, IL",PORT,Vegetable Oils,2022,25470,25470,0,0,0
+2313,"Illinois Valley Port, IL",PORT,Vegetable Oils,2021,18374,18374,0,0,0
+2313,"Illinois Valley Port, IL",PORT,Vegetable Oils,2020,12445,12445,0,0,0
+2313,"Illinois Valley Port, IL",PORT,Wheat,2019,59528,59528,0,0,0
+2313,"Illinois Valley Port, IL",PORT,Corn,2019,825836,809285,0,16551,0
+2313,"Illinois Valley Port, IL",PORT,Soybeans,2019,1274431,1253426,19605,1400,0
+2313,"Illinois Valley Port, IL",PORT,Vegetable Oils,2019,17591,17591,0,0,0
+2313,"Illinois Valley Port, IL",PORT,Grain Mill Products,2023,0,0,0,0,0
+2313,"Illinois Valley Port, IL",PORT,Grain Mill Products,2022,0,0,0,0,0
+2313,"Illinois Valley Port, IL",PORT,Grain Mill Products,2021,0,0,0,0,0
+2313,"Illinois Valley Port, IL",PORT,Grain Mill Products,2020,0,0,0,0,0
+2313,"Illinois Valley Port, IL",PORT,Grain Mill Products,2019,1500,0,1500,0,0
+7713,"Illinois Waterway Ports, IL",PORT,Wheat,2024,39890,39890,0,0,0
+7713,"Illinois Waterway Ports, IL",PORT,Wheat,2023,29971,29971,0,0,0
+7713,"Illinois Waterway Ports, IL",PORT,Wheat,2022,37176,37176,0,0,0
+7713,"Illinois Waterway Ports, IL",PORT,Wheat,2021,13252,13252,0,0,0
+7713,"Illinois Waterway Ports, IL",PORT,Wheat,2020,29373,29373,0,0,0
+7713,"Illinois Waterway Ports, IL",PORT,Corn,2024,3336200,3334674,0,1526,0
+7713,"Illinois Waterway Ports, IL",PORT,Corn,2023,2917483,2917483,0,0,0
+7713,"Illinois Waterway Ports, IL",PORT,Corn,2022,4255057,4253351,1706,0,0
+7713,"Illinois Waterway Ports, IL",PORT,Corn,2021,6742732,6571135,152367,19230,0
+7713,"Illinois Waterway Ports, IL",PORT,Corn,2020,4592823,4592823,0,0,0
+7713,"Illinois Waterway Ports, IL",PORT,Soybeans,2024,3971870,3946105,25765,0,0
+7713,"Illinois Waterway Ports, IL",PORT,Soybeans,2023,3256891,3236842,20049,0,0
+7713,"Illinois Waterway Ports, IL",PORT,Soybeans,2022,4323929,4283249,40680,0,0
+7713,"Illinois Waterway Ports, IL",PORT,Soybeans,2021,2921344,2870754,50590,0,0
+7713,"Illinois Waterway Ports, IL",PORT,Soybeans,2020,3940949,3902976,37973,0,0
+7713,"Illinois Waterway Ports, IL",PORT,Vegetable Oils,2024,0,0,0,0,0
+7713,"Illinois Waterway Ports, IL",PORT,Vegetable Oils,2023,58972,22649,36323,0,0
+7713,"Illinois Waterway Ports, IL",PORT,Vegetable Oils,2022,28634,25470,3164,0,0
+7713,"Illinois Waterway Ports, IL",PORT,Vegetable Oils,2021,35384,35384,0,0,0
+7713,"Illinois Waterway Ports, IL",PORT,Vegetable Oils,2020,23383,23383,0,0,0
+7713,"Illinois Waterway Ports, IL",PORT,Grain Mill Products,2024,7056,7056,0,0,0
+7713,"Illinois Waterway Ports, IL",PORT,Grain Mill Products,2023,13530,13530,0,0,0
+7713,"Illinois Waterway Ports, IL",PORT,Grain Mill Products,2022,0,0,0,0,0
+7713,"Illinois Waterway Ports, IL",PORT,Grain Mill Products,2021,0,0,0,0,0
+7713,"Illinois Waterway Ports, IL",PORT,Grain Mill Products,2020,58305,58305,0,0,0
+7713,"Illinois Waterway Ports, IL",PORT,Wheat,2019,0,0,0,0,0
+7713,"Illinois Waterway Ports, IL",PORT,Corn,2019,0,0,0,0,0
+7713,"Illinois Waterway Ports, IL",PORT,Soybeans,2019,0,0,0,0,0
+7713,"Illinois Waterway Ports, IL",PORT,Vegetable Oils,2019,0,0,0,0,0
+7713,"Illinois Waterway Ports, IL",PORT,Grain Mill Products,2019,0,0,0,0,0
+2350,"E Iowa and W Illinois, IA IL",PORT,Wheat,2024,10005,10005,0,0,0
+2350,"E Iowa and W Illinois, IA IL",PORT,Wheat,2023,1506,1506,0,0,0
+2350,"E Iowa and W Illinois, IA IL",PORT,Wheat,2022,7680,7680,0,0,0
+2350,"E Iowa and W Illinois, IA IL",PORT,Wheat,2021,3069,3069,0,0,0
+2350,"E Iowa and W Illinois, IA IL",PORT,Wheat,2020,12858,12858,0,0,0
+2350,"E Iowa and W Illinois, IA IL",PORT,Corn,2024,976179,701210,274969,0,0
+2350,"E Iowa and W Illinois, IA IL",PORT,Corn,2023,806694,643575,163119,0,0
+2350,"E Iowa and W Illinois, IA IL",PORT,Corn,2022,791763,740692,51071,0,0
+2350,"E Iowa and W Illinois, IA IL",PORT,Corn,2021,1156468,1150057,6411,0,0
+2350,"E Iowa and W Illinois, IA IL",PORT,Corn,2020,1258088,1226741,31347,0,0
+2350,"E Iowa and W Illinois, IA IL",PORT,Soybeans,2024,1624036,1621125,2911,0,0
+2350,"E Iowa and W Illinois, IA IL",PORT,Soybeans,2023,1651102,1651102,0,0,0
+2350,"E Iowa and W Illinois, IA IL",PORT,Soybeans,2022,2143383,2143383,0,0,0
+2350,"E Iowa and W Illinois, IA IL",PORT,Soybeans,2021,1373946,1372046,1900,0,0
+2350,"E Iowa and W Illinois, IA IL",PORT,Soybeans,2020,2544428,2528245,16183,0,0
+2350,"E Iowa and W Illinois, IA IL",PORT,Vegetable Oils,2024,13624,13624,0,0,0
+2350,"E Iowa and W Illinois, IA IL",PORT,Vegetable Oils,2023,15450,15450,0,0,0
+2350,"E Iowa and W Illinois, IA IL",PORT,Vegetable Oils,2022,0,0,0,0,0
+2350,"E Iowa and W Illinois, IA IL",PORT,Vegetable Oils,2021,0,0,0,0,0
+2350,"E Iowa and W Illinois, IA IL",PORT,Vegetable Oils,2020,21589,21589,0,0,0
+2350,"E Iowa and W Illinois, IA IL",PORT,Grain Mill Products,2024,39700,39700,0,0,0
+2350,"E Iowa and W Illinois, IA IL",PORT,Grain Mill Products,2023,36448,36448,0,0,0
+2350,"E Iowa and W Illinois, IA IL",PORT,Grain Mill Products,2022,56747,56747,0,0,0
+2350,"E Iowa and W Illinois, IA IL",PORT,Grain Mill Products,2021,64580,64580,0,0,0
+2350,"E Iowa and W Illinois, IA IL",PORT,Grain Mill Products,2020,78570,78570,0,0,0
+2350,"E Iowa and W Illinois, IA IL",PORT,Wheat,2019,0,0,0,0,0
+2350,"E Iowa and W Illinois, IA IL",PORT,Corn,2019,0,0,0,0,0
+2350,"E Iowa and W Illinois, IA IL",PORT,Soybeans,2019,0,0,0,0,0
+2350,"E Iowa and W Illinois, IA IL",PORT,Vegetable Oils,2019,0,0,0,0,0
+2350,"E Iowa and W Illinois, IA IL",PORT,Grain Mill Products,2019,0,0,0,0,0
+2294,"Memphis-Shelby County Port, TN",PORT,Wheat,2024,33341,33341,0,0,0
+2294,"Memphis-Shelby County Port, TN",PORT,Wheat,2023,64259,64259,0,0,0
+2294,"Memphis-Shelby County Port, TN",PORT,Wheat,2022,36227,36227,0,0,0
+2294,"Memphis-Shelby County Port, TN",PORT,Wheat,2021,52510,52510,0,0,0
+2294,"Memphis-Shelby County Port, TN",PORT,Wheat,2020,16838,16838,0,0,0
+2294,"Memphis-Shelby County Port, TN",PORT,Corn,2024,216996,216996,0,0,0
+2294,"Memphis-Shelby County Port, TN",PORT,Corn,2023,162011,162011,0,0,0
+2294,"Memphis-Shelby County Port, TN",PORT,Corn,2022,340716,340716,0,0,0
+2294,"Memphis-Shelby County Port, TN",PORT,Corn,2021,400593,400593,0,0,0
+2294,"Memphis-Shelby County Port, TN",PORT,Corn,2020,416603,416603,0,0,0
+2294,"Memphis-Shelby County Port, TN",PORT,Sorghum,2024,0,0,0,0,0
+2294,"Memphis-Shelby County Port, TN",PORT,Sorghum,2023,0,0,0,0,0
+2294,"Memphis-Shelby County Port, TN",PORT,Sorghum,2022,14643,14643,0,0,0
+2294,"Memphis-Shelby County Port, TN",PORT,Sorghum,2021,51729,51729,0,0,0
+2294,"Memphis-Shelby County Port, TN",PORT,Sorghum,2020,13728,13728,0,0,0
+2294,"Memphis-Shelby County Port, TN",PORT,Soybeans,2024,407641,406712,929,0,0
+2294,"Memphis-Shelby County Port, TN",PORT,Soybeans,2023,390913,390913,0,0,0
+2294,"Memphis-Shelby County Port, TN",PORT,Soybeans,2022,516619,516619,0,0,0
+2294,"Memphis-Shelby County Port, TN",PORT,Soybeans,2021,631700,631700,0,0,0
+2294,"Memphis-Shelby County Port, TN",PORT,Soybeans,2020,578803,578803,0,0,0
+2294,"Memphis-Shelby County Port, TN",PORT,Vegetable Oils,2024,72291,10066,62225,0,0
+2294,"Memphis-Shelby County Port, TN",PORT,Vegetable Oils,2023,69750,9705,60045,0,0
+2294,"Memphis-Shelby County Port, TN",PORT,Vegetable Oils,2022,87445,1557,85888,0,0
+2294,"Memphis-Shelby County Port, TN",PORT,Vegetable Oils,2021,67330,8910,58420,0,0
+2294,"Memphis-Shelby County Port, TN",PORT,Vegetable Oils,2020,89631,0,89631,0,0
+2294,"Memphis-Shelby County Port, TN",PORT,Wheat,2019,29906,29906,0,0,0
+2294,"Memphis-Shelby County Port, TN",PORT,Corn,2019,311234,311234,0,0,0
+2294,"Memphis-Shelby County Port, TN",PORT,Sorghum,2019,0,0,0,0,0
+2294,"Memphis-Shelby County Port, TN",PORT,Soybeans,2019,882400,882400,0,0,0
+2294,"Memphis-Shelby County Port, TN",PORT,Vegetable Oils,2019,60966,0,60966,0,0
+2294,"Memphis-Shelby County Port, TN",PORT,Grain Mill Products,2023,0,0,0,0,0
+2294,"Memphis-Shelby County Port, TN",PORT,Grain Mill Products,2022,0,0,0,0,0
+2294,"Memphis-Shelby County Port, TN",PORT,Grain Mill Products,2021,0,0,0,0,0
+2294,"Memphis-Shelby County Port, TN",PORT,Grain Mill Products,2020,0,0,0,0,0
+2294,"Memphis-Shelby County Port, TN",PORT,Grain Mill Products,2019,3075,3075,0,0,0
+2304,"Hickman-Fulton County Port, KY",PORT,Wheat,2024,144504,144504,0,0,0
+2304,"Hickman-Fulton County Port, KY",PORT,Wheat,2023,192550,192550,0,0,0
+2304,"Hickman-Fulton County Port, KY",PORT,Wheat,2022,139980,139980,0,0,0
+2304,"Hickman-Fulton County Port, KY",PORT,Wheat,2021,99163,99163,0,0,0
+2304,"Hickman-Fulton County Port, KY",PORT,Wheat,2020,78763,78763,0,0,0
+2304,"Hickman-Fulton County Port, KY",PORT,Corn,2024,243134,243134,0,0,0
+2304,"Hickman-Fulton County Port, KY",PORT,Corn,2023,253799,253799,0,0,0
+2304,"Hickman-Fulton County Port, KY",PORT,Corn,2022,534182,530784,3398,0,0
+2304,"Hickman-Fulton County Port, KY",PORT,Corn,2021,481193,479761,1432,0,0
+2304,"Hickman-Fulton County Port, KY",PORT,Corn,2020,411653,411653,0,0,0
+2304,"Hickman-Fulton County Port, KY",PORT,Sorghum,2024,0,0,0,0,0
+2304,"Hickman-Fulton County Port, KY",PORT,Sorghum,2023,0,0,0,0,0
+2304,"Hickman-Fulton County Port, KY",PORT,Sorghum,2022,1635,1635,0,0,0
+2304,"Hickman-Fulton County Port, KY",PORT,Sorghum,2021,0,0,0,0,0
+2304,"Hickman-Fulton County Port, KY",PORT,Sorghum,2020,0,0,0,0,0
+2304,"Hickman-Fulton County Port, KY",PORT,Soybeans,2024,434794,434794,0,0,0
+2304,"Hickman-Fulton County Port, KY",PORT,Soybeans,2023,515148,515148,0,0,0
+2304,"Hickman-Fulton County Port, KY",PORT,Soybeans,2022,369217,369217,0,0,0
+2304,"Hickman-Fulton County Port, KY",PORT,Soybeans,2021,466036,466036,0,0,0
+2304,"Hickman-Fulton County Port, KY",PORT,Soybeans,2020,437536,437536,0,0,0
+2304,"Hickman-Fulton County Port, KY",PORT,Wheat,2019,154280,154280,0,0,0
+2304,"Hickman-Fulton County Port, KY",PORT,Corn,2019,270208,270208,0,0,0
+2304,"Hickman-Fulton County Port, KY",PORT,Sorghum,2019,0,0,0,0,0
+2304,"Hickman-Fulton County Port, KY",PORT,Soybeans,2019,439838,439838,0,0,0
+2288,"New Madrid County Port, MO",PORT,Wheat,2024,62008,62008,0,0,0
+2288,"New Madrid County Port, MO",PORT,Wheat,2023,41699,41699,0,0,0
+2288,"New Madrid County Port, MO",PORT,Wheat,2022,93608,93608,0,0,0
+2288,"New Madrid County Port, MO",PORT,Wheat,2021,58165,58165,0,0,0
+2288,"New Madrid County Port, MO",PORT,Wheat,2020,48169,48169,0,0,0
+2288,"New Madrid County Port, MO",PORT,Corn,2024,385436,385436,0,0,0
+2288,"New Madrid County Port, MO",PORT,Corn,2023,271557,271557,0,0,0
+2288,"New Madrid County Port, MO",PORT,Corn,2022,496830,496830,0,0,0
+2288,"New Madrid County Port, MO",PORT,Corn,2021,466234,466234,0,0,0
+2288,"New Madrid County Port, MO",PORT,Corn,2020,363984,363984,0,0,0
+2288,"New Madrid County Port, MO",PORT,Sorghum,2024,0,0,0,0,0
+2288,"New Madrid County Port, MO",PORT,Sorghum,2023,0,0,0,0,0
+2288,"New Madrid County Port, MO",PORT,Sorghum,2022,7315,7315,0,0,0
+2288,"New Madrid County Port, MO",PORT,Sorghum,2021,17341,17341,0,0,0
+2288,"New Madrid County Port, MO",PORT,Sorghum,2020,1881,1881,0,0,0
+2288,"New Madrid County Port, MO",PORT,Soybeans,2024,586420,586420,0,0,0
+2288,"New Madrid County Port, MO",PORT,Soybeans,2023,477305,477305,0,0,0
+2288,"New Madrid County Port, MO",PORT,Soybeans,2022,566115,566115,0,0,0
+2288,"New Madrid County Port, MO",PORT,Soybeans,2021,604736,604736,0,0,0
+2288,"New Madrid County Port, MO",PORT,Soybeans,2020,644628,644628,0,0,0
+2288,"New Madrid County Port, MO",PORT,Vegetable Oils,2024,0,0,0,0,0
+2288,"New Madrid County Port, MO",PORT,Vegetable Oils,2023,0,0,0,0,0
+2288,"New Madrid County Port, MO",PORT,Vegetable Oils,2022,0,0,0,0,0
+2288,"New Madrid County Port, MO",PORT,Vegetable Oils,2021,0,0,0,0,0
+2288,"New Madrid County Port, MO",PORT,Vegetable Oils,2020,1664,0,1664,0,0
+2288,"New Madrid County Port, MO",PORT,Wheat,2019,128272,128272,0,0,0
+2288,"New Madrid County Port, MO",PORT,Corn,2019,311113,311113,0,0,0
+2288,"New Madrid County Port, MO",PORT,Sorghum,2019,0,0,0,0,0
+2288,"New Madrid County Port, MO",PORT,Soybeans,2019,506782,506782,0,0,0
+2288,"New Madrid County Port, MO",PORT,Vegetable Oils,2019,0,0,0,0,0
+6080,"Mississippi River, Minneapolis to Mouth of Missouri River",WATERWAY,Wheat,2024,373584,226275,9051,0,138258
+6080,"Mississippi River, Minneapolis to Mouth of Missouri River",WATERWAY,Wheat,2023,197375,138535,3143,0,55697
+6080,"Mississippi River, Minneapolis to Mouth of Missouri River",WATERWAY,Wheat,2022,236215,128574,0,0,107641
+6080,"Mississippi River, Minneapolis to Mouth of Missouri River",WATERWAY,Wheat,2021,275356,160785,0,0,114571
+6080,"Mississippi River, Minneapolis to Mouth of Missouri River",WATERWAY,Wheat,2020,389791,154257,0,0,235534
+6080,"Mississippi River, Minneapolis to Mouth of Missouri River",WATERWAY,Corn,2024,10491111,5306541,8908,274969,4900693
+6080,"Mississippi River, Minneapolis to Mouth of Missouri River",WATERWAY,Corn,2023,9474428,5254253,0,163119,4057056
+6080,"Mississippi River, Minneapolis to Mouth of Missouri River",WATERWAY,Corn,2022,12354287,6479709,1456,51071,5822051
+6080,"Mississippi River, Minneapolis to Mouth of Missouri River",WATERWAY,Corn,2021,19326934,9195147,4922,1489,10125376
+6080,"Mississippi River, Minneapolis to Mouth of Missouri River",WATERWAY,Corn,2020,16073817,8715505,8477,40361,7309474
+6080,"Mississippi River, Minneapolis to Mouth of Missouri River",WATERWAY,Sorghum,2024,0,0,0,0,0
+6080,"Mississippi River, Minneapolis to Mouth of Missouri River",WATERWAY,Sorghum,2023,0,0,0,0,0
+6080,"Mississippi River, Minneapolis to Mouth of Missouri River",WATERWAY,Sorghum,2022,5123,5123,0,0,0
+6080,"Mississippi River, Minneapolis to Mouth of Missouri River",WATERWAY,Sorghum,2021,8149,0,0,0,8149
+6080,"Mississippi River, Minneapolis to Mouth of Missouri River",WATERWAY,Sorghum,2020,0,0,0,0,0
+6080,"Mississippi River, Minneapolis to Mouth of Missouri River",WATERWAY,Soybeans,2024,10148196,4673902,10451,349374,5114469
+6080,"Mississippi River, Minneapolis to Mouth of Missouri River",WATERWAY,Soybeans,2023,9132068,4582164,27890,421423,4100591
+6080,"Mississippi River, Minneapolis to Mouth of Missouri River",WATERWAY,Soybeans,2022,12518970,6408879,3119,284199,5822773
+6080,"Mississippi River, Minneapolis to Mouth of Missouri River",WATERWAY,Soybeans,2021,8535195,4462839,18068,231768,3822520
+6080,"Mississippi River, Minneapolis to Mouth of Missouri River",WATERWAY,Soybeans,2020,15696799,8988543,22287,116647,6569322
+6080,"Mississippi River, Minneapolis to Mouth of Missouri River",WATERWAY,Vegetable Oils,2024,263231,204557,15076,0,43598
+6080,"Mississippi River, Minneapolis to Mouth of Missouri River",WATERWAY,Vegetable Oils,2023,298710,141037,19902,0,137771
+6080,"Mississippi River, Minneapolis to Mouth of Missouri River",WATERWAY,Vegetable Oils,2022,401172,133121,37185,0,230866
+6080,"Mississippi River, Minneapolis to Mouth of Missouri River",WATERWAY,Vegetable Oils,2021,396885,164806,24475,0,207604
+6080,"Mississippi River, Minneapolis to Mouth of Missouri River",WATERWAY,Vegetable Oils,2020,398214,235660,29004,0,133550
+6080,"Mississippi River, Minneapolis to Mouth of Missouri River",WATERWAY,Grain Mill Products,2024,46756,39700,0,0,7056
+6080,"Mississippi River, Minneapolis to Mouth of Missouri River",WATERWAY,Grain Mill Products,2023,49978,36448,0,0,13530
+6080,"Mississippi River, Minneapolis to Mouth of Missouri River",WATERWAY,Grain Mill Products,2022,56747,56747,0,0,0
+6080,"Mississippi River, Minneapolis to Mouth of Missouri River",WATERWAY,Grain Mill Products,2021,67561,66093,0,0,1468
+6080,"Mississippi River, Minneapolis to Mouth of Missouri River",WATERWAY,Grain Mill Products,2020,144647,83142,0,3200,58305
+6080,"Mississippi River, Minneapolis to Mouth of Missouri River",WATERWAY,Wheat,2019,630027,155954,0,0,474073
+6080,"Mississippi River, Minneapolis to Mouth of Missouri River",WATERWAY,Corn,2019,9662854,4592097,0,83675,4987082
+6080,"Mississippi River, Minneapolis to Mouth of Missouri River",WATERWAY,Sorghum,2019,0,0,0,0,0
+6080,"Mississippi River, Minneapolis to Mouth of Missouri River",WATERWAY,Soybeans,2019,11000993,6131388,1519,163226,4704860
+6080,"Mississippi River, Minneapolis to Mouth of Missouri River",WATERWAY,Vegetable Oils,2019,474289,197674,44537,0,232078
+6080,"Mississippi River, Minneapolis to Mouth of Missouri River",WATERWAY,Grain Mill Products,2019,122098,8536,0,0,113562
+6079,"Mississippi River, Mouth of Missouri River to Mouth of Ohio River",WATERWAY,Wheat,2024,1733439,1283437,20695,0,429307
+6079,"Mississippi River, Mouth of Missouri River to Mouth of Ohio River",WATERWAY,Wheat,2023,932210,622575,20689,0,288946
+6079,"Mississippi River, Mouth of Missouri River to Mouth of Ohio River",WATERWAY,Wheat,2022,1006268,690992,16666,0,298610
+6079,"Mississippi River, Mouth of Missouri River to Mouth of Ohio River",WATERWAY,Wheat,2021,1189492,862020,0,0,327472
+6079,"Mississippi River, Mouth of Missouri River to Mouth of Ohio River",WATERWAY,Wheat,2020,1395132,989004,1583,0,404545
+6079,"Mississippi River, Mouth of Missouri River to Mouth of Ohio River",WATERWAY,Corn,2024,15308035,4759552,7806,0,10540677
+6079,"Mississippi River, Mouth of Missouri River to Mouth of Ohio River",WATERWAY,Corn,2023,13660639,4040079,0,2084,9618476
+6079,"Mississippi River, Mouth of Missouri River to Mouth of Ohio River",WATERWAY,Corn,2022,17999624,5298872,16698,0,12684054
+6079,"Mississippi River, Mouth of Missouri River to Mouth of Ohio River",WATERWAY,Corn,2021,26842206,7251200,13051,2278,19575677
+6079,"Mississippi River, Mouth of Missouri River to Mouth of Ohio River",WATERWAY,Corn,2020,22164709,5830467,4039,0,16330203
+6079,"Mississippi River, Mouth of Missouri River to Mouth of Ohio River",WATERWAY,Sorghum,2024,0,0,0,0,0
+6079,"Mississippi River, Mouth of Missouri River to Mouth of Ohio River",WATERWAY,Sorghum,2023,0,0,0,0,0
+6079,"Mississippi River, Mouth of Missouri River to Mouth of Ohio River",WATERWAY,Sorghum,2022,10812,5689,0,0,5123
+6079,"Mississippi River, Mouth of Missouri River to Mouth of Ohio River",WATERWAY,Sorghum,2021,8149,0,0,0,8149
+6079,"Mississippi River, Mouth of Missouri River to Mouth of Ohio River",WATERWAY,Sorghum,2020,17585,17585,0,0,0
+6079,"Mississippi River, Mouth of Missouri River to Mouth of Ohio River",WATERWAY,Soybeans,2024,13661482,3574395,19061,0,10068026
+6079,"Mississippi River, Mouth of Missouri River to Mouth of Ohio River",WATERWAY,Soybeans,2023,12258311,3249153,16619,0,8992539
+6079,"Mississippi River, Mouth of Missouri River to Mouth of Ohio River",WATERWAY,Soybeans,2022,16506473,3972126,35679,0,12498668
+6079,"Mississippi River, Mouth of Missouri River to Mouth of Ohio River",WATERWAY,Soybeans,2021,12241163,3705926,14387,0,8520850
+6079,"Mississippi River, Mouth of Missouri River to Mouth of Ohio River",WATERWAY,Soybeans,2020,21840053,5890596,14535,0,15934922
+6079,"Mississippi River, Mouth of Missouri River to Mouth of Ohio River",WATERWAY,Vegetable Oils,2024,263231,0,0,0,263231
+6079,"Mississippi River, Mouth of Missouri River to Mouth of Ohio River",WATERWAY,Vegetable Oils,2023,273243,1600,9256,0,262387
+6079,"Mississippi River, Mouth of Missouri River to Mouth of Ohio River",WATERWAY,Vegetable Oils,2022,406207,1437,9899,0,394871
+6079,"Mississippi River, Mouth of Missouri River to Mouth of Ohio River",WATERWAY,Vegetable Oils,2021,387504,0,0,0,387504
+6079,"Mississippi River, Mouth of Missouri River to Mouth of Ohio River",WATERWAY,Vegetable Oils,2020,401356,3142,0,0,398214
+6079,"Mississippi River, Mouth of Missouri River to Mouth of Ohio River",WATERWAY,Grain Mill Products,2024,51258,4502,0,0,46756
+6079,"Mississippi River, Mouth of Missouri River to Mouth of Ohio River",WATERWAY,Grain Mill Products,2023,79061,29083,0,0,49978
+6079,"Mississippi River, Mouth of Missouri River to Mouth of Ohio River",WATERWAY,Grain Mill Products,2022,60714,3967,0,0,56747
+6079,"Mississippi River, Mouth of Missouri River to Mouth of Ohio River",WATERWAY,Grain Mill Products,2021,69145,1584,0,0,67561
+6079,"Mississippi River, Mouth of Missouri River to Mouth of Ohio River",WATERWAY,Grain Mill Products,2020,158752,8524,13519,0,136709
+6079,"Mississippi River, Mouth of Missouri River to Mouth of Ohio River",WATERWAY,Wheat,2019,1506213,862437,5026,0,638750
+6079,"Mississippi River, Mouth of Missouri River to Mouth of Ohio River",WATERWAY,Corn,2019,14276818,4481179,3641,0,9791998
+6079,"Mississippi River, Mouth of Missouri River to Mouth of Ohio River",WATERWAY,Sorghum,2019,7495,7495,0,0,0
+6079,"Mississippi River, Mouth of Missouri River to Mouth of Ohio River",WATERWAY,Soybeans,2019,16658748,5556771,44460,0,11057517
+6079,"Mississippi River, Mouth of Missouri River to Mouth of Ohio River",WATERWAY,Vegetable Oils,2019,493340,19051,0,0,474289
+6079,"Mississippi River, Mouth of Missouri River to Mouth of Ohio River",WATERWAY,Grain Mill Products,2019,122098,1500,1500,0,119098
+6034,"Mississippi River, Mouth of Ohio River to Baton Rouge",WATERWAY,Wheat,2024,4422623,751593,0,4170,3666860
+6034,"Mississippi River, Mouth of Ohio River to Baton Rouge",WATERWAY,Wheat,2023,3698108,860472,1537,0,2836099
+6034,"Mississippi River, Mouth of Ohio River to Baton Rouge",WATERWAY,Wheat,2022,3821675,857399,0,2124,2962152
+6034,"Mississippi River, Mouth of Ohio River to Baton Rouge",WATERWAY,Wheat,2021,3608979,621963,1146,1400,2984470
+6034,"Mississippi River, Mouth of Ohio River to Baton Rouge",WATERWAY,Wheat,2020,3419586,357944,3871,0,3057771
+6034,"Mississippi River, Mouth of Ohio River to Baton Rouge",WATERWAY,Corn,2024,26039506,3006410,3166,0,23029930
+6034,"Mississippi River, Mouth of Ohio River to Baton Rouge",WATERWAY,Corn,2023,23312585,3619041,9097,7636,19676811
+6034,"Mississippi River, Mouth of Ohio River to Baton Rouge",WATERWAY,Corn,2022,30230124,4645493,25384,8082,25551165
+6034,"Mississippi River, Mouth of Ohio River to Baton Rouge",WATERWAY,Corn,2021,39799324,4721070,41053,4394,35032807
+6034,"Mississippi River, Mouth of Ohio River to Baton Rouge",WATERWAY,Corn,2020,30790133,3516006,6813,2126,27265188
+6034,"Mississippi River, Mouth of Ohio River to Baton Rouge",WATERWAY,Sorghum,2024,21385,15266,0,0,6119
+6034,"Mississippi River, Mouth of Ohio River to Baton Rouge",WATERWAY,Sorghum,2023,12717,5531,0,0,7186
+6034,"Mississippi River, Mouth of Ohio River to Baton Rouge",WATERWAY,Sorghum,2022,90273,34121,2153,0,53999
+6034,"Mississippi River, Mouth of Ohio River to Baton Rouge",WATERWAY,Sorghum,2021,260500,162252,0,0,98248
+6034,"Mississippi River, Mouth of Ohio River to Baton Rouge",WATERWAY,Sorghum,2020,42102,3761,0,0,38341
+6034,"Mississippi River, Mouth of Ohio River to Baton Rouge",WATERWAY,Soybeans,2024,28116709,9334587,5862,0,18776260
+6034,"Mississippi River, Mouth of Ohio River to Baton Rouge",WATERWAY,Soybeans,2023,25293499,8511255,3571,4546,16774127
+6034,"Mississippi River, Mouth of Ohio River to Baton Rouge",WATERWAY,Soybeans,2022,29183607,7662699,3058,0,21517850
+6034,"Mississippi River, Mouth of Ohio River to Baton Rouge",WATERWAY,Soybeans,2021,26612217,8611504,8608,1938,17990167
+6034,"Mississippi River, Mouth of Ohio River to Baton Rouge",WATERWAY,Soybeans,2020,36218054,8235872,5868,1924,27974390
+6034,"Mississippi River, Mouth of Ohio River to Baton Rouge",WATERWAY,Vegetable Oils,2024,644362,4661,60426,0,579275
+6034,"Mississippi River, Mouth of Ohio River to Baton Rouge",WATERWAY,Vegetable Oils,2023,557901,18867,96949,0,442085
+6034,"Mississippi River, Mouth of Ohio River to Baton Rouge",WATERWAY,Vegetable Oils,2022,647119,3063,122896,1502,519658
+6034,"Mississippi River, Mouth of Ohio River to Baton Rouge",WATERWAY,Vegetable Oils,2021,709702,7375,96080,1535,604712
+6034,"Mississippi River, Mouth of Ohio River to Baton Rouge",WATERWAY,Vegetable Oils,2020,858527,0,128592,0,729935
+6034,"Mississippi River, Mouth of Ohio River to Baton Rouge",WATERWAY,Grain Mill Products,2024,53920,0,0,0,53920
+6034,"Mississippi River, Mouth of Ohio River to Baton Rouge",WATERWAY,Grain Mill Products,2023,103011,0,4285,0,98726
+6034,"Mississippi River, Mouth of Ohio River to Baton Rouge",WATERWAY,Grain Mill Products,2022,60714,0,0,0,60714
+6034,"Mississippi River, Mouth of Ohio River to Baton Rouge",WATERWAY,Grain Mill Products,2021,76983,1785,0,0,75198
+6034,"Mississippi River, Mouth of Ohio River to Baton Rouge",WATERWAY,Grain Mill Products,2020,145233,0,1431,0,143802
+6034,"Mississippi River, Mouth of Ohio River to Baton Rouge",WATERWAY,Wheat,2019,4058109,801249,1750,0,3255110
+6034,"Mississippi River, Mouth of Ohio River to Baton Rouge",WATERWAY,Corn,2019,22107933,2722184,5282,1968,19378499
+6034,"Mississippi River, Mouth of Ohio River to Baton Rouge",WATERWAY,Sorghum,2019,14902,2084,1895,0,10923
+6034,"Mississippi River, Mouth of Ohio River to Baton Rouge",WATERWAY,Soybeans,2019,31361440,8152237,5379,2110,23201714
+6034,"Mississippi River, Mouth of Ohio River to Baton Rouge",WATERWAY,Vegetable Oils,2019,922076,0,136857,4566,780653
+6034,"Mississippi River, Mouth of Ohio River to Baton Rouge",WATERWAY,Grain Mill Products,2019,151336,3236,0,0,148100
+7701,"Illinois River, IL",WATERWAY,Wheat,2024,112151,73949,0,0,38202
+7701,"Illinois River, IL",WATERWAY,Wheat,2023,46493,38174,1638,0,6681
+7701,"Illinois River, IL",WATERWAY,Wheat,2022,90986,44128,0,0,46858
+7701,"Illinois River, IL",WATERWAY,Wheat,2021,83716,21260,0,0,62456
+7701,"Illinois River, IL",WATERWAY,Wheat,2020,176429,57922,0,0,118507
+7701,"Illinois River, IL",WATERWAY,Corn,2024,4860617,4857426,0,3191,0
+7701,"Illinois River, IL",WATERWAY,Corn,2023,3901965,3901965,0,0,0
+7701,"Illinois River, IL",WATERWAY,Corn,2022,5687554,5671626,1706,0,14222
+7701,"Illinois River, IL",WATERWAY,Corn,2021,8949359,8688344,152367,20582,88066
+7701,"Illinois River, IL",WATERWAY,Corn,2020,6211602,6210062,0,0,1540
+7701,"Illinois River, IL",WATERWAY,Sorghum,2024,0,0,0,0,0
+7701,"Illinois River, IL",WATERWAY,Sorghum,2023,0,0,0,0,0
+7701,"Illinois River, IL",WATERWAY,Sorghum,2022,0,0,0,0,0
+7701,"Illinois River, IL",WATERWAY,Sorghum,2021,8149,0,0,0,8149
+7701,"Illinois River, IL",WATERWAY,Sorghum,2020,0,0,0,0,0
+7701,"Illinois River, IL",WATERWAY,Soybeans,2024,4887701,4777862,25765,0,84074
+7701,"Illinois River, IL",WATERWAY,Soybeans,2023,3832562,3806205,20049,0,6308
+7701,"Illinois River, IL",WATERWAY,Soybeans,2022,5288143,5197039,40680,0,50424
+7701,"Illinois River, IL",WATERWAY,Soybeans,2021,3605112,3455176,50590,0,99346
+7701,"Illinois River, IL",WATERWAY,Soybeans,2020,4969325,4729600,37973,0,201752
+7701,"Illinois River, IL",WATERWAY,Vegetable Oils,2024,43598,0,40696,0,2902
+7701,"Illinois River, IL",WATERWAY,Vegetable Oils,2023,174094,22649,144517,0,6928
+7701,"Illinois River, IL",WATERWAY,Vegetable Oils,2022,237167,25470,203247,0,8450
+7701,"Illinois River, IL",WATERWAY,Vegetable Oils,2021,216985,35384,181601,0,0
+7701,"Illinois River, IL",WATERWAY,Vegetable Oils,2020,133550,23383,110167,0,0
+7701,"Illinois River, IL",WATERWAY,Grain Mill Products,2024,7056,7056,0,0,0
+7701,"Illinois River, IL",WATERWAY,Grain Mill Products,2023,13530,13530,0,0,0
+7701,"Illinois River, IL",WATERWAY,Grain Mill Products,2022,0,0,0,0,0
+7701,"Illinois River, IL",WATERWAY,Grain Mill Products,2021,1468,0,0,0,1468
+7701,"Illinois River, IL",WATERWAY,Grain Mill Products,2020,58305,58305,0,0,0
+7701,"Illinois River, IL",WATERWAY,Wheat,2019,372484,179980,0,0,192504
+7701,"Illinois River, IL",WATERWAY,Corn,2019,4821786,4751809,14885,39909,15183
+7701,"Illinois River, IL",WATERWAY,Sorghum,2019,0,0,0,0,0
+7701,"Illinois River, IL",WATERWAY,Soybeans,2019,3932393,3799717,45678,8295,78703
+7701,"Illinois River, IL",WATERWAY,Vegetable Oils,2019,232078,38029,191259,0,2790
+7701,"Illinois River, IL",WATERWAY,Grain Mill Products,2019,113562,112062,1500,0,0
+2078,Ohio River,WATERWAY,Wheat,2024,1387874,772397,0,0,615477
+2078,Ohio River,WATERWAY,Wheat,2023,1210171,609501,0,2814,597856
+2078,Ohio River,WATERWAY,Wheat,2022,1031298,498130,4455,0,528713
+2078,Ohio River,WATERWAY,Wheat,2021,928394,408435,11836,3704,504419
+2078,Ohio River,WATERWAY,Wheat,2020,810920,433865,1590,0,375465
+2078,Ohio River,WATERWAY,Corn,2024,8018251,7341940,0,0,676311
+2078,Ohio River,WATERWAY,Corn,2023,6826314,5896396,0,0,929918
+2078,Ohio River,WATERWAY,Corn,2022,8016063,7085172,4160,0,926731
+2078,Ohio River,WATERWAY,Corn,2021,8804141,7727847,3232,3591,1069471
+2078,Ohio River,WATERWAY,Corn,2020,5908912,4676993,6344,3773,1221802
+2078,Ohio River,WATERWAY,Sorghum,2024,0,0,0,0,0
+2078,Ohio River,WATERWAY,Sorghum,2023,0,0,0,0,0
+2078,Ohio River,WATERWAY,Sorghum,2022,19288,10735,0,0,8553
+2078,Ohio River,WATERWAY,Sorghum,2021,15787,0,0,0,15787
+2078,Ohio River,WATERWAY,Sorghum,2020,5202,5202,0,0,0
+2078,Ohio River,WATERWAY,Soybeans,2024,5207788,3724431,40047,156657,1286653
+2078,Ohio River,WATERWAY,Soybeans,2023,4724272,3478053,130389,121330,994500
+2078,Ohio River,WATERWAY,Soybeans,2022,4905375,3604847,110623,185400,1004505
+2078,Ohio River,WATERWAY,Soybeans,2021,5348456,3721911,91969,296385,1238191
+2078,Ohio River,WATERWAY,Soybeans,2020,5772800,4025652,167449,300686,1279013
+2078,Ohio River,WATERWAY,Vegetable Oils,2024,468716,327918,23696,23555,93547
+2078,Ohio River,WATERWAY,Vegetable Oils,2023,536935,240184,73604,135272,87875
+2078,Ohio River,WATERWAY,Vegetable Oils,2022,535249,290102,53742,121741,69664
+2078,Ohio River,WATERWAY,Vegetable Oils,2021,524675,291984,31546,85133,116012
+2078,Ohio River,WATERWAY,Vegetable Oils,2020,560040,376009,0,38220,145811
+2078,Ohio River,WATERWAY,Grain Mill Products,2024,0,0,0,0,0
+2078,Ohio River,WATERWAY,Grain Mill Products,2023,23950,23950,0,0,0
+2078,Ohio River,WATERWAY,Grain Mill Products,2022,0,0,0,0,0
+2078,Ohio River,WATERWAY,Grain Mill Products,2021,6053,1520,0,0,4533
+2078,Ohio River,WATERWAY,Grain Mill Products,2020,0,0,0,0,0
+2078,Ohio River,WATERWAY,Wheat,2019,1268102,849601,10945,3775,403781
+2078,Ohio River,WATERWAY,Corn,2019,5950879,4845097,15861,15899,1074022
+2078,Ohio River,WATERWAY,Sorghum,2019,0,0,0,0,0
+2078,Ohio River,WATERWAY,Soybeans,2019,5382411,3959296,131685,144833,1146597
+2078,Ohio River,WATERWAY,Vegetable Oils,2019,534012,336635,6269,60844,130264
+2078,Ohio River,WATERWAY,Grain Mill Products,2019,25927,24202,0,0,1725
