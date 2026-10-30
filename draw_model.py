@@ -43,14 +43,15 @@ def load_nodes(path: str = NODES) -> dict:
         return json.load(fh)
 
 
-# Hubs the model feeds by rail rather than by truck or barge: which railroads reach them (indices into county_rail_service.json's [BNSF, UP, CPKC]).
-# The Pacific Northwest is fed almost entirely by BNSF and UP; Texas Gulf and the Mexican border take all three (CPKC = the former KCS, strong at Laredo).
-RAIL_KINDS = {"pnw": (0, 1), "txgulf": (0, 1, 2), "mexico": (0, 1, 2)}
+# Hubs the model feeds by rail rather than by barge: which railroads reach them (indices into county_rail_service.json's [BNSF, UP, CPKC, CN, CSXT, NS]).
+# The Pacific Northwest is fed almost entirely by BNSF and UP; Texas Gulf and the Mexican border take BNSF, UP and CPKC (the former KCS, strong at Laredo);
+# Louisiana's export elevators take UP, CPKC and CN (the old Illinois Central, the line down from Illinois and Iowa); Mobile takes CSX and CN.
+RAIL_KINDS = {"pnw": (0, 1), "txgulf": (0, 1, 2), "mexico": (0, 1, 2), "lagulf": (1, 2, 3), "mobile": (3, 4)}
+EAST_GULF_KINDS = ("lagulf", "mobile")         # East Gulf beans that did not arrive by barge: scale with the East Gulf, like the barge targets
 
 
 def solve(inputs: dict, *, rate=CENTS_PER_BU_MILE, tau=1.0, river_premium=0.0, plant_premium=None, util=1.0, river_share=1.0, iters=400,
-          nodes=None, lock_scale=1.0, area_mbu=None, pin_cap_mbu=None, river_scale=1.0, pnw_scale=1.0, pnw_reach_miles=30.0, pnw_rate=None,
-          txg_scale=1.0, mex_scale=1.0, txg_rate=None, mex_rate=None):
+          nodes=None, lock_scale=1.0, area_mbu=None, pin_cap_mbu=None, river_scale=1.0, pnw_reach_miles=30.0, rail_scales=None, rail_rates=None):
     """Flows (bu) county x buyer.
 
     rate           freight, cents per bushel-mile
@@ -70,12 +71,12 @@ def solve(inputs: dict, *, rate=CENTS_PER_BU_MILE, tau=1.0, river_premium=0.0, p
                    (Columbia River, Puget Sound), whose defaults are FGIS inspections by port
     river_scale    multiplies every barge-loading target (the lock-based nodes and the below-Lock-27 areas) after the overrides above, which are
                    then read as baseline (2021-25) figures; export_scenario.py turns a US soybean export number into this factor
-    pnw_scale      the same for the Pacific Northwest hubs
-    pnw_reach_miles  the Pacific Northwest is fed almost entirely by BNSF and UP rail, so a county sends it beans only if BNSF or UP track is within
-                   this many miles of its centroid (data/draw/county_rail_service.json). CPKC is left out.
-    pnw_rate       freight for the rail haul to the Pacific Northwest, cents per bushel-mile (None = the truck `rate`)
-    txg_scale, mex_scale, txg_rate, mex_rate   the same for the Texas Gulf hub and for Mexico by rail. All three rail hubs use pnw_reach_miles, measured to
-                   the railroads in RAIL_KINDS
+    rail_scales    {"pnw" | "txgulf" | "mexico": factor} for the rail-fed export hubs (West Coast, West Gulf, Mexico vs their 2021-25 averages); the East Gulf
+                   rail hubs ("lagulf", "mobile") follow river_scale
+    pnw_reach_miles  a county sends beans to a rail-fed hub only if track of a railroad that serves it is within this many miles of its centroid
+                   (data/draw/county_rail_service.json)
+    rail_rates     {rail kind: cents per bushel-mile} freight for the rail haul to each rail-fed hub (a missing kind = the truck `rate`)
+    pnw_reach_miles  applies to every rail-fed hub, measured to the railroads in RAIL_KINDS
     pin_cap_mbu    {river pin key: M bu/yr} ceilings, on top of any `cap_mbu` set on the pin in the inputs. A capped pin takes at most its cap
                    and the rest of its group's target spreads over the group's other pins (a ceiling, not a target)
     """
@@ -97,14 +98,14 @@ def solve(inputs: dict, *, rate=CENTS_PER_BU_MILE, tau=1.0, river_premium=0.0, p
     b = need * scale
     residual = max(0.0, total - plant_need)
     if nodes is not None:
-        groups = _groups(inputs, nodes, n_p, lock_scale, area_mbu or {}, river_scale, {"pnw": pnw_scale, "txgulf": txg_scale, "mexico": mex_scale})
+        groups = _groups(inputs, nodes, n_p, lock_scale, area_mbu or {}, river_scale, {**{k: river_scale for k in EAST_GULF_KINDS}, **(rail_scales or {})})
         want = sum(g["target_bu"] for g in groups)
         tscale = min(1.0, residual / want) if want else 1.0                   # targets can't exceed what is left after crush
         for g in groups:
             g["target_bu"] *= tscale
         river_total = sum(g["target_bu"] for g in groups)
         rs = load_rail_service()
-        rates = {"pnw": pnw_rate, "txgulf": txg_rate, "mexico": mex_rate}
+        rates = {k: (rail_rates or {}).get(k) for k in RAIL_KINDS}
         rail_cols = {kind: [c for g in groups if g["kind"] == kind for c in g["cols"]] for kind in RAIL_KINDS}
         for kind, cols_k in rail_cols.items():
             if cols_k and rates[kind] is not None:                             # rail, not truck, freight on the way to the coast or the border
@@ -113,7 +114,7 @@ def solve(inputs: dict, *, rate=CENTS_PER_BU_MILE, tau=1.0, river_premium=0.0, p
             K = np.exp(-(cost - cost.min(axis=1, keepdims=True)) / max(tau, 1e-3))
         for kind, cols_k in rail_cols.items():
             if cols_k:
-                served = np.array([min(rs.get(c["fips"], [9999, 9999, 9999])[k] for k in RAIL_KINDS[kind]) <= pnw_reach_miles for c in cty])
+                served = np.array([min(rs.get(c["fips"], [9999] * 6)[k] for k in RAIL_KINDS[kind]) <= pnw_reach_miles for c in cty])
                 K[np.ix_(~served, cols_k)] = 0.0                               # only counties on a railroad that reaches the hub can ship to it
         st = np.array([c["state"] for c in cty])
         for g in groups:

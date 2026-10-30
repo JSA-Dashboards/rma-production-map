@@ -3,7 +3,7 @@ Distance from every Draw Territory county to the nearest BNSF, UP and CPKC track
 lines, each path a short segment). The Pacific Northwest hub is fed almost entirely by BNSF and UP shuttle and unit trains, so the model lets a
 county send beans there only if one of those two railroads is within reach; CPKC is kept in the file for reference.
 
-Writes data/draw/county_rail_service.json  {"built": ..., "counties": {fips: [miles to BNSF, miles to UP, miles to CPKC]}}
+Writes data/draw/county_rail_service.json  {"built": ..., "counties": {fips: [miles to BNSF, UP, CPKC, CN, CSXT, NS]}}
     python build_county_rail_service.py
 """
 import datetime
@@ -14,6 +14,7 @@ import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 D = os.path.join(HERE, "data")
+CODES = ("BNSF", "UP", "CPKC", "CN", "CSXT", "NS")      # the first three stay where the model expects them (RAIL_KINDS indexes into this order)
 
 
 def seg_dist(clat, clon, segs):
@@ -39,16 +40,16 @@ def main():
     clat = np.array([c["lat"] for c in cty])
     clon = np.array([c["lon"] for c in cty])
     cols = []
-    for code in ("BNSF", "UP", "CPKC"):
+    for code in CODES:
         segs = []
         for path in lines[code]:
             for a, b in zip(path[:-1], path[1:]):
                 segs.append((a[0], a[1], b[0], b[1]))
         cols.append(seg_dist(clat, clon, np.array(segs, float)))
         print(code, len(segs), "segments")
-    out = {c["fips"]: [round(float(cols[k][i]), 1) for k in range(3)] for i, c in enumerate(cty)}
+    out = {c["fips"]: [round(float(cols[k][i]), 1) for k in range(len(CODES))] for i, c in enumerate(cty)}
     with open(os.path.join(D, "draw", "county_rail_service.json"), "w") as fh:
-        json.dump({"built": datetime.date.today().isoformat(), "columns": ["BNSF", "UP", "CPKC"], "counties": out}, fh, separators=(",", ":"))
+        json.dump({"built": datetime.date.today().isoformat(), "columns": list(CODES), "counties": out}, fh, separators=(",", ":"))
     near = np.minimum(cols[0], cols[1])
     for r in (10, 25, 50):
         print(f"counties within {r} mi of BNSF or UP: {(near <= r).sum()} of {len(cty)}")

@@ -6,6 +6,7 @@
   "west_coast_mbu": 381.5557194233333,
   "west_gulf_mbu": 30.109004696666666,
   "mexico_rail_mbu": 126.38779999999998,
+  "east_gulf_port_mbu": 18.5844591,
   "mexico_rail_states_mbu": {
    "MO": 31.79,
    "NE": 24.6,
@@ -39,6 +40,15 @@
    "BNSF",
    "UP",
    "CPKC"
+  ],
+  "lagulf": [
+   "UP",
+   "CPKC",
+   "CN"
+  ],
+  "mobile": [
+   "CSXT",
+   "CN"
   ]
  },
  "measured_arrivals_mbu": 410.2194866666667,
@@ -427,6 +437,28 @@
    "target_mbu": 284.3337083333334,
    "note": "Waterway 6034 soybean shipments (Mouth of Ohio River to Baton Rouge); every remaining tracker pin below Lock 27",
    "hub": "Lower Mississippi"
+  },
+  {
+   "name": "Louisiana rail and truck (Reserve, Convent, Ama, Destrehan, New Orleans)",
+   "kind": "lagulf",
+   "pins": [
+    "Louisiana rail hub (Reserve/Convent)"
+   ],
+   "target_mbu": 210.21396070333333,
+   "anchor": "Louisiana rail hub (Reserve/Convent)",
+   "note": "East Gulf soybean ship inspections (Mississippi River ports) less the barge loadings above and below Lock 27: beans that reached the Louisiana export elevators by rail or truck. A residual, so it carries the barge estimates' errors.",
+   "hub": "Louisiana Rail"
+  },
+  {
+   "name": "Mobile and the other non-Mississippi East Gulf ports",
+   "kind": "mobile",
+   "pins": [
+    "Mobile hub (Mobile/Pascagoula)"
+   ],
+   "target_mbu": 18.5844591,
+   "anchor": "Mobile hub (Mobile/Pascagoula)",
+   "note": "FGIS soybean ship inspections at the East Gulf ports other than the Mississippi River.",
+   "hub": "Mobile"
   }
  ],
  "dropped": [

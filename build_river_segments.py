@@ -109,10 +109,12 @@ EXTRA_PINS = {"MS-5": ["Meredosia", "Naples"]}                                  
 # Where Texas Gulf soybeans can come from. No data gives their origin (FGIS records the port, not the farm state), so this is the plains rail belt: the
 # Houston lanes in USDA AMS's rail tariff table start in KS, NE and MN, and without it the model would take the Delta's beans, which have the river.
 TXG_ORIGIN_STATES = ["TX", "OK", "KS", "NE", "MO", "IA", "MN", "SD", "ND", "CO", "NM"]
-TXG_PINS = ["Texas Gulf hub"]                                                          # Houston / Galveston / Corpus Christi, modeled as one hub
+TXG_PINS = ["Texas Gulf hub"]
+LA_PINS = ["Louisiana rail hub"]                                                       # export elevators below Baton Rouge fed by rail and truck rather than barge
+MOBILE_PINS = ["Mobile hub"]                                                          # Houston / Galveston / Corpus Christi, modeled as one hub
 MEX_PINS = ["Mexico rail: "]                                                           # border crossings the grain rails into Mexico through
 FGIS_FALLBACK = {"east_gulf_mbu": 1043.8, "west_coast_columbia_mbu": 273.6, "west_coast_puget_mbu": 107.9, "west_coast_mbu": 381.5,
-                 "west_gulf_mbu": 30.1, "mexico_rail_mbu": 126.4,
+                 "west_gulf_mbu": 30.1, "mexico_rail_mbu": 126.4, "east_gulf_port_mbu": 18.6,
                  "mexico_rail_states_mbu": {"MO": 31.8, "NE": 24.6, "IA": 19.6, "KS": 18.6, "ND": 14.0, "MN": 6.7, "WI": 4.0, "LA": 3.5, "IL": 2.0, "SD": 1.2}}
 
 
@@ -133,13 +135,14 @@ def fgis_soy_exports():
         x = f[(f.my >= 2021) & (f.my <= 2025)]
         reg = x.groupby("fgis_reg").mbu.sum() / 5
         wc = x[x.fgis_reg == "WEST COAST"].groupby("port").mbu.sum() / 5
+        eg_port = x[(x.fgis_reg == "EAST GULF") & (x.port == "EAST GULF")].mbu.sum() / 5          # Mobile and the other non-Mississippi East Gulf ports
         m = pd.DataFrame(json.load(urllib.request.urlopen("https://agtransport.usda.gov/resource/sruw-w49i.json?" + urllib.parse.urlencode(qm), timeout=120)))
         m["year"], m["month"] = m.year.astype(int), m.month.astype(int)
         m["my"] = m.year.where(m.month >= 9, m.year - 1)
         m["mbu"] = m.lbs.astype(float) / 60 / 1e6
         ms = (m[(m.my >= 2021) & (m.my <= 2025)].groupby("state").mbu.sum() / 5).sort_values(ascending=False)
         return {"east_gulf_mbu": float(reg["EAST GULF"]), "west_coast_columbia_mbu": float(wc["COLUMBIA R."]), "west_coast_puget_mbu": float(wc["PUGET SOUND"]),
-                "west_coast_mbu": float(reg["WEST COAST"]), "west_gulf_mbu": float(reg["WEST GULF"]), "mexico_rail_mbu": float(ms.sum()),
+                "west_coast_mbu": float(reg["WEST COAST"]), "west_gulf_mbu": float(reg["WEST GULF"]), "mexico_rail_mbu": float(ms.sum()), "east_gulf_port_mbu": float(eg_port),
                 "mexico_rail_states_mbu": {k: round(float(v), 2) for k, v in ms.items() if v >= 0.05}, "source": "FGIS soybean inspections, marketing years 2021/22-2025/26 average, all carriers"}
     except Exception as e:                                       # keep the build working offline
         return {**FGIS_FALLBACK, "source": f"fallback constants ({type(e).__name__})"}
@@ -147,7 +150,7 @@ def fgis_soy_exports():
 
 HUBS = [("Illinois River", "IL-"), ("Upper Mississippi", "MS-"), ("Ohio River", "OH-"), ("Arkansas River", "AK"), ("St. Louis", "St. Louis City"),
         ("St. Louis", "East St. Louis"), ("Lower Mississippi", "Cape Girardeau"), ("Lower Mississippi", "Lower Mississippi"), ("Pacific Northwest", "Pacific Northwest"),
-        ("Texas Gulf", "Texas Gulf"), ("Mexico Rail", "Mexico by rail")]
+        ("Texas Gulf", "Texas Gulf"), ("Mexico Rail", "Mexico by rail"), ("Louisiana Rail", "Louisiana rail"), ("Mobile", "Mobile")]
 
 
 def hub_of(name):
@@ -208,14 +211,28 @@ def build_groups(segs, nodes, pins, usda, bu):
         in_area.update(pl)
         placed.update(pl)
         groups.append({"name": name, "kind": "area", "pins": pl, "target_mbu": tgt, "note": note})
+    la_pl = [p["key"] for p in pins if any(t.lower() in p["key"].lower() for t in LA_PINS)]
+    mob_pl = [p["key"] for p in pins if any(t.lower() in p["key"].lower() for t in MOBILE_PINS)]
+    placed.update(la_pl + mob_pl)
     lower = [p["key"] for p in pins if p["key"] not in placed and p["key"] not in DROP_PINS]
     groups.append({"name": "Lower Mississippi, Cairo to Baton Rouge", "kind": "area", "pins": lower, "target_mbu": port(6034),
                    "note": "Waterway 6034 soybean shipments (Mouth of Ohio River to Baton Rouge); every remaining tracker pin below Lock 27"})
+    # The East Gulf rail hubs are what is left of the East Gulf's ship inspections once the barge loadings (lock-measured above Lock 27, Corps port tonnage
+    # below it) and the non-Mississippi ports (Mobile, from FGIS) are taken out. A residual carries every error in the barge estimates (about +/-10% of
+    # 800M bu), and it also holds trucks that go straight to the Louisiana elevators.
+    area_total = sum(g["target_mbu"] for g in groups if g["kind"] == "area")
+    mobile_mbu = float(fg["east_gulf_port_mbu"])
+    la_mbu = max(0.0, fg["east_gulf_mbu"] - measured - area_total - mobile_mbu)
+    groups.append({"name": "Louisiana rail and truck (Reserve, Convent, Ama, Destrehan, New Orleans)", "kind": "lagulf", "pins": la_pl, "target_mbu": la_mbu,
+                   "anchor": "Louisiana rail hub (Reserve/Convent)",
+                   "note": "East Gulf soybean ship inspections (Mississippi River ports) less the barge loadings above and below Lock 27: beans that reached the "
+                           "Louisiana export elevators by rail or truck. A residual, so it carries the barge estimates' errors."})
+    groups.append({"name": "Mobile and the other non-Mississippi East Gulf ports", "kind": "mobile", "pins": mob_pl, "target_mbu": mobile_mbu,
+                   "anchor": "Mobile hub (Mobile/Pascagoula)", "note": "FGIS soybean ship inspections at the East Gulf ports other than the Mississippi River."})
     for g in groups:
         g["hub"] = hub_of(g["name"])
-    area_total = sum(g["target_mbu"] for g in groups if g["kind"] == "area")
     return {"fgis": fg, "pnw_rail": {"railroads": ["BNSF", "UP"], "note": "BNSF and UP feed nearly all of the Pacific Northwest; CPKC is left out"},
-            "rail_hubs": {"txgulf": ["BNSF", "UP", "CPKC"], "mexico": ["BNSF", "UP", "CPKC"]},
+            "rail_hubs": {"txgulf": ["BNSF", "UP", "CPKC"], "mexico": ["BNSF", "UP", "CPKC"], "lagulf": ["UP", "CPKC", "CN"], "mobile": ["CSXT", "CN"]},
             "measured_arrivals_mbu": measured, "area_total_mbu": area_total, "unplaced_lock_nodes": unplaced, "groups": groups,
             "dropped": DROP_PINS,
             "east_gulf_other_mbu": fg["east_gulf_mbu"] - measured - area_total,

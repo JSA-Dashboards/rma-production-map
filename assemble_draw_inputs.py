@@ -45,6 +45,9 @@ EXTRA_RIVER_PINS = [
     {"key": "Mexico rail: Eagle Pass TX", "state": "TX", "lat": 28.71, "lon": -100.50, "site": "mx-eagle-pass"},
     {"key": "Mexico rail: Brownsville TX", "state": "TX", "lat": 25.90, "lon": -97.50, "site": "mx-brownsville"},
     {"key": "Mexico rail: El Paso TX", "state": "TX", "lat": 31.76, "lon": -106.49, "site": "mx-el-paso"},
+    # East Gulf export elevators that beans reach by rail or truck instead of barge: Louisiana (Reserve to Destrehan) and Mobile, each one hub point.
+    {"key": "Louisiana rail hub (Reserve/Convent)", "state": "LA", "lat": 30.06, "lon": -90.55, "site": "la-rail-hub"},
+    {"key": "Mobile hub (Mobile/Pascagoula)", "state": "AL", "lat": 30.70, "lon": -88.04, "site": "mobile-hub"},
     {"key": "Louis Dreyfus Cahokia IL", "state": "IL", "lat": 38.5662, "lon": -90.1794, "site": "ldc-cahokia"},
     {"key": "Bruce Oakley Cahokia IL", "state": "IL", "lat": 38.5662, "lon": -90.1794, "site": "oakley-cahokia"},
 ]
