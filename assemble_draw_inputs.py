@@ -29,7 +29,9 @@ PNW = {"key": "PNW export (rail)", "state": "OR", "lat": 45.6, "lon": -122.7}
 SITE_OVERRIDES = {"CGB - Cahokia": "cgb-cahokia", "CHS Cahokia": "cofco-chs-cahokia"}     # CHS operates COFCO's Cahokia terminal (lease, Jan 2026)
 EXTRA_RIVER_PINS = [
     {"key": "Richardson Elevator (Italgrani), St. Louis MO", "state": "MO", "lat": 38.5414, "lon": -90.2539, "site": "richardson-stl"},
-    {"key": "Ingram Tyler Street Terminal, St. Louis MO", "state": "MO", "lat": 38.6467, "lon": -90.1822, "site": "ingram-tyler-st"},
+    # cap_mbu: a ceiling on the pin's annual soybeans. Ingram's own bid notice puts ALL grain at Tyler Street at ~175,000 tons a year, and the
+    # terminal is mainly fertilizer; 175,000 t x 2000/60 = 5.8 M bu is the ceiling even if every ton were soybeans.
+    {"key": "Ingram Tyler Street Terminal, St. Louis MO", "state": "MO", "lat": 38.6467, "lon": -90.1822, "site": "ingram-tyler-st", "cap_mbu": 5.8},
     {"key": "Louis Dreyfus Cahokia IL", "state": "IL", "lat": 38.5662, "lon": -90.1794, "site": "ldc-cahokia"},
     {"key": "Bruce Oakley Cahokia IL", "state": "IL", "lat": 38.5662, "lon": -90.1794, "site": "oakley-cahokia"},
 ]

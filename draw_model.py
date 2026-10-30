@@ -36,7 +36,7 @@ def load_nodes(path: str = NODES) -> dict:
 
 
 def solve(inputs: dict, *, rate=CENTS_PER_BU_MILE, tau=1.0, river_premium=0.0, plant_premium=None, util=1.0, river_share=1.0, iters=400,
-          nodes=None, lock_scale=1.0, pnw_mbu=None, area_mbu=None):
+          nodes=None, lock_scale=1.0, pnw_mbu=None, area_mbu=None, pin_cap_mbu=None):
     """Flows (bu) county x buyer.
 
     rate           freight, cents per bushel-mile
@@ -54,6 +54,8 @@ def solve(inputs: dict, *, rate=CENTS_PER_BU_MILE, tau=1.0, river_premium=0.0, p
     pnw_mbu        override for beans railed to the Pacific Northwest (M bu/yr)
     area_mbu       {area name: M bu/yr} overrides for the below-Lock-27 areas (St. Louis City, East St. Louis area, Cape Girardeau to Chester,
                    Lower Mississippi), whose defaults are the Corps' WCUS port tonnage, 2021-24 average
+    pin_cap_mbu    {river pin key: M bu/yr} ceilings, on top of any `cap_mbu` set on the pin in the inputs. A capped pin takes at most its cap
+                   and the rest of its group's target spreads over the group's other pins (a ceiling, not a target)
     """
     cty, plants, river = inputs["counties"], inputs["plants"], inputs["river"]
     miles = np.array([[np.nan if m is None else m for m in row] for row in inputs["miles"]], float)
@@ -98,6 +100,11 @@ def solve(inputs: dict, *, rate=CENTS_PER_BU_MILE, tau=1.0, river_premium=0.0, p
     if other_total > 0:                                                        # the non-river, non-crush beans leave every county pro rata
         supply = supply * (1 - other_total / total)
         total = supply.sum()
+    caps = np.full(n_p + n_r, np.inf)
+    for j, r_ in enumerate(river):
+        c_ = (pin_cap_mbu or {}).get(r_["key"], r_.get("cap_mbu"))
+        if c_ is not None:
+            caps[n_p + j] = c_ * 1e6
     u = np.ones(len(cty))
     v = np.ones(n_p + n_r)
     for _ in range(iters):
@@ -106,7 +113,7 @@ def solve(inputs: dict, *, rate=CENTS_PER_BU_MILE, tau=1.0, river_premium=0.0, p
         v[:n_p] = b / np.maximum(colsum[:n_p], 1e-300)
         if groups is not None:
             for g in groups:
-                v[g["cols"]] = g["target_bu"] / max(colsum[g["cols"]].sum(), 1e-300)
+                v[g["cols"]] = _fill(colsum[g["cols"]], g["target_bu"], caps[g["cols"]])
         else:
             rv = colsum[n_p:] @ np.ones(n_r) if n_r else 0.0
             if n_r:
@@ -119,6 +126,26 @@ def solve(inputs: dict, *, rate=CENTS_PER_BU_MILE, tau=1.0, river_premium=0.0, p
                           "drawn_bu": float(flow[:, g["cols"]].sum())} for g in groups]
         out["target_scale"] = tscale
     return out
+
+
+def _fill(c, target, cap):
+    """Scaling factors v for one group's pins so each pin's flow is v * c, the group adds to `target`, and no pin exceeds its cap.
+    Capped pins are pinned at their cap and the balance is shared by the others in proportion to c."""
+    v = np.zeros(len(c))
+    free = np.ones(len(c), bool)
+    for _ in range(len(c)):
+        rem = target - cap[~free].sum()
+        s = c[free].sum()
+        if s <= 0 or rem <= 0:
+            break
+        lam = rem / s
+        over = free & (lam * c > cap)
+        if not over.any():
+            v[free] = lam
+            break
+        free &= ~over
+    v[~free] = cap[~free] / np.maximum(c[~free], 1e-300)
+    return v
 
 
 def _groups(inputs, nodes, n_p, lock_scale, pnw_mbu, area_mbu):

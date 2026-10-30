@@ -25,10 +25,10 @@ def _in_box(paths, box):
 
 
 @st.cache_data(show_spinner="Solving the draw…")
-def _solve(rate, tau, river_premium, util, lock_scale, pnw_mbu, area_items, plant_premium_items):
+def _solve(rate, tau, river_premium, util, lock_scale, pnw_mbu, area_items, cap_items, plant_premium_items):
     inp = dm.load()
     res = dm.solve(inp, rate=rate, tau=tau, river_premium=river_premium, util=util, nodes=dm.load_nodes(), lock_scale=lock_scale,
-                   pnw_mbu=pnw_mbu, area_mbu=dict(area_items), plant_premium=dict(plant_premium_items))
+                   pnw_mbu=pnw_mbu, area_mbu=dict(area_items), pin_cap_mbu=dict(cap_items), plant_premium=dict(plant_premium_items))
     return res
 
 
@@ -69,6 +69,16 @@ def render():
                 area_over[g["name"]] = v
         st.caption("Source: Corps Waterborne Commerce of the U.S., shipments (beans loaded out of the area). Nothing measures these below the last lock; "
                    "the Lower Mississippi figure is the whole stretch from Cairo to Baton Rouge, split among every tracker pin on it by distance.")
+        capped = [r for r in inp["river"] if r.get("cap_mbu") is not None]
+        cap_over = {}
+        if capped:
+            st.markdown("**Terminal ceilings** (M bu/yr of soybeans): a terminal never draws more than its ceiling; the rest of its area spreads over the others")
+            for r, c_ in zip(capped, st.columns(len(capped))):
+                v = c_.number_input(r["key"], 0.0, 1000.0, float(r["cap_mbu"]), 0.5, key=f"draw_cap_{r['key']}",
+                                    help="Ingram's own bid notice puts all grain at Tyler Street at about 175,000 tons a year (fertilizer is its main cargo), "
+                                         "so 5.8M bu is the ceiling even if every ton were soybeans. Raise it to remove the cap.")
+                if abs(v - float(r["cap_mbu"])) > 1e-9:
+                    cap_over[r["key"]] = v
     o1, o2 = st.columns([1, 3])
     show_rivers = o1.checkbox("Rivers", value=True, key="draw_rivers")
     rails = o2.multiselect("Railroads", list(rm.RAILROADS), default=["UP", "BNSF", "CSXT", "NS", "CN", "TPW", "IAIS"],
@@ -79,7 +89,8 @@ def render():
         cols = st.columns(3)
         for i, k in enumerate(keys):
             prem[k] = cols[i % 3].number_input(k, -20.0, 20.0, 0.0, 0.5, key=f"draw_prem_{k}")
-    res = _solve(rate, tau, river_prem, util, lock_scale, pnw_mbu, tuple(sorted(area_over.items())), tuple(sorted((k, v) for k, v in prem.items() if v)))
+    res = _solve(rate, tau, river_prem, util, lock_scale, pnw_mbu, tuple(sorted(area_over.items())), tuple(sorted(cap_over.items())),
+                 tuple(sorted((k, v) for k, v in prem.items() if v)))
     plants_t, river_t, cty_t = dm.summarize(inp, res, state)
     if res.get("target_scale", 1.0) < 0.999:
         st.warning(f"The river targets add up to more than the beans left after crush, so they were scaled to {res['target_scale']:.0%}. "
