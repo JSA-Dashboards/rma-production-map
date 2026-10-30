@@ -75,8 +75,7 @@ def render():
             st.markdown("**Terminal ceilings** (M bu/yr of soybeans): a terminal never draws more than its ceiling; the rest of its area spreads over the others")
             for r, c_ in zip(capped, st.columns(len(capped))):
                 v = c_.number_input(r["key"], 0.0, 1000.0, float(r["cap_mbu"]), 0.5, key=f"draw_cap_{r['key']}",
-                                    help="Ingram's own bid notice puts all grain at Tyler Street at about 175,000 tons a year (fertilizer is its main cargo), "
-                                         "so 5.8M bu is the ceiling even if every ton were soybeans. Raise it to remove the cap.")
+                                    help=(r.get("cap_note", "") + " Raise it to remove the cap.").strip())
                 if abs(v - float(r["cap_mbu"])) > 1e-9:
                     cap_over[r["key"]] = v
     o1, o2 = st.columns([1, 3])
