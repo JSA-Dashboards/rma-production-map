@@ -236,20 +236,25 @@ def render():
                                 help="From USDA AMS rail tariffs to the border (rzdk-2e87, Oct 2026, soybeans, heavy cars, fuel surcharge included): UP 0.045 cents per "
                                      "bushel-mile (about $1.54 a bushel to Laredo or Eagle Pass from 1,200 miles, $1.64 to Brownsville), BNSF 0.053, CPKC/KCS Laredo about $1.43. "
                                      "Within each state the beans come from the nearest rail counties; the state totals are held to FGIS rail inspections for Mexico.")
-    la_rate = c11.number_input("Rail freight to Louisiana (cents / bu / mile)", 0.001, 0.20, 0.065, 0.005, format="%.3f", key="draw_la_rate",
-                               help="From USDA AMS rail tariffs to Reserve, Convent and Ama (2026): CN from Gibson City IL (870 miles, about $0.71-0.81 a bushel) and "
-                                    "Ida Grove IA (1,376 miles, about $0.96-1.08), UP from Sloan IA (1,231 miles, $1.17): a fitted slope of about 0.068 cents per "
-                                    "bushel-mile. Louisiana's rail and truck beans are what is left of the East Gulf's inspections after the barge arrivals, so "
-                                    "this is the least certain hub: nothing records where they come from. They are drawn only from IL, IA, WI and MN: the "
-                                    "Delta has little rail loading (one loader in Mississippi, not much volume).")
-    mob_rate = c12.number_input("Rail freight to Mobile (cents / bu / mile)", 0.001, 0.20, 0.065, 0.005, format="%.3f", key="draw_mob_rate",
-                                help="AMS publishes one soybean lane to Mobile (CSX from Casey IL, 779 miles, about $1.02-1.08 a bushel), too few to fit a slope: this "
-                                     "borrows Louisiana's. Mobile draws from counties on CSX, NS or CN track, in IL, IN, OH, KY, TN and IA.")
-    satl_rate = c14.number_input("Rail freight to South Atlantic (cents / bu / mile)", 0.001, 0.20, 0.065, 0.005, format="%.3f", key="draw_satl_rate",
-                                 help="AMS publishes one soybean lane to Chesapeake (CSX from Marion OH, 760 miles, about $0.87-1.02 a bushel) and the corn lanes to "
-                                      "the Carolinas and Georgia are too different to fit a slope, so this borrows Louisiana's. The South Atlantic draws from CSX or NS "
-                                      "track in the eastern Corn Belt and the Mid-Atlantic (OH, IN, MI, IL, KY, TN, VA, NC, SC, MD, DE, PA, NJ, WV, GA): nothing records "
-                                      "where its soybeans come from.")
+    la_rate = c11.number_input("Rail freight to Louisiana (cents / bu / mile)", 0.001, 0.20, 0.090, 0.005, format="%.3f", key="draw_la_rate",
+                               help="From the Rail FOB portal's CN sheet (rates to the Gulf Exports Group, 105+ car trains, 53 origins from Illinois to Iowa): the tariff rises "
+                                    "$2.40-2.65 a car per rail mile (R-squared 0.8), 0.061-0.072 cents per bushel-mile, plus CN's fuel surcharge ($0.825 a car-mile, "
+                                    "October 2026, USDA AMS) at 3,700 bu a car = 0.022: about 0.089. USDA AMS's lanes agree on the level (Gibson City IL to Reserve, "
+                                    "870 miles, $0.71-0.81 a bushel; Ida Grove IA, 1,376 miles, $0.96-1.08). Louisiana's rail and truck beans are set to 130M bu "
+                                    "from the Corps' port receipts. They are drawn only from IL, IA, WI and MN: the Delta has little rail loading (one loader in "
+                                    "Mississippi, not much volume).")
+    mob_rate = c12.number_input("Rail freight to Mobile (cents / bu / mile)", 0.001, 0.20, 0.115, 0.005, format="%.3f", key="draw_mob_rate",
+                                help="From the Rail FOB portal's CSX sheet (express and non-express rates to the Evansville market for AL/TN/KY/LA, 20 origins with "
+                                     "coordinates): the tariff rises $3.27 a car per rail mile (R-squared 0.7), 0.094 cents per bushel-mile at its 3,500 bu a car, plus "
+                                     "CSX's fuel surcharge ($0.87 a car-mile, October 2026, USDA AMS) = 0.025: about 0.118. It reproduces AMS's one Mobile lane (CSX "
+                                     "from Casey IL, 779 miles, $1.02-1.08 a bushel). Mobile draws from counties on CSX, NS or CN track, in IL, IN, OH, KY, TN and IA.")
+    satl_rate = c14.number_input("Rail freight to South Atlantic (cents / bu / mile)", 0.001, 0.20, 0.064, 0.005, format="%.3f", key="draw_satl_rate",
+                                 help="From the Rail FOB portal's NS sheet (spreads from 67 origins to NC/SC/VA against its Fort Wayne bid): the tariff rises 0.042 cents per "
+                                      "bushel-mile of extra distance (R-squared 0.83: Iowa origins run 28 cents over Fort Wayne, Illinois 7, Indiana 3, Ohio 0), plus "
+                                      "NS's fuel surcharge ($0.74 a car-mile, October 2026, USDA AMS) at 3,500 bu a car = 0.021: about 0.064. USDA AMS has one soybean "
+                                      "lane to Chesapeake (CSX from Marion OH, 760 miles, $0.87-1.02 a bushel). The South Atlantic draws from CSX or NS track in the "
+                                      "eastern Corn Belt and the Mid-Atlantic (OH, IN, MI, IL, KY, TN, VA, NC, SC, MD, DE, PA, NJ, WV, GA): nothing records where its "
+                                      "soybeans come from.")
     la_tau = c13.number_input("Eastern rail crossover (cents / bu)", 1.0, 60.0, 20.0, 1.0, key="draw_la_tau",
                               help="How far the rail draw of Louisiana, Mobile and the South Atlantic spreads across origin states. Freight alone sends it all from the nearest "
                                    "states (Illinois); basis differences between states offset freight differences of 20-30 cents, so beans also come from Iowa, "
