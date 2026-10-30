@@ -247,6 +247,58 @@ def _short(key):
     return key.strip()
 
 
+def _hub_gallery(inp, res, hubs, H, hm, sup, cty, geo):
+    """The export hubs' draw areas as small maps in a grid: one figure (one camera click saves the page) and one national view, each hub in its own map colour and on its own scale.
+    Hubs reach much farther than plants (the Pacific Northwest draws from the Dakotas), so every panel shows the whole country instead of a close zoom."""
+    n = st.slider("Hubs to show", 4, 20, 12, 4, key="draw_hubgallery_n", help="The biggest export hubs by modeled volume, four to a row.")
+    vol = H.sum(axis=0) / 1e6
+    order = [k for k in np.argsort(-vol)[:n] if vol[k] > 0]
+    n = len(order)
+    rows = -(-n // 4)
+    where = {m["hub"]: m for m in hm}
+    z = {k: H[:, k] / np.maximum(sup, 1.0) * 100 for k in order}
+    zmax = {k: max(5.0, float(np.percentile([v for v in z[k] if v >= 0.5] or [5.0], 95))) for k in order}      # each hub on its own scale: shape matters more than intensity here
+    states = np.array([c["state"] for c in cty])
+    tops = {}
+    for k in order:
+        s_ = pd.Series(H[:, k] / 1e6, index=states).groupby(level=0).sum().sort_values(ascending=False)
+        tops[k] = ", ".join(f"{a} {b / max(vol[k], 1e-9) * 100:.0f}%" for a, b in s_.head(3).items())
+    titles = [f"<b>{hubs[k]}</b><br>{vol[k]:,.0f} M bu" for k in order]
+    fig = make_subplots(rows=rows, cols=4, specs=[[{"type": "map"}] * 4 for _ in range(rows)], horizontal_spacing=0.004, vertical_spacing=0.07, subplot_titles=titles)
+    view = {}
+    for i_, k in enumerate(order):
+        r_, c_ = i_ // 4 + 1, i_ % 4 + 1
+        col = HUB_COLORS.get(hubs[k], "#2b6cb0")
+        idx = [i for i in range(len(cty)) if z[k][i] >= 0.5]
+        fips = [cty[i]["fips"] for i in idx]
+        keepset = set(fips)
+        fig.add_trace(go.Choroplethmap(
+            geojson={"type": "FeatureCollection", "features": [g for g in geo["features"] if g["id"] in keepset]}, locations=fips, z=[float(z[k][i]) for i in idx], zmin=0, zmax=zmax[k],
+            colorscale=[[0, "#ffffff"], [1, col]], marker=dict(opacity=0.85, line=dict(width=0.2, color="#bbb")), showscale=False, name=hubs[k],
+            hovertext=[f'{cty[i]["name"]}, {cty[i]["state"]}<br>to {hubs[k]}: {H[i, k] / 1e6:.2f} M bu ({z[k][i]:.0f}% of the county)' for i in idx], hoverinfo="text"), row=r_, col=c_)
+        m = where.get(hubs[k])
+        if m:
+            fig.add_trace(go.Scattermap(lon=[m["lon"]], lat=[m["lat"]], mode="markers", marker=dict(size=20, color="#111"), hoverinfo="skip", showlegend=False), row=r_, col=c_)
+            fig.add_trace(go.Scattermap(lon=[m["lon"]], lat=[m["lat"]], mode="markers", marker=dict(size=9, color="#fff"), hoverinfo="skip", showlegend=False), row=r_, col=c_)
+        view[("map" if i_ == 0 else f"map{i_ + 1}")] = dict(style="carto-positron", center=dict(lat=38.5, lon=-95.5), zoom=2.55)
+    fig.update_layout(**view, height=300 * rows + 70, margin=dict(l=0, r=0, t=50, b=0), showlegend=False)
+    fig.update_annotations(font=dict(size=11))
+    st.plotly_chart(fig, use_container_width=True, key="draw_hubgallery_map", config=_img_config(f"draw hub gallery top {n} hubs", 2000, 300 * rows + 120))
+    st.caption("The export hubs' draw areas: the share of each county's beans that goes to the hub, each hub on its own scale (the darkest counties are where it takes the "
+               "biggest share of the county) and in its own map colour, all in one national view so the reach of a hub is comparable. The black dot is the hub. Save the whole page as one picture with the camera icon at the top right.")
+    tab = []
+    for rank, k in enumerate(order, 1):
+        cols = [c for g in res.get("groups", []) if g["hub"] == hubs[k] for c in g["cols"]]
+        fl = res["flow"][:, cols]
+        mi = res["miles"][:, cols]
+        tot = float(fl.sum())
+        tab.append({"#": rank, "Hub": hubs[k], "Modeled (M bu)": vol[k], "Avg haul (mi)": float(np.nansum(fl * mi) / tot) if tot else 0.0,
+                    "80% within (mi)": _wpct(mi.ravel(), fl.ravel(), 0.8), "Counties for 90%": int(np.searchsorted(np.cumsum(np.sort(H[:, k])[::-1]) / max(H[:, k].sum(), 1e-9), 0.9)) + 1,
+                    "Top states": tops[k]})
+    st.dataframe(pd.DataFrame(tab).style.format({"Modeled (M bu)": "{:,.1f}", "Avg haul (mi)": "{:,.0f}", "80% within (mi)": "{:,.0f}"}), hide_index=True, use_container_width=True)
+    st.caption("Haul is the road miles the model counts to the hub's pins (rail hubs use the same mile measure with their own freight rate).")
+
+
 def _plant_gallery(inp, res, plants_t, P, sup, cty, geo):
     """The biggest plants' draw areas as small maps in a grid: one figure (so one camera click saves the whole page), one colour scale and one zoom, so a bigger
     territory looks bigger. Ranked by the soybeans each plant trucks from counties, so a plant fed by barge (Destrehan) has no map to show."""
@@ -788,6 +840,9 @@ def render():
     if st.toggle("Gallery: the biggest plants' draw areas", value=False, key="draw_gallery",
                  help="The top plants' draw maps in one grid on one scale and zoom, with a ranking table: how big each territory is and which states feed it."):
         _plant_gallery(inp, res, plants_t, P, sup, cty, geo)
+    if st.toggle("Hub gallery: the export hubs' draw areas", value=False, key="draw_hubgallery",
+                 help="The biggest export hubs' draw maps in one grid on one scale and one national view, with a ranking table."):
+        _hub_gallery(inp, res, hubs, H, hm, sup, cty, geo)
 
     st.markdown(f"**Export hubs** (annual M bu): what each hub loads under the scenario, and how much of it comes from {label}")
     ht = pd.DataFrame(dm.hub_table(inp, res, state))
