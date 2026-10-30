@@ -236,6 +236,70 @@ def _plant_stats(res, j, P, cty):
             "n90": int(np.searchsorted(np.cumsum(f[order]) / max(tot, 1e-9), 0.9)) + 1 if tot else 0}
 
 
+_SHORT = [("Archer Daniels Midland", "ADM"), ("Louis Dreyfus Commodities LLC", "LDC"), ("Bunge North America", "Bunge"), ("Incobrasa Industries", "Incobrasa"),
+          ("Consolidated Grain & Barge", "CGB"), ("Perdue Grain and Oilseed", "Perdue"), (" Inc.", ""), (" Inc", ""), (" LLC", ""), (" Co.", "")]
+
+
+def _short(key):
+    """A plant's key without the company boilerplate and the state tail, to fit a small map's title."""
+    for a, b in _SHORT:
+        key = key.replace(a, b)
+    return key.strip()
+
+
+def _plant_gallery(inp, res, plants_t, P, sup, cty, geo):
+    """The biggest plants' draw areas as small maps in a grid: one figure (so one camera click saves the whole page), one colour scale and one zoom, so a bigger
+    territory looks bigger. Ranked by the soybeans each plant trucks from counties, so a plant fed by barge (Destrehan) has no map to show."""
+    plants = inp["plants"]
+    n = st.slider("Plants to show", 4, 16, 12, 4, key="draw_gallery_n", help="The biggest plants by soybeans trucked from counties, four to a row.")
+    order = [j for j in sorted(range(len(plants)), key=lambda j: -P[:, j].sum())[:n] if P[:, j].sum() > 0]
+    n = len(order)
+    rows = -(-n // 4)
+    z = {j: P[:, j] / np.maximum(sup, 1.0) * 100 for j in order}
+    pos = [v for j in order for v in z[j] if v >= 0.5]
+    zmax = max(10.0, float(np.percentile(pos, 95)) if pos else 10.0)
+    stats = {j: _plant_stats(res, j, P, cty) for j in order}
+    titles = [f"<b>{_short(plants[j]['key'])}</b><br>{stats[j]['trucked']:,.0f} M bu, avg {stats[j]['avg']:,.0f} mi" for j in order]
+    fig = make_subplots(rows=rows, cols=4, specs=[[{"type": "map"}] * 4 for _ in range(rows)], horizontal_spacing=0.004, vertical_spacing=0.07,
+                        subplot_titles=titles)
+    state_paths = rm._load("state_lines.json")
+    view = {}
+    for k, j in enumerate(order):
+        r_, c_ = k // 4 + 1, k % 4 + 1
+        pj = plants[j]
+        idx = [i for i in range(len(cty)) if z[j][i] >= 0.5]
+        fips = [cty[i]["fips"] for i in idx]
+        keepset = set(fips)
+        fig.add_trace(go.Choroplethmap(
+            geojson={"type": "FeatureCollection", "features": [g for g in geo["features"] if g["id"] in keepset]}, locations=fips, z=[float(z[j][i]) for i in idx], zmin=0, zmax=zmax,
+            colorscale=[[0, "#ffffff"], [1, "#b2182b"]], marker=dict(opacity=0.82, line=dict(width=0.2, color="#aaa")), showscale=(k == 0), name=pj["key"],
+            hovertext=[f'{cty[i]["name"]}, {cty[i]["state"]}<br>to {pj["city"]}: {P[i, j] / 1e6:.2f} M bu ({z[j][i]:.0f}% of the county)' for i in idx], hoverinfo="text",
+            colorbar=dict(title=dict(text="% of county<br>beans", font=dict(size=10)), thickness=10, len=0.5, x=1.0, y=0.5)), row=r_, col=c_)
+        box = (pj["lon"] - 8.0, pj["lat"] - 5.5, pj["lon"] + 8.0, pj["lat"] + 5.5)
+        lon_s, lat_s = rm._line_xy(_in_box(state_paths, box), step=0)
+        fig.add_trace(go.Scattermap(lon=lon_s, lat=lat_s, mode="lines", line=dict(width=1.3, color="#2b2b2b"), hoverinfo="skip", showlegend=False), row=r_, col=c_)
+        near = [p for p in plants if box[0] <= p["lon"] <= box[2] and box[1] <= p["lat"] <= box[3]]
+        fig.add_trace(go.Scattermap(lon=[p["lon"] for p in near], lat=[p["lat"] for p in near], mode="markers", marker=dict(size=5, color="#666"), hoverinfo="skip",
+                                    showlegend=False), row=r_, col=c_)
+        fig.add_trace(go.Scattermap(lon=[pj["lon"]], lat=[pj["lat"]], mode="markers", marker=dict(size=20, color="#111"), hoverinfo="skip", showlegend=False), row=r_, col=c_)
+        fig.add_trace(go.Scattermap(lon=[pj["lon"]], lat=[pj["lat"]], mode="markers", marker=dict(size=9, color="#fff"), hoverinfo="skip", showlegend=False), row=r_, col=c_)
+        view[("map" if k == 0 else f"map{k + 1}")] = dict(style="carto-positron", center=dict(lat=pj["lat"], lon=pj["lon"]), zoom=4.8)
+    fig.update_layout(**view, height=330 * rows + 70, margin=dict(l=0, r=0, t=50, b=0), showlegend=False)
+    fig.update_annotations(font=dict(size=11))
+    st.plotly_chart(fig, use_container_width=True, key="draw_gallery_map", config=_img_config(f"draw gallery top {n} plants", 2000, 330 * rows + 120))
+    st.caption("The biggest plants by soybeans trucked from counties, all on one scale (the share of each county's beans the plant takes) and one zoom, so a bigger territory "
+               "looks bigger. The black dot is the plant; grey dots are other plants nearby. Save the whole page as one picture with the camera icon at the top right.")
+    tab = []
+    for rank, j in enumerate(order, 1):
+        sts = pd.Series(P[:, j] / 1e6, index=[c["state"] for c in cty]).groupby(level=0).sum().sort_values(ascending=False)
+        tot = float(sts.sum())
+        tab.append({"#": rank, "Plant": plants[j]["key"], "Trucked (M bu)": stats[j]["trucked"], "Avg haul (mi)": stats[j]["avg"], "80% within (mi)": stats[j]["p80"],
+                    "95% within (mi)": stats[j]["p95"], "Counties for 90%": stats[j]["n90"],
+                    "Top states": ", ".join(f"{s_} {v / tot * 100:.0f}%" for s_, v in sts.head(3).items()) if tot else ""})
+    st.dataframe(pd.DataFrame(tab).style.format({"Trucked (M bu)": "{:,.1f}", "Avg haul (mi)": "{:,.0f}", "80% within (mi)": "{:,.0f}", "95% within (mi)": "{:,.0f}"}),
+                 hide_index=True, use_container_width=True)
+
+
 def _compare_plants(inp, res, plants_t, P, sup, cty, geo):
     """Two plants side by side: one figure with two maps on the same scale (so a single camera click saves both), a table of the numbers, and where they compete."""
     plants = inp["plants"]
@@ -721,6 +785,9 @@ def render():
     if st.toggle("Compare two plants side by side", value=False, key="draw_compare",
                  help="Two plants' draw areas on the same scale in one picture, their numbers next to each other, and the counties where they compete."):
         _compare_plants(inp, res, plants_t, P, sup, cty, geo)
+    if st.toggle("Gallery: the biggest plants' draw areas", value=False, key="draw_gallery",
+                 help="The top plants' draw maps in one grid on one scale and zoom, with a ranking table: how big each territory is and which states feed it."):
+        _plant_gallery(inp, res, plants_t, P, sup, cty, geo)
 
     st.markdown(f"**Export hubs** (annual M bu): what each hub loads under the scenario, and how much of it comes from {label}")
     ht = pd.DataFrame(dm.hub_table(inp, res, state))
