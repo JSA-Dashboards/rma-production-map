@@ -59,13 +59,15 @@ def baseline(h=None) -> dict:
     h = history() if h is None else h
     b = _years(h, *BASE_YEARS)
     return {"east_gulf": float(b.east_gulf_mbu.mean()), "west_coast": float(b.west_coast_mbu.mean()), "interior": float(b.interior_mbu.mean()),
+            "west_gulf": float(b.west_gulf_mbu.mean()), "mexico_rail": float(b.mexico_rail_mbu.mean()) if "mexico_rail_mbu" in b else 0.0,
             "inspected": float(b.fgis_inspected_mbu.mean()), "usda": float(b.usda_exports_mbu.mean()), "ratio": float(b.inspected_over_usda.mean())}
 
 
 def _slopes(h) -> dict:
     x = _years(h, MARGINAL_FROM, 9999)
     return {k: float(np.polyfit(x.fgis_inspected_mbu, x[c], 1)[0]) for k, c in (("east_gulf", "east_gulf_mbu"), ("west_coast", "west_coast_mbu"),
-                                                                              ("interior", "interior_mbu"), ("us_gulf", None)) if c}
+                                                                              ("interior", "interior_mbu"), ("west_gulf", "west_gulf_mbu"),
+                                                                              ("mexico_rail", "mexico_rail_mbu")) if c in x}
 
 
 def scenario(exports_mbu: float, basis: str = BASES[0], *, year: int | None = None, manual: tuple | None = None) -> dict:
@@ -79,21 +81,26 @@ def scenario(exports_mbu: float, basis: str = BASES[0], *, year: int | None = No
     if basis == BASES[3]:                                          # marginal: each region moves by its OLS slope times the change in the total
         s = _slopes(h)
         d = insp - base["inspected"]
-        eg, wc, it = (max(0.0, base[k] + s[k] * d) for k in ("east_gulf", "west_coast", "interior"))
+        eg, wc, it, tg, mx = (max(0.0, base[k] + s.get(k, 0.0) * d) for k in ("east_gulf", "west_coast", "interior", "west_gulf", "mexico_rail"))
     else:
         if basis == BASES[4]:
             r = h.loc[year if year in h.index else h.index[-1]]
             egs, wcs, its = r.east_gulf_share_pct, r.west_coast_share_pct, r.interior_share_pct
+            tgs, mxs = r.get("west_gulf_share_pct", 0.0), r.get("mexico_rail_share_pct", 0.0)
         elif basis == BASES[5]:
             egs, wcs = manual
             its = None
+            x = _years(h, BASE_YEARS[0], h.index.max())                  # the two shares you did not type keep their recent average
+            tgs, mxs = x.west_gulf_share_pct.mean(), (x.mexico_rail_share_pct.mean() if "mexico_rail_share_pct" in x else 0.0)
         else:
             a = {BASES[0]: 2021, BASES[1]: 2016, BASES[2]: 2011}[basis]
             x = _years(h, a, h.index.max())
             egs, wcs, its = x.east_gulf_share_pct.mean(), x.west_coast_share_pct.mean(), x.interior_share_pct.mean()
-        eg, wc = insp * egs / 100, insp * wcs / 100
+            tgs, mxs = x.west_gulf_share_pct.mean(), (x.mexico_rail_share_pct.mean() if "mexico_rail_share_pct" in x else 0.0)
+        eg, wc, tg, mx = insp * egs / 100, insp * wcs / 100, insp * tgs / 100, insp * mxs / 100
         it = insp * its / 100 if its is not None else max(0.0, insp - eg - wc)
-    return {"exports": exports_mbu, "inspected": insp, "east_gulf": eg, "west_coast": wc, "interior": it,
+    return {"exports": exports_mbu, "inspected": insp, "east_gulf": eg, "west_coast": wc, "interior": it, "west_gulf": tg, "mexico_rail": mx,
+            "txgulf_scale": tg / base["west_gulf"] if base["west_gulf"] else 1.0, "mexico_scale": mx / base["mexico_rail"] if base["mexico_rail"] else 1.0,
             "east_gulf_share": eg / insp * 100 if insp else 0.0, "west_coast_share": wc / insp * 100 if insp else 0.0,
             "river_scale": eg / base["east_gulf"], "pnw_scale": wc / base["west_coast"], "base": base}
 

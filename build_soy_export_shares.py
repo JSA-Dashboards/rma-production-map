@@ -63,20 +63,34 @@ def fgis_by_region():
     return f
 
 
+def fgis_mexico_rail():
+    """Soybeans inspected for Mexico on a railcar (any region), M bu by marketing year. Truck crossings are not inspected, so this is the rail share only."""
+    q = {"$select": "year,month,sum(pounds) as lbs", "$group": "year,month", "$limit": "50000",
+         "$where": "grain='SOYBEANS' and year>=2003 and type_carrier_text='RAIL' and destination like '%MEXICO%'"}
+    f = pd.DataFrame(json.load(urllib.request.urlopen(FGIS + urllib.parse.urlencode(q), timeout=180)))
+    f["year"], f["month"] = f.year.astype(int), f.month.astype(int)
+    f["my"] = f.year.where(f.month >= 9, f.year - 1)
+    return (f.lbs.astype(float) / 60 / 1e6).groupby(f.my).sum()
+
+
 def _fail(msg):
     print("REFUSING TO WRITE:", msg)
     raise SystemExit(1)
 
 
-def main(psd_json=None):
-    rows = json.load(open(psd_json))["rows"] if psd_json else fetch_psd()
-    if not rows:
-        _fail("the PSD API returned no rows (a wrong or expired FAS_API_KEY, or the API is down)")
-    ex = psd_exports(rows)
+def main(psd_json=None, from_wasde=False):
+    jpath, cpath = os.path.join(D, "soy_exports_wasde.json"), os.path.join(D, "soy_export_shares_by_my.csv")
+    if from_wasde:                                       # rebuild the FGIS columns against the USDA numbers already on file (no FAS key needed)
+        yrs = json.load(open(jpath))["years"]
+        ex = pd.DataFrame({"marketYear": [int(k) for k in yrs], "exports_mbu": [v["exports_mbu"] for v in yrs.values()], "as_of": [v["as_of"] for v in yrs.values()]})
+    else:
+        rows = json.load(open(psd_json))["rows"] if psd_json else fetch_psd()
+        if not rows:
+            _fail("the PSD API returned no rows (a wrong or expired FAS_API_KEY, or the API is down)")
+        ex = psd_exports(rows)
     if ex.empty or (ex.exports_mbu <= 0).any():
         _fail("the PSD response had no export rows or a non-positive export number")
     wasde = {str(int(r.marketYear)): {"exports_mbu": round(float(r.exports_mbu), 1), "as_of": r.as_of} for r in ex.itertuples()}
-    jpath, cpath = os.path.join(D, "soy_exports_wasde.json"), os.path.join(D, "soy_export_shares_by_my.csv")
     old = json.load(open(jpath)) if os.path.exists(jpath) else None
     if old and (len(wasde) < len(old["years"]) or max(wasde, key=int) < max(old["years"], key=int)):
         _fail(f"PSD returned {len(wasde)} marketing years (up to {max(wasde, key=int)}) where the file on hand has {len(old['years'])}")
@@ -85,6 +99,7 @@ def main(psd_json=None):
     by = f.groupby(["my", "fgis_reg"]).mbu.sum().unstack().fillna(0)
     inter = f[f.ams_reg == "INTERIOR"].groupby("my").mbu.sum()
     t = pd.DataFrame({"east_gulf_mbu": by["EAST GULF"], "west_gulf_mbu": by["WEST GULF"], "west_coast_mbu": by["WEST COAST"], "interior_mbu": inter})
+    t["mexico_rail_mbu"] = fgis_mexico_rail().reindex(t.index).fillna(0.0)
     t["fgis_inspected_mbu"] = by.sum(axis=1)
     t = t.join(ex.set_index("marketYear").exports_mbu.rename("usda_exports_mbu"), how="inner")
     last_full = datetime.date.today().year - (0 if datetime.date.today().month >= 9 else 1) - 1      # the marketing year that just ended
@@ -93,9 +108,11 @@ def main(psd_json=None):
     for c, name in (("east_gulf_mbu", "east_gulf"), ("west_coast_mbu", "west_coast"), ("interior_mbu", "interior")):
         t[name + "_share_pct"] = t[c] / t.fgis_inspected_mbu * 100
     t["us_gulf_share_pct"] = (t.east_gulf_mbu + t.west_gulf_mbu) / t.fgis_inspected_mbu * 100
+    t["west_gulf_share_pct"] = t.west_gulf_mbu / t.fgis_inspected_mbu * 100
+    t["mexico_rail_share_pct"] = t.mexico_rail_mbu / t.fgis_inspected_mbu * 100
     t.index.name = "marketing_year_start"
-    cols = ["usda_exports_mbu", "fgis_inspected_mbu", "inspected_over_usda", "east_gulf_mbu", "west_gulf_mbu", "west_coast_mbu", "interior_mbu",
-            "east_gulf_share_pct", "us_gulf_share_pct", "west_coast_share_pct", "interior_share_pct"]
+    cols = ["usda_exports_mbu", "fgis_inspected_mbu", "inspected_over_usda", "east_gulf_mbu", "west_gulf_mbu", "west_coast_mbu", "interior_mbu", "mexico_rail_mbu",
+            "east_gulf_share_pct", "us_gulf_share_pct", "west_coast_share_pct", "interior_share_pct", "west_gulf_share_pct", "mexico_rail_share_pct"]
     csv_text = t[cols].round(3).to_csv()
     if os.path.exists(cpath) and len(t) < sum(1 for _ in open(cpath)) - 1:
         _fail(f"the share table would shrink from {sum(1 for _ in open(cpath)) - 1} to {len(t)} marketing years")
@@ -120,4 +137,6 @@ def main(psd_json=None):
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--psd-json")
-    main(ap.parse_args().psd_json)
+    ap.add_argument("--from-wasde", action="store_true", help="reuse the USDA numbers in soy_exports_wasde.json (no FAS key): rebuilds the FGIS columns only")
+    a = ap.parse_args()
+    main(a.psd_json, a.from_wasde)

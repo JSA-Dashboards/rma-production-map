@@ -43,8 +43,14 @@ def load_nodes(path: str = NODES) -> dict:
         return json.load(fh)
 
 
+# Hubs the model feeds by rail rather than by truck or barge: which railroads reach them (indices into county_rail_service.json's [BNSF, UP, CPKC]).
+# The Pacific Northwest is fed almost entirely by BNSF and UP; Texas Gulf and the Mexican border take all three (CPKC = the former KCS, strong at Laredo).
+RAIL_KINDS = {"pnw": (0, 1), "txgulf": (0, 1, 2), "mexico": (0, 1, 2)}
+
+
 def solve(inputs: dict, *, rate=CENTS_PER_BU_MILE, tau=1.0, river_premium=0.0, plant_premium=None, util=1.0, river_share=1.0, iters=400,
-          nodes=None, lock_scale=1.0, area_mbu=None, pin_cap_mbu=None, river_scale=1.0, pnw_scale=1.0, pnw_reach_miles=30.0, pnw_rate=None):
+          nodes=None, lock_scale=1.0, area_mbu=None, pin_cap_mbu=None, river_scale=1.0, pnw_scale=1.0, pnw_reach_miles=30.0, pnw_rate=None,
+          txg_scale=1.0, mex_scale=1.0, txg_rate=None, mex_rate=None):
     """Flows (bu) county x buyer.
 
     rate           freight, cents per bushel-mile
@@ -68,6 +74,8 @@ def solve(inputs: dict, *, rate=CENTS_PER_BU_MILE, tau=1.0, river_premium=0.0, p
     pnw_reach_miles  the Pacific Northwest is fed almost entirely by BNSF and UP rail, so a county sends it beans only if BNSF or UP track is within
                    this many miles of its centroid (data/draw/county_rail_service.json). CPKC is left out.
     pnw_rate       freight for the rail haul to the Pacific Northwest, cents per bushel-mile (None = the truck `rate`)
+    txg_scale, mex_scale, txg_rate, mex_rate   the same for the Texas Gulf hub and for Mexico by rail. All three rail hubs use pnw_reach_miles, measured to
+                   the railroads in RAIL_KINDS
     pin_cap_mbu    {river pin key: M bu/yr} ceilings, on top of any `cap_mbu` set on the pin in the inputs. A capped pin takes at most its cap
                    and the rest of its group's target spreads over the group's other pins (a ceiling, not a target)
     """
@@ -89,20 +97,36 @@ def solve(inputs: dict, *, rate=CENTS_PER_BU_MILE, tau=1.0, river_premium=0.0, p
     b = need * scale
     residual = max(0.0, total - plant_need)
     if nodes is not None:
-        groups = _groups(inputs, nodes, n_p, lock_scale, area_mbu or {}, river_scale, pnw_scale)
+        groups = _groups(inputs, nodes, n_p, lock_scale, area_mbu or {}, river_scale, {"pnw": pnw_scale, "txgulf": txg_scale, "mexico": mex_scale})
         want = sum(g["target_bu"] for g in groups)
         tscale = min(1.0, residual / want) if want else 1.0                   # targets can't exceed what is left after crush
         for g in groups:
             g["target_bu"] *= tscale
         river_total = sum(g["target_bu"] for g in groups)
-        pnw_cols = [c for g in groups if g["kind"] == "pnw" for c in g["cols"]]
-        if pnw_cols:
-            if pnw_rate is not None:                                           # rail, not truck, freight on the way to the coast
-                cost[:, pnw_cols] = np.where(np.isnan(miles[:, pnw_cols]), 1e6, miles[:, pnw_cols] * pnw_rate - prem[pnw_cols][None, :])
-                K = np.exp(-(cost - cost.min(axis=1, keepdims=True)) / max(tau, 1e-3))
-            rs = load_rail_service()
-            served = np.array([min(rs.get(c["fips"], [9999, 9999, 9999])[:2]) <= pnw_reach_miles for c in cty])
-            K[np.ix_(~served, pnw_cols)] = 0.0                                 # only counties on BNSF or UP can ship to the Pacific Northwest
+        rs = load_rail_service()
+        rates = {"pnw": pnw_rate, "txgulf": txg_rate, "mexico": mex_rate}
+        rail_cols = {kind: [c for g in groups if g["kind"] == kind for c in g["cols"]] for kind in RAIL_KINDS}
+        for kind, cols_k in rail_cols.items():
+            if cols_k and rates[kind] is not None:                             # rail, not truck, freight on the way to the coast or the border
+                cost[:, cols_k] = np.where(np.isnan(miles[:, cols_k]), 1e6, miles[:, cols_k] * rates[kind] - prem[cols_k][None, :])
+        if any(rail_cols[k] and rates[k] is not None for k in RAIL_KINDS):
+            K = np.exp(-(cost - cost.min(axis=1, keepdims=True)) / max(tau, 1e-3))
+        for kind, cols_k in rail_cols.items():
+            if cols_k:
+                served = np.array([min(rs.get(c["fips"], [9999, 9999, 9999])[k] for k in RAIL_KINDS[kind]) <= pnw_reach_miles for c in cty])
+                K[np.ix_(~served, cols_k)] = 0.0                               # only counties on a railroad that reaches the hub can ship to it
+        st = np.array([c["state"] for c in cty])
+        for g in groups:
+            if g.get("origin_states"):                                         # a hub that only some states can feed
+                K[np.ix_(~np.isin(st, g["origin_states"]), g["cols"])] = 0.0
+            if g.get("origin_states_mbu"):                                     # a hub whose draw by state is observed: the solver is held to it below
+                tot = sum(g["origin_states_mbu"].values())
+                g["state_target_bu"] = {s_: v / tot * g["target_bu"] for s_, v in g["origin_states_mbu"].items()}
+                K[np.ix_(~np.isin(st, list(g["state_target_bu"])), g["cols"])] = 0.0
+        K0 = K.copy()
+        state_groups = [g for g in groups if g.get("state_target_bu")]
+        for g in state_groups:
+            g["state_mult"] = {s_: 1.0 for s_ in g["state_target_bu"]}
         for g in groups:                                                       # a site listed twice counts once within its group (same `site` id, or the same coordinates when none is given)
             xy = {}
             for j in g["cols"]:
@@ -136,6 +160,14 @@ def solve(inputs: dict, *, rate=CENTS_PER_BU_MILE, tau=1.0, river_premium=0.0, p
         if groups is not None:
             for g in groups:
                 v[g["cols"]] = _fill(colsum[g["cols"]], g["target_bu"], caps[g["cols"]])
+            for g in state_groups:                                             # nudge each state's pull toward its observed share of the hub
+                f = u * (K[:, g["cols"]] @ v[g["cols"]])
+                for s_, tgt_s in g["state_target_bu"].items():
+                    now = f[st == s_].sum()
+                    if now > 0:
+                        m = float(np.clip(tgt_s / now, 0.5, 2.0))
+                        g["state_mult"][s_] = float(np.clip(g["state_mult"][s_] * m, 1e-6, 1e6))
+                        K[np.ix_(st == s_, g["cols"])] *= m
         else:
             rv = colsum[n_p:] @ np.ones(n_r) if n_r else 0.0
             if n_r:
@@ -170,7 +202,7 @@ def _fill(c, target, cap):
     return v
 
 
-def _groups(inputs, nodes, n_p, lock_scale, area_mbu, river_scale=1.0, pnw_scale=1.0):
+def _groups(inputs, nodes, n_p, lock_scale, area_mbu, river_scale=1.0, rail_scale=None):
     """Group columns (index on the buyer axis) and targets (bu) from river_nodes.json plus the sliders."""
     col = {r["key"]: n_p + j for j, r in enumerate(inputs["river"])}
     out = []
@@ -180,11 +212,12 @@ def _groups(inputs, nodes, n_p, lock_scale, area_mbu, river_scale=1.0, pnw_scale
             continue
         if g["kind"] == "lock":
             tgt = g["target_mbu"] * lock_scale * river_scale
-        elif g["kind"] == "pnw":
-            tgt = area_mbu.get(g["name"], g["target_mbu"]) * pnw_scale
+        elif g["kind"] in RAIL_KINDS:
+            tgt = area_mbu.get(g["name"], g["target_mbu"]) * (rail_scale or {}).get(g["kind"], 1.0)
         else:
             tgt = area_mbu.get(g["name"], g["target_mbu"]) * river_scale
-        out.append({"name": g["name"], "kind": g["kind"], "hub": g.get("hub", g["name"]), "anchor": g.get("anchor"), "cols": cols, "target_bu": tgt * 1e6})
+        out.append({"name": g["name"], "kind": g["kind"], "hub": g.get("hub", g["name"]), "anchor": g.get("anchor"), "cols": cols, "target_bu": tgt * 1e6,
+                    "origin_states": g.get("origin_states"), "origin_states_mbu": g.get("origin_states_mbu")})
     return out
 
 

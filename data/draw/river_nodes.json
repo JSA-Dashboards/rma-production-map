@@ -4,6 +4,22 @@
   "west_coast_columbia_mbu": 273.6031588566667,
   "west_coast_puget_mbu": 107.89874056666667,
   "west_coast_mbu": 381.5557194233333,
+  "west_gulf_mbu": 30.109004696666666,
+  "mexico_rail_mbu": 126.38779999999998,
+  "mexico_rail_states_mbu": {
+   "MO": 31.79,
+   "NE": 24.6,
+   "IA": 19.61,
+   "KS": 18.59,
+   "ND": 13.96,
+   "MN": 6.72,
+   "WI": 3.98,
+   "LA": 3.47,
+   "IL": 1.95,
+   "SD": 1.25,
+   "OK": 0.3,
+   "TX": 0.15
+  },
   "source": "FGIS soybean inspections, marketing years 2021/22-2025/26 average, all carriers"
  },
  "pnw_rail": {
@@ -12,6 +28,18 @@
    "UP"
   ],
   "note": "BNSF and UP feed nearly all of the Pacific Northwest; CPKC is left out"
+ },
+ "rail_hubs": {
+  "txgulf": [
+   "BNSF",
+   "UP",
+   "CPKC"
+  ],
+  "mexico": [
+   "BNSF",
+   "UP",
+   "CPKC"
+  ]
  },
  "measured_arrivals_mbu": 410.2194866666667,
  "area_total_mbu": 404.76901666666674,
@@ -267,6 +295,56 @@
    "target_mbu": 107.89874056666667,
    "anchor": "PNW Puget Sound hub (Seattle/Tacoma)",
    "hub": "Pacific Northwest"
+  },
+  {
+   "name": "Texas Gulf (Houston, Galveston, Corpus Christi)",
+   "kind": "txgulf",
+   "pins": [
+    "Texas Gulf hub (Houston/Galveston)"
+   ],
+   "target_mbu": 30.109004696666666,
+   "anchor": "Texas Gulf hub (Houston/Galveston)",
+   "origin_states": [
+    "TX",
+    "OK",
+    "KS",
+    "NE",
+    "MO",
+    "IA",
+    "MN",
+    "SD",
+    "ND",
+    "CO",
+    "NM"
+   ],
+   "hub": "Texas Gulf"
+  },
+  {
+   "name": "Mexico by rail (Laredo, Eagle Pass, Brownsville, El Paso)",
+   "kind": "mexico",
+   "pins": [
+    "Mexico rail: Laredo TX",
+    "Mexico rail: Eagle Pass TX",
+    "Mexico rail: Brownsville TX",
+    "Mexico rail: El Paso TX"
+   ],
+   "target_mbu": 126.38779999999998,
+   "anchor": "Mexico rail: Laredo TX",
+   "origin_states_mbu": {
+    "MO": 31.79,
+    "NE": 24.6,
+    "IA": 19.61,
+    "KS": 18.59,
+    "ND": 13.96,
+    "MN": 6.72,
+    "WI": 3.98,
+    "LA": 3.47,
+    "IL": 1.95,
+    "SD": 1.25,
+    "OK": 0.3,
+    "TX": 0.15
+   },
+   "hub": "Mexico Rail"
   },
   {
    "name": "St. Louis City (MO)",
