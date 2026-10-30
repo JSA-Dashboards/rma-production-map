@@ -214,6 +214,9 @@ def _hub_markers(inp, res, hubs):
 
 
 def render():
+    import draw_auth
+    if not draw_auth.require_password():             # a shared password; the portal pre-authenticates its own users
+        return
     inp = dm.load()
     st.markdown("### Draw Territory: soybeans")
     nodes = dm.load_nodes()
