@@ -4,10 +4,13 @@ The logic is in draw_model.py; this file only places the controls and draws the 
 """
 from __future__ import annotations
 
+import re
+
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
+from plotly.subplots import make_subplots
 
 import draw_model as dm
 import export_scenario as es
@@ -215,6 +218,88 @@ def _hub_markers(inp, res, hubs):
         if w > 0:
             out.append({"hub": h, "lat": lat / w, "lon": lon / w, "vol": w / 1e6})
     return out
+
+
+def _img_config(name, width=1500, height=860):
+    """Plotly config for the camera icon in the chart's toolbar: a clean file name and a big (2x) PNG that carries the title and legend drawn inside the figure."""
+    return {"toImageButtonOptions": {"format": "png", "filename": re.sub(r"[^A-Za-z0-9]+", "_", name).strip("_")[:80], "width": width, "height": height, "scale": 2},
+            "displaylogo": False}
+
+
+def _plant_stats(res, j, P, cty):
+    """Numbers that describe one plant's draw: volume, how far the beans travel, and how many counties give 90% of it."""
+    f = P[:, j]
+    tot = float(f.sum())
+    miles = res["miles"][:, j]
+    order = np.argsort(-f)
+    return {"trucked": tot / 1e6, "avg": float(np.nansum(f * miles) / tot) if tot else 0.0, "p80": _wpct(miles, f, 0.8), "p95": _wpct(miles, f, 0.95),
+            "n90": int(np.searchsorted(np.cumsum(f[order]) / max(tot, 1e-9), 0.9)) + 1 if tot else 0}
+
+
+def _compare_plants(inp, res, plants_t, P, sup, cty, geo):
+    """Two plants side by side: one figure with two maps on the same scale (so a single camera click saves both), a table of the numbers, and where they compete."""
+    plants = inp["plants"]
+    order = sorted(range(len(plants)), key=lambda j: -plants[j]["need_bu"])
+    labels = {f"{plants[j]['key']} ({plants[j]['need_bu'] / 1e6:.0f} M bu)": j for j in order}
+    names = list(labels)
+    c1, c2 = st.columns(2)
+    jA = labels[c1.selectbox("Plant A", names, index=0, key="draw_cmp_a")]
+    jB = labels[c2.selectbox("Plant B", names, index=min(1, len(names) - 1), key="draw_cmp_b")]
+    f = {jA: P[:, jA], jB: P[:, jB]}
+    z = {j: f[j] / np.maximum(sup, 1.0) * 100 for j in (jA, jB)}
+    pos = [v for j in (jA, jB) for v in z[j] if v > 0]
+    zmax = max(10.0, float(np.percentile(pos, 95)) if pos else 10.0)
+    cols = {jA: "#c0392b", jB: "#2874a6"}
+    stats = {}
+    for j in (jA, jB):
+        s_ = _plant_stats(res, j, P, cty)
+        s_["own"] = float(sum(f[j][i] for i, c in enumerate(cty) if c["state"] == plants[j]["state"])) / max(f[j].sum(), 1e-9) * 100
+        s_["barge"] = plants_t[j].get("barge_mbu", 0.0)
+        stats[j] = s_
+    title = {j: f"<b>{plants[j]['key']}</b><br>{stats[j]['trucked']:,.1f} M bu trucked, avg {stats[j]['avg']:,.0f} mi, 80% within {stats[j]['p80']:,.0f} mi" for j in (jA, jB)}
+    fig = make_subplots(rows=1, cols=2, specs=[[{"type": "map"}, {"type": "map"}]], horizontal_spacing=0.01, subplot_titles=(title[jA], title[jB]))
+    lon_s, lat_s = rm._line_xy(_in_box(rm._load("state_lines.json"), (-128.0, 22.0, -65.0, 51.0)), step=0)
+    for k, j in enumerate((jA, jB)):
+        idx = [i for i in range(len(cty)) if z[j][i] >= 0.25]                  # counties a plant takes under a quarter of a percent from stay white
+        fips = [cty[i]["fips"] for i in idx]
+        keepset = set(fips)
+        fig.add_trace(go.Choroplethmap(
+            geojson={"type": "FeatureCollection", "features": [g for g in geo["features"] if g["id"] in keepset]}, locations=fips, z=[float(z[j][i]) for i in idx], zmin=0, zmax=zmax,
+            colorscale=[[0, "#ffffff"], [1, cols[j]]], marker=dict(opacity=0.8, line=dict(width=0.3, color="#999")), name=plants[j]["key"],
+            hovertext=[f'{cty[i]["name"]}, {cty[i]["state"]}<br>{cty[i]["supply_bu"] / 1e6:.1f} M bu<br>to {plants[j]["city"]}: {f[j][i] / 1e6:.2f} M bu ({z[j][i]:.0f}% of the county)' for i in idx],
+            hoverinfo="text", colorbar=dict(title=dict(text="% of county<br>beans", font=dict(size=10)), thickness=10, len=0.4, x=0.485 if k == 0 else 1.0, y=0.3)), row=1, col=k + 1)
+        fig.add_trace(go.Scattermap(lon=lon_s, lat=lat_s, mode="lines", line=dict(width=1.6, color="#2b2b2b"), hoverinfo="skip", showlegend=False), row=1, col=k + 1)
+        fig.add_trace(go.Scattermap(lon=[p["lon"] for p in plants], lat=[p["lat"] for p in plants], mode="markers", marker=dict(size=6, color="#555"), hoverinfo="skip",
+                                    showlegend=False), row=1, col=k + 1)
+        fig.add_trace(go.Scattermap(lon=[plants[j]["lon"]], lat=[plants[j]["lat"]], mode="markers", marker=dict(size=26, color=cols[j]), hoverinfo="skip", showlegend=False), row=1, col=k + 1)
+        fig.add_trace(go.Scattermap(lon=[plants[j]["lon"]], lat=[plants[j]["lat"]], mode="markers+text", marker=dict(size=14, color="#111"), text=[plants[j]["city"]],
+                                    textposition="top right", textfont=dict(size=12), hoverinfo="skip", showlegend=False), row=1, col=k + 1)
+    view = {("map" if k == 0 else "map2"): dict(style="carto-positron", center=dict(lat=plants[j]["lat"], lon=plants[j]["lon"]), zoom=5.0) for k, j in enumerate((jA, jB))}
+    fig.update_layout(**view, height=560, margin=dict(l=0, r=0, t=60, b=0), showlegend=False)
+    fig.update_annotations(font=dict(size=12))
+    st.plotly_chart(fig, use_container_width=True, key="draw_compare_map", config=_img_config(f"compare {plants[jA]['key']} vs {plants[jB]['key']}", 1800, 760))
+    st.caption("Both maps use the same scale: the share of each county's beans that goes to the plant. Save the picture with the camera icon at the top right of the maps.")
+    t = pd.DataFrame({
+        plants[jA]["key"]: [plants[jA]["need_bu"] / 1e6, stats[jA]["trucked"], stats[jA]["barge"], stats[jA]["avg"], stats[jA]["p80"], stats[jA]["p95"], stats[jA]["own"], stats[jA]["n90"]],
+        plants[jB]["key"]: [plants[jB]["need_bu"] / 1e6, stats[jB]["trucked"], stats[jB]["barge"], stats[jB]["avg"], stats[jB]["p80"], stats[jB]["p95"], stats[jB]["own"], stats[jB]["n90"]]},
+        index=["Workbook need (M bu/yr)", "Trucked from counties (M bu)", "By barge (M bu)", "Average haul (mi)", "80% within (mi)", "95% within (mi)", "From its own state (%)",
+               "Counties for 90% of it"])
+    both = np.minimum(z[jA], z[jB])                                          # the smaller of the two plants' shares of each county's beans, in %
+    shared = int((both >= 1.0).sum())
+    d1, d2 = st.columns([1.2, 1.6])
+    d1.dataframe(t.style.format("{:,.1f}"), use_container_width=True)
+    d1.caption(f"{shared} counties send at least 1% of their beans to each of the two plants; the soybeans those plants take from them: {(f[jA][both >= 1.0].sum() + f[jB][both >= 1.0].sum()) / 1e6:,.1f} M bu.")
+    rows = []
+    for i in np.argsort(-both)[:10]:
+        if both[i] < 1.0:
+            break
+        rows.append({"County": f'{cty[i]["name"]}, {cty[i]["state"]}', "County beans (M bu)": sup[i] / 1e6, f"{plants[jA]['city']} (%)": z[jA][i], f"{plants[jB]['city']} (%)": z[jB][i]})
+    if rows:
+        d2.markdown("**Where they compete** (counties that split their beans between the two, biggest overlap first)")
+        d2.dataframe(pd.DataFrame(rows).style.format({"County beans (M bu)": "{:,.1f}", f"{plants[jA]['city']} (%)": "{:.0f}", f"{plants[jB]['city']} (%)": "{:.0f}"}),
+                     hide_index=True, use_container_width=True)
+    else:
+        d2.info("No county sends beans to both plants.")
 
 
 def _wpct(values, weights, q):
@@ -603,6 +688,16 @@ def render():
                 fig.add_trace(go.Scattermap(lon=[t["lon"] for t in ts], lat=[t["lat"] for t in ts], mode="markers", name=lab,
                                             marker=dict(size=[max(t["vol"], 0.5) for t in ts], sizemode="area", sizeref=ref, sizemin=4, color=color, opacity=0.85),
                                             hovertext=[t["hover"] for t in ts], hoverinfo="text"))
+    if plant_j is not None:                                            # a title inside the figure, so the saved picture says what it shows
+        pr = plants_t[plant_j]
+        map_title = (f"<b>{inp['plants'][plant_j]['key']}</b>: {pr['drawn_mbu']:,.1f} M bu trucked from counties, average haul {pr['avg_miles']:,.0f} mi, "
+                     f"80% within {pr.get('p80_miles', 0):,.0f} mi")
+    elif focus is None:
+        map_title = "Top buyer of each county's soybeans (crush plant or export hub)"
+    else:
+        map_title = f"<b>{focus}</b>: where its soybeans come from (share of each county's beans)"
+    fig.add_annotation(text=map_title, xref="paper", yref="paper", x=0.01, y=0.93, xanchor="left", yanchor="top", showarrow=False,
+                       font=dict(size=14, color="#111"), bgcolor="rgba(255,255,255,0.88)", borderpad=5)
     fig.add_annotation(text=scenario_text, xref="paper", yref="paper", x=0.01, y=0.01, xanchor="left", yanchor="bottom", showarrow=False,
                        font=dict(size=11, color="#222"), bgcolor="rgba(255,255,255,0.85)", borderpad=4)
     sc = [c for c in cty if state is None or c["state"] == state]
@@ -612,8 +707,10 @@ def render():
         center = dict(lat=39.0, lon=-98.0) if us_mode else dict(lat=float(np.mean([c["lat"] for c in sc])), lon=float(np.mean([c["lon"] for c in sc])))
         zoom_ = 3.1 if us_mode else (5.4 if state in ("IL", "IN", "OH", "KY") else 5.0)
     fig.update_layout(map=dict(style="carto-positron", center=center, zoom=zoom_),
-                      height=640, margin=dict(l=0, r=0, t=0, b=0), legend=dict(orientation="h", y=1.0, bgcolor="rgba(255,255,255,0.85)", font=dict(size=11)))
-    st.plotly_chart(fig, use_container_width=True, key="draw_map")
+                      height=640, margin=dict(l=0, r=0, t=0, b=0), showlegend=plant_j is None,            # a plant's map has no legend: its title and colour bar say it all
+                      legend=dict(orientation="h", y=1.0, bgcolor="rgba(255,255,255,0.85)", font=dict(size=11)))
+    st.plotly_chart(fig, use_container_width=True, key="draw_map", config=_img_config(f"draw {show_mode}"))
+    st.caption("Save this map as a picture with the camera icon at the top right of the map (the title, legend and scenario line are part of the picture).")
     st.caption("Fill = where most of a county's beans go (colour = that crush plant or export hub; grey = a plant outside the list), or, in a hub's draw-area "
                "view (or a plant's), the share of each county's beans that goes to that hub or plant. Hub circles are sized by the soybeans the hub loads a year under the export "
                "scenario above. The Pacific Northwest draws only from counties on BNSF or UP track; Texas Gulf and Mexico by rail from counties on BNSF, UP or "
@@ -621,6 +718,9 @@ def render():
 
     if plant_j is not None:
         _plant_panel(inp, res, plants_t, plant_j, P, H, hubs, sup, cty)
+    if st.toggle("Compare two plants side by side", value=False, key="draw_compare",
+                 help="Two plants' draw areas on the same scale in one picture, their numbers next to each other, and the counties where they compete."):
+        _compare_plants(inp, res, plants_t, P, sup, cty, geo)
 
     st.markdown(f"**Export hubs** (annual M bu): what each hub loads under the scenario, and how much of it comes from {label}")
     ht = pd.DataFrame(dm.hub_table(inp, res, state))
