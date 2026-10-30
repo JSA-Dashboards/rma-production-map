@@ -63,13 +63,21 @@ def fgis_by_region():
     return f
 
 
+def _fail(msg):
+    print("REFUSING TO WRITE:", msg)
+    raise SystemExit(1)
+
+
 def main(psd_json=None):
     rows = json.load(open(psd_json))["rows"] if psd_json else fetch_psd()
     ex = psd_exports(rows)
+    if ex.empty or (ex.exports_mbu <= 0).any():
+        _fail("the PSD response had no export rows or a non-positive export number")
     wasde = {str(int(r.marketYear)): {"exports_mbu": round(float(r.exports_mbu), 1), "as_of": r.as_of} for r in ex.itertuples()}
-    with open(os.path.join(D, "soy_exports_wasde.json"), "w") as fh:
-        json.dump({"units": "M bu", "source": "USDA FAS PSD, US soybeans, attribute 88 Exports (1,000 MT x 0.0367437)",
-                   "built": datetime.date.today().isoformat(), "years": wasde}, fh, indent=1)
+    jpath, cpath = os.path.join(D, "soy_exports_wasde.json"), os.path.join(D, "soy_export_shares_by_my.csv")
+    old = json.load(open(jpath)) if os.path.exists(jpath) else None
+    if old and (len(wasde) < len(old["years"]) or max(wasde, key=int) < max(old["years"], key=int)):
+        _fail(f"PSD returned {len(wasde)} marketing years (up to {max(wasde, key=int)}) where the file on hand has {len(old['years'])}")
 
     f = fgis_by_region()
     by = f.groupby(["my", "fgis_reg"]).mbu.sum().unstack().fillna(0)
@@ -86,8 +94,25 @@ def main(psd_json=None):
     t.index.name = "marketing_year_start"
     cols = ["usda_exports_mbu", "fgis_inspected_mbu", "inspected_over_usda", "east_gulf_mbu", "west_gulf_mbu", "west_coast_mbu", "interior_mbu",
             "east_gulf_share_pct", "us_gulf_share_pct", "west_coast_share_pct", "interior_share_pct"]
-    t[cols].round(3).to_csv(os.path.join(D, "soy_export_shares_by_my.csv"))
-    print(t[cols].tail(6).round(2).to_string())
+    csv_text = t[cols].round(3).to_csv()
+    if os.path.exists(cpath) and len(t) < sum(1 for _ in open(cpath)) - 1:
+        _fail(f"the share table would shrink from {sum(1 for _ in open(cpath)) - 1} to {len(t)} marketing years")
+    if (t.inspected_over_usda < 0.8).any() or (t.inspected_over_usda > 1.2).any():
+        _fail("FGIS inspections and USDA exports disagree by more than 20% in some year")
+
+    changed = []
+    if not os.path.exists(cpath) or open(cpath, encoding="utf8").read() != csv_text.replace("\r\n", "\n"):
+        with open(cpath, "w", encoding="utf8", newline="") as fh:
+            fh.write(csv_text)
+        changed.append("soy_export_shares_by_my.csv")
+    if not old or old["years"] != wasde:
+        with open(jpath, "w") as fh:
+            json.dump({"units": "M bu", "source": "USDA FAS PSD, US soybeans, attribute 88 Exports (1,000 MT x 0.0367437)",
+                       "built": datetime.date.today().isoformat(), "years": wasde}, fh, indent=1)
+        changed.append("soy_exports_wasde.json")
+    print("changed:", ", ".join(changed) if changed else "nothing")
+    cur = max(wasde, key=int)
+    print(f"USDA {cur}/{str(int(cur) + 1)[2:]} exports {wasde[cur]['exports_mbu']:,.1f} M bu (WASDE {wasde[cur]['as_of']}); share table through {t.index.max()}/{str(t.index.max() + 1)[2:]}")
 
 
 if __name__ == "__main__":

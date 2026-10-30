@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import json
 import os
-from functools import lru_cache
 
 import numpy as np
 import pandas as pd
@@ -24,16 +23,28 @@ BASES = ["Last 5 years' share", "Last 10 years' share", "Since 2011 share", "Mar
 MARGINAL_FROM = 2011
 
 
-@lru_cache(maxsize=1)
+_CACHE: dict = {}
+
+
+def _read(name, loader):
+    """Reload a data file only when it changed on disk, so a refreshed snapshot shows up without restarting the app."""
+    path = os.path.join(D, name)
+    m = os.path.getmtime(path)
+    hit = _CACHE.get(path)
+    if hit and hit[0] == m:
+        return hit[1]
+    value = loader(path)
+    _CACHE[path] = (m, value)
+    return value
+
+
 def history() -> pd.DataFrame:
     """One row per completed marketing year (index = the year it starts): USDA exports, FGIS inspected bushels by region, shares."""
-    return pd.read_csv(os.path.join(D, "soy_export_shares_by_my.csv"), index_col=0)
+    return _read("soy_export_shares_by_my.csv", lambda p: pd.read_csv(p, index_col=0))
 
 
-@lru_cache(maxsize=1)
 def wasde() -> dict:
-    with open(os.path.join(D, "soy_exports_wasde.json"), encoding="utf8") as fh:
-        return json.load(fh)
+    return _read("soy_exports_wasde.json", lambda p: json.load(open(p, encoding="utf8")))
 
 
 def label(my: int) -> str:
