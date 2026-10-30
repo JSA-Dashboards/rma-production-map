@@ -131,12 +131,16 @@ def _export_panel():
                                               "2021/22 to about 35M in 2025/26, so the 2021-25 average runs above recent years.")
         m2_[3].metric("Hub scales", f"Texas Gulf x{sc['txgulf_scale']:.2f}", f"Mexico rail x{sc['mexico_scale']:.2f}, S. Atlantic x{sc['satl_scale']:.2f}", delta_color="off",
                       help="The scale applied to the Texas Gulf, Mexico rail and South Atlantic hub targets (each vs its 2021-25 average).")
+        m2_[4].metric("Containers", f"{sc['container']:,.0f} M bu", f"{sc['container'] / b['container'] - 1:+.0%} vs 2021-25" if b["container"] else "",
+                      delta_color="off", help="Soybeans inspected into containers (FGIS), loaded at the inland hubs and the East Coast ports. A share of the interior "
+                                              f"number; x{sc['container_scale']:.2f} on every container hub below.")
         apply_ = st.checkbox("Apply to the hub targets below", value=True, key="draw_exp_apply",
                              help="Off = the hub targets stay at their 2021-25 averages.")
         fig = go.Figure()
         for col, name, color in (("east_gulf_share_pct", "East Gulf", "#1f77b4"), ("west_coast_share_pct", "West Coast", "#d95f02"),
                                  ("interior_share_pct", "Interior", "#7f7f7f"), ("mexico_rail_share_pct", "Mexico by rail (inside interior)", "#8e44ad"),
-                                 ("west_gulf_share_pct", "Texas Gulf", "#c0392b"), ("south_atlantic_share_pct", "South Atlantic", "#5d6d7e")):
+                                 ("west_gulf_share_pct", "Texas Gulf", "#c0392b"), ("south_atlantic_share_pct", "South Atlantic", "#5d6d7e"),
+                                 ("container_share_pct", "Containers (inside interior)", "#8d6e63")):
             if col not in h:
                 continue
             fig.add_trace(go.Scatter(x=[es.label(i) for i in h.index], y=h[col], mode="lines+markers", name=name, line=dict(color=color, width=2),
@@ -160,8 +164,8 @@ def _export_panel():
         text = (f"Export scenario {es.label(my)}: US exports {exports:,.0f}M bu, East Gulf {sc['east_gulf']:,.0f}M bu "
                 f"(x{sc['river_scale']:.2f} of the 2021-25 average)")
         return {"river": round(sc["river_scale"], 4), "pnw": round(sc["pnw_scale"], 4), "txg": round(sc["txgulf_scale"], 4),
-                "mex": round(sc["mexico_scale"], 4), "satl": round(sc["satl_scale"], 4)}, text
-    return {"river": 1.0, "pnw": 1.0, "txg": 1.0, "mex": 1.0, "satl": 1.0}, "Hub volumes at the 2021-25 average (no export scenario)"
+                "mex": round(sc["mexico_scale"], 4), "satl": round(sc["satl_scale"], 4), "ctn": round(sc["container_scale"], 4)}, text
+    return {"river": 1.0, "pnw": 1.0, "txg": 1.0, "mex": 1.0, "satl": 1.0, "ctn": 1.0}, "Hub volumes at the 2021-25 average (no export scenario)"
 
 
 def _hub_markers(inp, res, hubs):
@@ -188,18 +192,21 @@ def render():
     inp = dm.load()
     st.markdown("### Draw Territory: soybeans")
     nodes = dm.load_nodes()
-    area_groups = [g for g in nodes["groups"] if g["kind"] in ("area", "pnw", "txgulf", "mexico", "lagulf", "mobile", "satl")]
+    area_groups = [g for g in nodes["groups"] if g["kind"] in ("area", "pnw", "txgulf", "mexico", "lagulf", "mobile", "satl", "container", "cont_east")]
     hubs_in_order = []
     for g in nodes["groups"]:
         if g["hub"] not in hubs_in_order:
             hubs_in_order.append(g["hub"])
+    for i, h_ in enumerate([h for h in hubs_in_order if h.startswith("Container")]):             # the container hubs share a brown family
+        HUB_COLORS.setdefault(h_, ["#6d4c41", "#8d6e63", "#a1887f", "#795548", "#5d4037", "#bcaaa4", "#4e342e", "#9e8e83"][i % 8])
     st.caption("Where each county's beans go. Crush plants fill to their annual need (Daily Max × 88% × 350 days, from the Crush Downtime "
                "Calculator). The export hubs take the rest: each hub (an Illinois River, Upper Mississippi, Ohio River, St. Louis, Lower Mississippi or "
                "Pacific Northwest, Texas Gulf or Mexico-by-rail region) loads the soybeans the Corps, USDA and FGIS data say it loads, and counties draw to the nearest hubs "
                "and plants with limited crossover. The Pacific Northwest is fed by BNSF and UP rail, Texas Gulf and the Mexican border by BNSF, UP and CPKC. Individual terminals are only a check on a hub's volume. "
                "First pass: a model to set the structure, not a forecast.")
     scales, scenario_text = _export_panel()
-    river_scale, pnw_scale, txg_scale, mex_scale, satl_scale = scales["river"], scales["pnw"], scales["txg"], scales["mex"], scales["satl"]
+    river_scale, pnw_scale, txg_scale, mex_scale, satl_scale, ctn_scale = (scales["river"], scales["pnw"], scales["txg"], scales["mex"], scales["satl"],
+                                                                         scales["ctn"])
     c1, c2, c3, c4 = st.columns(4)
     region = c1.selectbox("Region to show", ["All US"] + FOCUS_STATES, index=1, key="draw_state")
     state = None if region == "All US" else region
@@ -320,14 +327,14 @@ def render():
             prem[k] = cols[i % 3].number_input(k, -20.0, 20.0, 0.0, 0.5, key=f"draw_prem_{k}")
     res = _solve(rate, tau, river_prem, util, lock_scale, tuple(sorted(area_over.items())), tuple(sorted(cap_over.items())),
                  tuple(sorted((k, v) for k, v in prem.items() if v)), river_scale,
-                 (("pnw", pnw_scale), ("txgulf", txg_scale), ("mexico", mex_scale), ("satl", satl_scale)),
-                 (("pnw", pnw_rate), ("txgulf", txg_rate), ("mexico", mex_rate), ("lagulf", la_rate), ("mobile", mob_rate), ("satl", satl_rate)), pnw_reach,
-                 tuple(sorted(barge_fed.items())), (("lagulf", la_tau), ("mobile", la_tau), ("satl", la_tau)),
+                 (("pnw", pnw_scale), ("txgulf", txg_scale), ("mexico", mex_scale), ("satl", satl_scale), ("container", ctn_scale)),
+                 (("pnw", pnw_rate), ("txgulf", txg_rate), ("mexico", mex_rate), ("lagulf", la_rate), ("mobile", mob_rate), ("satl", satl_rate), ("cont_east", satl_rate)), pnw_reach,
+                 tuple(sorted(barge_fed.items())), (("lagulf", la_tau), ("mobile", la_tau), ("satl", la_tau), ("cont_east", la_tau)),
                  (("Bunge North America Destrehan LA", dest_add),))
     plants_t, river_t, cty_t = dm.summarize(inp, res, state)
-    if any(abs(x - 1.0) > 1e-3 for x in (river_scale, pnw_scale, txg_scale, mex_scale, satl_scale)):
+    if any(abs(x - 1.0) > 1e-3 for x in (river_scale, pnw_scale, txg_scale, mex_scale, satl_scale, ctn_scale)):
         st.caption(f"Export scenario applied: barge-loading and East Gulf rail targets ×{river_scale:.2f}, Pacific Northwest rail ×{pnw_scale:.2f}, "
-                   f"Texas Gulf ×{txg_scale:.2f}, Mexico by rail ×{mex_scale:.2f}, South Atlantic ×{satl_scale:.2f}.")
+                   f"Texas Gulf ×{txg_scale:.2f}, Mexico by rail ×{mex_scale:.2f}, South Atlantic ×{satl_scale:.2f}, containers ×{ctn_scale:.2f}.")
     if res.get("target_scale", 1.0) < 0.999:
         st.warning(f"The hub targets add up to more than the beans left after crush, so they were scaled to {res['target_scale']:.0%}. "
                    "Lower the hub targets or raise plant run rates.")
@@ -493,6 +500,21 @@ def render():
             st.dataframe(mt.style.format("{:,.1f}"), use_container_width=True)
             st.caption("FGIS records the state where the lot was inspected, which stands in for where it grew. The model's state totals are held to these, so this "
                        "table shows the calibration worked, not an independent test; within a state the beans come from the counties nearest the border.")
+        ct = nodes.get("containers")
+        if ct and ct.get("census_ports_mbu"):
+            st.markdown("**Containers: where they leave from** (Census port of exit, soybeans, M bu/yr, 2021/22-2025/26 average)")
+            pdf = pd.DataFrame({"Port": list(ct["census_ports_mbu"]), "M bu": list(ct["census_ports_mbu"].values())})
+            pdf["Coast"] = pdf.Port.map({"LOS ANGELES": "West", "LONG BEACH": "West", "OAKLAND": "West", "TACOMA": "West", "SEATTLE": "West", "PORTLAND OR": "West",
+                                         "EVERETT": "West", "NORFOLK": "East", "NEW YORK": "East", "BALTIMORE": "East", "CHARLESTON": "East", "SAVANNAH": "East",
+                                         "WILMINGTON NC": "East", "PHILADELPHIA": "East", "JACKSONVILLE": "East"}).fillna("Gulf / other")
+            c1_, c2_ = st.columns([2, 1])
+            c1_.dataframe(pdf.head(12).style.format({"M bu": "{:,.1f}"}), hide_index=True, use_container_width=True)
+            cc_ = ct.get("census_coast_mbu", {})
+            c2_.metric("West Coast ports", f"{cc_.get('West', 0):,.0f} M bu")
+            c2_.metric("East Coast ports", f"{cc_.get('East', 0):,.0f} M bu")
+            st.caption("Loaded at: Chicago/Joliet, Columbus, Kansas City, Omaha, Iowa, Fargo and a few smaller Midwest cities, and at the East Coast ports. FGIS records "
+                       "the state of each container lot, not the city, so Iowa and the smaller states sit at their main intermodal city (a guess). The model does not "
+                       "route containers to a coast: it draws each hub's beans from the counties around it.")
         st.caption("Upriver nodes: Corps lock tonnage (Food and Farm Products, both directions) scaled to USDA downbound grain at the seven locks USDA "
                    "measures, soybeans = USDA's soy share; each pool = flow at its lower lock less flow at the upper one. Below Lock 27: Corps "
                    "Waterborne Commerce port tonnage (soybeans shipped, 2021-24 average). Whatever the East Gulf inspects beyond these barge loadings "

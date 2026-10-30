@@ -46,7 +46,7 @@ def load_nodes(path: str = NODES) -> dict:
 # Hubs the model feeds by rail rather than by barge: which railroads reach them (indices into county_rail_service.json's [BNSF, UP, CPKC, CN, CSXT, NS]).
 # The Pacific Northwest is fed almost entirely by BNSF and UP; Texas Gulf and the Mexican border take BNSF, UP and CPKC (the former KCS, strong at Laredo);
 # Louisiana's export elevators take UP, CPKC and CN (the old Illinois Central, the line down from Illinois and Iowa); Mobile takes CSX, CN and NS; the South Atlantic (Norfolk) takes CSX and NS.
-RAIL_KINDS = {"pnw": (0, 1), "txgulf": (0, 1, 2), "mexico": (0, 1, 2), "lagulf": (1, 2, 3), "mobile": (3, 4, 5), "satl": (4, 5)}
+RAIL_KINDS = {"pnw": (0, 1), "txgulf": (0, 1, 2), "mexico": (0, 1, 2), "lagulf": (1, 2, 3), "mobile": (3, 4, 5), "satl": (4, 5), "cont_east": (4, 5)}
 
 # Crush plants fed by barge from upriver instead of (or as well as) county trucks, as a share of the plant's need. Bunge Destrehan takes the barge and
 # stops it before export; ADM Quincy and Cargill Owensboro take some, from north of where they sit. A barge bean a plant takes is a bean the Gulf export
@@ -245,8 +245,9 @@ def _groups(inputs, nodes, n_p, lock_scale, area_mbu, river_scale=1.0, rail_scal
             continue
         if g["kind"] == "lock":
             tgt = g["target_mbu"] * lock_scale * river_scale
-        elif g["kind"] in RAIL_KINDS:
-            tgt = area_mbu.get(g["name"], g["target_mbu"]) * (rail_scale or {}).get(g["kind"], 1.0)
+        elif g["kind"] in RAIL_KINDS or g["kind"] == "container":
+            key = "container" if g["kind"] in ("container", "cont_east") else g["kind"]          # all container hubs scale together
+            tgt = area_mbu.get(g["name"], g["target_mbu"]) * (rail_scale or {}).get(key, 1.0)
         else:
             tgt = area_mbu.get(g["name"], g["target_mbu"]) * river_scale
         out.append({"name": g["name"], "kind": g["kind"], "hub": g.get("hub", g["name"]), "anchor": g.get("anchor"), "cols": cols, "target_bu": tgt * 1e6,

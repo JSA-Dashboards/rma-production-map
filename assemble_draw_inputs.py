@@ -50,6 +50,22 @@ EXTRA_RIVER_PINS = [
     {"key": "Mobile hub (Mobile/Pascagoula)", "state": "AL", "lat": 30.70, "lon": -88.04, "site": "mobile-hub"},
     # The South Atlantic ports (Norfolk/Chesapeake, Charleston, Savannah) as one hub point at Norfolk, fed by CSX and NS.
     {"key": "South Atlantic hub (Norfolk/Chesapeake)", "state": "VA", "lat": 36.85, "lon": -76.30, "site": "south-atlantic-hub"},
+    # Container loading hubs: where soybeans are stuffed into containers and railed or trucked to the coast. FGIS records the STATE of each container lot,
+    # not the city, so Iowa and the smaller states sit at their main intermodal city (a guess); Chicago is Joliet / Elwood, where the big transloads are.
+    {"key": "Container hub: Chicago/Joliet IL", "state": "IL", "lat": 41.52, "lon": -88.08, "site": "cont-joliet"},
+    {"key": "Container hub: Columbus OH", "state": "OH", "lat": 39.96, "lon": -82.99, "site": "cont-columbus"},
+    {"key": "Container hub: Kansas City", "state": "KS", "lat": 39.10, "lon": -94.58, "site": "cont-kc"},
+    {"key": "Container hub: Omaha NE", "state": "NE", "lat": 41.26, "lon": -95.93, "site": "cont-omaha"},
+    {"key": "Container hub: Iowa (Des Moines)", "state": "IA", "lat": 41.59, "lon": -93.62, "site": "cont-iowa"},
+    {"key": "Container hub: Fargo ND", "state": "ND", "lat": 46.88, "lon": -96.79, "site": "cont-fargo"},
+    {"key": "Container hub: Milwaukee WI", "state": "WI", "lat": 43.04, "lon": -87.91, "site": "cont-milwaukee"},
+    {"key": "Container hub: Detroit MI", "state": "MI", "lat": 42.33, "lon": -83.05, "site": "cont-detroit"},
+    {"key": "Container hub: Minneapolis MN", "state": "MN", "lat": 44.98, "lon": -93.27, "site": "cont-minneapolis"},
+    {"key": "Container hub: Indianapolis IN", "state": "IN", "lat": 39.77, "lon": -86.16, "site": "cont-indianapolis"},
+    {"key": "Container hub: Baltimore MD", "state": "MD", "lat": 39.29, "lon": -76.61, "site": "cont-baltimore"},
+    {"key": "Container hub: Norfolk VA", "state": "VA", "lat": 36.85, "lon": -76.30, "site": "cont-norfolk"},
+    {"key": "Container hub: Charleston SC", "state": "SC", "lat": 32.78, "lon": -79.93, "site": "cont-charleston"},
+    {"key": "Container hub: New Jersey", "state": "NJ", "lat": 40.67, "lon": -74.20, "site": "cont-nj"},
     {"key": "Louis Dreyfus Cahokia IL", "state": "IL", "lat": 38.5662, "lon": -90.1794, "site": "ldc-cahokia"},
     {"key": "Bruce Oakley Cahokia IL", "state": "IL", "lat": 38.5662, "lon": -90.1794, "site": "oakley-cahokia"},
 ]

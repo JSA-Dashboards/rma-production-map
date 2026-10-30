@@ -31,6 +31,55 @@
   ],
   "note": "BNSF and UP feed nearly all of the Pacific Northwest; CPKC is left out"
  },
+ "containers": {
+  "states_mbu": {
+   "IL": 55.09,
+   "OH": 31.85,
+   "KS": 6.9,
+   "IA": 5.99,
+   "NE": 5.58,
+   "SC": 5.14,
+   "MD": 5.14,
+   "NC": 4.98,
+   "VA": 4.67,
+   "NJ": 4.28,
+   "ND": 2.46,
+   "PA": 2.31,
+   "WI": 2.12,
+   "MI": 1.37,
+   "MO": 1.14,
+   "MN": 0.92,
+   "IN": 0.58,
+   "DE": 0.46,
+   "TX": 0.23
+  },
+  "atlantic_port_mbu": 16.95,
+  "census_ports_mbu": {
+   "NORFOLK": 49.28,
+   "LOS ANGELES": 42.35,
+   "LONG BEACH": 28.05,
+   "NEW YORK": 14.58,
+   "BALTIMORE": 9.05,
+   "CHARLESTON": 7.59,
+   "TACOMA": 7.32,
+   "SEATTLE": 3.38,
+   "OAKLAND": 2.79,
+   "WILMINGTON NC": 1.46,
+   "SAVANNAH": 0.59,
+   "MOBILE": 0.57,
+   "HOUSTON": 0.37,
+   "NEW ORLEANS PORT REGION": 0.35,
+   "PORTLAND OR": 0.14,
+   "PHILADELPHIA": 0.1
+  },
+  "census_coast_mbu": {
+   "East": 82.7,
+   "Gulf": 1.3,
+   "Other": 0.0,
+   "West": 84.1
+  },
+  "source": "FGIS container inspections (state of the lot) and Census port of exit, marketing years 2021/22-2025/26 average"
+ },
  "rail_hubs": {
   "txgulf": [
    "BNSF",
@@ -53,6 +102,10 @@
    "NS"
   ],
   "satl": [
+   "CSXT",
+   "NS"
+  ],
+  "cont_east": [
    "CSXT",
    "NS"
   ]
@@ -479,6 +532,109 @@
    ],
    "note": "FGIS soybean ship inspections at the East Gulf ports other than the Mississippi River.",
    "hub": "Mobile"
+  },
+  {
+   "name": "Container: Chicago/Joliet IL",
+   "kind": "container",
+   "pins": [
+    "Container hub: Chicago/Joliet IL"
+   ],
+   "target_mbu": 55.09,
+   "note": "FGIS soybean container inspections where the state is IL (the state of the lot, not the city), 2021-25 average",
+   "hub": "Container: Chicago/Joliet IL"
+  },
+  {
+   "name": "Container: Columbus OH",
+   "kind": "container",
+   "pins": [
+    "Container hub: Columbus OH"
+   ],
+   "target_mbu": 31.85,
+   "note": "FGIS soybean container inspections where the state is OH (the state of the lot, not the city), 2021-25 average",
+   "hub": "Container: Columbus OH"
+  },
+  {
+   "name": "Container: Kansas City (KS, MO)",
+   "kind": "container",
+   "pins": [
+    "Container hub: Kansas City"
+   ],
+   "target_mbu": 8.040000000000001,
+   "note": "FGIS soybean container inspections where the state is KS/MO (the state of the lot, not the city), 2021-25 average",
+   "hub": "Container: Kansas City (KS, MO)"
+  },
+  {
+   "name": "Container: Omaha NE",
+   "kind": "container",
+   "pins": [
+    "Container hub: Omaha NE"
+   ],
+   "target_mbu": 5.58,
+   "note": "FGIS soybean container inspections where the state is NE (the state of the lot, not the city), 2021-25 average",
+   "hub": "Container: Omaha NE"
+  },
+  {
+   "name": "Container: Iowa",
+   "kind": "container",
+   "pins": [
+    "Container hub: Iowa (Des Moines)"
+   ],
+   "target_mbu": 5.99,
+   "note": "FGIS soybean container inspections where the state is IA (the state of the lot, not the city), 2021-25 average",
+   "hub": "Container: Iowa"
+  },
+  {
+   "name": "Container: Fargo ND",
+   "kind": "container",
+   "pins": [
+    "Container hub: Fargo ND"
+   ],
+   "target_mbu": 2.46,
+   "note": "FGIS soybean container inspections where the state is ND (the state of the lot, not the city), 2021-25 average",
+   "hub": "Container: Fargo ND"
+  },
+  {
+   "name": "Container: other Midwest (WI, MI, MN, IN)",
+   "kind": "container",
+   "pins": [
+    "Container hub: Milwaukee WI",
+    "Container hub: Detroit MI",
+    "Container hub: Minneapolis MN",
+    "Container hub: Indianapolis IN"
+   ],
+   "target_mbu": 4.99,
+   "note": "FGIS soybean container inspections where the state is WI/MI/MN/IN (the state of the lot, not the city), 2021-25 average",
+   "hub": "Container: other Midwest (WI, MI, MN, IN)"
+  },
+  {
+   "name": "Container: East Coast port transloads (Baltimore to Charleston)",
+   "kind": "cont_east",
+   "pins": [
+    "Container hub: Baltimore MD",
+    "Container hub: Norfolk VA",
+    "Container hub: Charleston SC",
+    "Container hub: New Jersey"
+   ],
+   "origin_states": [
+    "OH",
+    "IN",
+    "MI",
+    "IL",
+    "KY",
+    "TN",
+    "VA",
+    "NC",
+    "SC",
+    "MD",
+    "DE",
+    "PA",
+    "NJ",
+    "WV",
+    "GA"
+   ],
+   "target_mbu": 43.93,
+   "note": "Containers loaded in the East Coast port states (SC, MD, NC, VA, NJ, PA, DE) plus those inspected at the South and North Atlantic ports, 2021-25 average",
+   "hub": "Container: East Coast port transloads (Baltimore to Charleston)"
   },
   {
    "name": "South Atlantic (Norfolk, Chesapeake, Charleston, Savannah)",

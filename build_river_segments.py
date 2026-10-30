@@ -122,6 +122,26 @@ LA_RAIL_TRUCK_MBU = 130.0
 # the port, not the farm state, so this is an assumption; the Delta, the Plains and the western Corn Belt are left out.
 SATL_ORIGIN_STATES = ["OH", "IN", "MI", "IL", "KY", "TN", "VA", "NC", "SC", "MD", "DE", "PA", "NJ", "WV", "GA"]
 SATL_PINS = ["South Atlantic hub"]
+# Container loading hubs. FGIS records the state where each container lot was inspected (loaded), so the hub volumes are by state. Inland: Chicago/Joliet = IL,
+# Columbus = OH, Kansas City = KS + MO, Omaha = NE, Iowa, Fargo = ND, and the small Midwest states together. The East Coast transloads are the port-state lots
+# (SC, MD, NC, VA, NJ, PA, DE) plus the containers inspected at the South and North Atlantic ports.
+CONTAINER_INLAND = [("Container: Chicago/Joliet IL", ["IL"], ["Container hub: Chicago/Joliet IL"]),
+                    ("Container: Columbus OH", ["OH"], ["Container hub: Columbus OH"]),
+                    ("Container: Kansas City (KS, MO)", ["KS", "MO"], ["Container hub: Kansas City"]),
+                    ("Container: Omaha NE", ["NE"], ["Container hub: Omaha NE"]),
+                    ("Container: Iowa", ["IA"], ["Container hub: Iowa (Des Moines)"]),
+                    ("Container: Fargo ND", ["ND"], ["Container hub: Fargo ND"]),
+                    ("Container: other Midwest (WI, MI, MN, IN)", ["WI", "MI", "MN", "IN"],
+                     ["Container hub: Milwaukee WI", "Container hub: Detroit MI", "Container hub: Minneapolis MN", "Container hub: Indianapolis IN"])]
+CONTAINER_EAST = ("Container: East Coast port transloads (Baltimore to Charleston)", ["SC", "MD", "NC", "VA", "NJ", "PA", "DE", "GA"],
+                  ["Container hub: Baltimore MD", "Container hub: Norfolk VA", "Container hub: Charleston SC", "Container hub: New Jersey"])
+CONTAINER_FALLBACK = {"states_mbu": {"IL": 55.1, "OH": 31.8, "KS": 6.9, "IA": 6.0, "NE": 5.6, "SC": 5.1, "MD": 5.1, "NC": 5.0, "VA": 4.7, "NJ": 4.3, "ND": 2.5, "PA": 2.3,
+                                     "WI": 2.1, "MI": 1.4, "MO": 1.1, "MN": 0.9, "IN": 0.6, "DE": 0.5},
+                      "atlantic_port_mbu": 17.0}
+CENSUS_COAST = {"LOS ANGELES": "West", "LONG BEACH": "West", "OAKLAND": "West", "TACOMA": "West", "SEATTLE": "West", "PORTLAND OR": "West", "EVERETT": "West",
+                    "VANCOUVER BC": "West", "HONOLULU": "West", "NORFOLK": "East", "NEW YORK": "East", "BALTIMORE": "East", "CHARLESTON": "East", "SAVANNAH": "East",
+                    "WILMINGTON NC": "East", "PHILADELPHIA": "East", "JACKSONVILLE": "East", "MIAMI": "East", "PT EVERGLADES": "East", "GLOUCESTER CY": "East",
+                    "TAMPA": "Gulf", "MOBILE": "Gulf", "HOUSTON": "Gulf", "NEW ORLEANS PORT REGION": "Gulf"}
 TXG_PINS = ["Texas Gulf hub"]
 LA_PINS = ["Louisiana rail hub"]                                                       # export elevators below Baton Rouge fed by rail and truck rather than barge
 MOBILE_PINS = ["Mobile hub"]                                                          # Houston / Galveston / Corpus Christi, modeled as one hub
@@ -166,6 +186,36 @@ HUBS = [("Illinois River", "IL-"), ("Upper Mississippi", "MS-"), ("Ohio River", 
         ("St. Louis", "East St. Louis"), ("Lower Mississippi", "Cape Girardeau"), ("Lower Mississippi", "Lower Mississippi"), ("Pacific Northwest", "Pacific Northwest"),
         ("Texas Gulf", "Texas Gulf"), ("Mexico Rail", "Mexico by rail"), ("Louisiana Rail", "Louisiana rail"), ("Mobile", "Mobile"),
         ("South Atlantic", "South Atlantic")]
+
+
+def container_facts():
+    """Soybean containers, 2021/22-2025/26 average M bu: FGIS inspections by state (where the container was loaded) and Census port of exit (where it left; USDA AgTransport
+    c353-2zjn, metric tons x 36.7437 bu). FGIS 'INTERIOR' rows carry the state; the South and North Atlantic port rows have none."""
+    import urllib.parse
+    import urllib.request
+    base_ = "https://agtransport.usda.gov/resource/"
+    try:
+        q = {"$select": "year,month,port,state,sum(pounds) as lbs", "$group": "year,month,port,state", "$limit": "50000",
+             "$where": "grain='SOYBEANS' and year>=2021 and year<=2026 and type_carrier_text='CONTAINER'"}
+        f = pd.DataFrame(json.load(urllib.request.urlopen(base_ + "sruw-w49i.json?" + urllib.parse.urlencode(q), timeout=120)))
+        f["year"], f["month"] = f.year.astype(int), f.month.astype(int)
+        f["my"] = f.year.where(f.month >= 9, f.year - 1)
+        f["mbu"] = f.lbs.astype(float) / 60 / 1e6
+        x = f[(f.my >= 2021) & (f.my <= 2025)]
+        states = (x[x.port == "INTERIOR"].groupby("state").mbu.sum() / 5).sort_values(ascending=False)
+        atlantic = float(x[x.port.isin(["S. ATLANTIC", "N. ATLANTIC"])].mbu.sum() / 5)
+        q2 = {"$where": "commodity='Soybeans'", "$limit": "50000"}
+        c = pd.DataFrame(json.load(urllib.request.urlopen(base_ + "c353-2zjn.json?" + urllib.parse.urlencode(q2), timeout=120)))
+        c["year"], c["mt"] = c.year.astype(int), pd.to_numeric(c.mt)
+        c["my"] = c.year.where(c.month.str[:2].astype(int) >= 9, c.year - 1)
+        c = c[(c.my >= 2021) & (c.my <= 2025)]
+        ports = (c.groupby("u_s_port_of_export").mt.sum() / 5 * 36.7437 / 1e6).sort_values(ascending=False)
+        coast = (ports.groupby(ports.index.map(lambda p: CENSUS_COAST.get(p, "Other"))).sum())
+        return {"states_mbu": {k: round(float(v), 2) for k, v in states.items() if v >= 0.05}, "atlantic_port_mbu": round(atlantic, 2),
+                "census_ports_mbu": {k: round(float(v), 2) for k, v in ports.items() if v >= 0.05}, "census_coast_mbu": {k: round(float(v), 1) for k, v in coast.items()},
+                "source": "FGIS container inspections (state of the lot) and Census port of exit, marketing years 2021/22-2025/26 average"}
+    except Exception as e:
+        return {**CONTAINER_FALLBACK, "source": f"fallback constants ({type(e).__name__})"}
 
 
 def hub_of(name):
@@ -229,7 +279,7 @@ def build_groups(segs, nodes, pins, usda, bu):
     la_pl = [p["key"] for p in pins if any(t.lower() in p["key"].lower() for t in LA_PINS)]
     mob_pl = [p["key"] for p in pins if any(t.lower() in p["key"].lower() for t in MOBILE_PINS)]
     sa_pl = [p["key"] for p in pins if any(t.lower() in p["key"].lower() for t in SATL_PINS)]
-    placed.update(la_pl + mob_pl + sa_pl)
+    placed.update(la_pl + mob_pl + sa_pl + [p["key"] for p in pins if p["key"].startswith("Container hub:")])
     lower = [p["key"] for p in pins if p["key"] not in placed and p["key"] not in DROP_PINS]
     groups.append({"name": "Lower Mississippi, Cairo to Baton Rouge", "kind": "area", "pins": lower, "target_mbu": port(6034),
                    "note": "Waterway 6034 soybean shipments (Mouth of Ohio River to Baton Rouge); every remaining tracker pin below Lock 27"})
@@ -246,13 +296,22 @@ def build_groups(segs, nodes, pins, usda, bu):
                            f"waterborne receipts at the Louisiana ports imply. The inspections-less-barge-loadings residual is {la_residual_mbu:.0f}M bu."})
     groups.append({"name": "Mobile and the other non-Mississippi East Gulf ports", "kind": "mobile", "pins": mob_pl, "target_mbu": mobile_mbu,
                    "anchor": "Mobile hub (Mobile/Pascagoula)", "origin_states": MOBILE_ORIGIN_STATES, "note": "FGIS soybean ship inspections at the East Gulf ports other than the Mississippi River."})
+    ct = container_facts()
+    sm = ct["states_mbu"]
+    for cname, cstates, cpins in CONTAINER_INLAND:
+        groups.append({"name": cname, "kind": "container", "pins": cpins, "target_mbu": float(sum(sm.get(s_, 0.0) for s_ in cstates)),
+                       "note": f"FGIS soybean container inspections where the state is {'/'.join(cstates)} (the state of the lot, not the city), 2021-25 average"})
+    ename, estates, epins = CONTAINER_EAST
+    groups.append({"name": ename, "kind": "cont_east", "pins": epins, "origin_states": SATL_ORIGIN_STATES,
+                   "target_mbu": float(sum(sm.get(s_, 0.0) for s_ in estates) + ct["atlantic_port_mbu"]),
+                   "note": "Containers loaded in the East Coast port states (SC, MD, NC, VA, NJ, PA, DE) plus those inspected at the South and North Atlantic ports, 2021-25 average"})
     groups.append({"name": "South Atlantic (Norfolk, Chesapeake, Charleston, Savannah)", "kind": "satl", "pins": [p["key"] for p in pins if any(t.lower() in p["key"].lower() for t in SATL_PINS)],
                    "target_mbu": float(fg["south_atlantic_mbu"]), "anchor": "South Atlantic hub (Norfolk/Chesapeake)", "origin_states": SATL_ORIGIN_STATES,
                    "note": "FGIS soybean ship inspections at the South Atlantic ports, 2021-25 average (down from 67M bu in 2021/22 to about 35M in 2025/26). Containers (16M bu) are not in it."})
     for g in groups:
         g["hub"] = hub_of(g["name"])
     return {"fgis": fg, "pnw_rail": {"railroads": ["BNSF", "UP"], "note": "BNSF and UP feed nearly all of the Pacific Northwest; CPKC is left out"},
-            "rail_hubs": {"txgulf": ["BNSF", "UP", "CPKC"], "mexico": ["BNSF", "UP", "CPKC"], "lagulf": ["UP", "CPKC", "CN"], "mobile": ["CSXT", "CN", "NS"], "satl": ["CSXT", "NS"]},
+            "containers": ct, "rail_hubs": {"txgulf": ["BNSF", "UP", "CPKC"], "mexico": ["BNSF", "UP", "CPKC"], "lagulf": ["UP", "CPKC", "CN"], "mobile": ["CSXT", "CN", "NS"], "satl": ["CSXT", "NS"], "cont_east": ["CSXT", "NS"]},
             "measured_arrivals_mbu": measured, "area_total_mbu": area_total, "unplaced_lock_nodes": unplaced, "groups": groups,
             "dropped": DROP_PINS,
             "east_gulf_other_mbu": fg["east_gulf_mbu"] - measured - area_total,
