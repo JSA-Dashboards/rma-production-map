@@ -109,6 +109,11 @@ EXTRA_PINS = {"MS-5": ["Meredosia", "Naples"]}                                  
 # Where Texas Gulf soybeans can come from. No data gives their origin (FGIS records the port, not the farm state), so this is the plains rail belt: the
 # Houston lanes in USDA AMS's rail tariff table start in KS, NE and MN, and without it the model would take the Delta's beans, which have the river.
 TXG_ORIGIN_STATES = ["TX", "OK", "KS", "NE", "MO", "IA", "MN", "SD", "ND", "CO", "NM"]
+# Louisiana's rail beans come from the CN / UP / KCS lines through the upper Midwest: AMS's Louisiana lanes start in IL and IA, and the Delta has little rail
+# loading (one loader in Mississippi, not much volume), so the Delta states are left out. The nearest of these states fill it first.
+LA_ORIGIN_STATES = ["IL", "IA", "WI", "MN"]
+# Mobile is fed by CSX, NS and CN from the eastern Corn Belt (AMS's one lane is Casey, IL); the Delta is left out for the same reason as Louisiana.
+MOBILE_ORIGIN_STATES = ["IL", "IN", "OH", "KY", "TN", "IA"]
 TXG_PINS = ["Texas Gulf hub"]
 LA_PINS = ["Louisiana rail hub"]                                                       # export elevators below Baton Rouge fed by rail and truck rather than barge
 MOBILE_PINS = ["Mobile hub"]                                                          # Houston / Galveston / Corpus Christi, modeled as one hub
@@ -224,15 +229,15 @@ def build_groups(segs, nodes, pins, usda, bu):
     mobile_mbu = float(fg["east_gulf_port_mbu"])
     la_mbu = max(0.0, fg["east_gulf_mbu"] - measured - area_total - mobile_mbu)
     groups.append({"name": "Louisiana rail and truck (Reserve, Convent, Ama, Destrehan, New Orleans)", "kind": "lagulf", "pins": la_pl, "target_mbu": la_mbu,
-                   "anchor": "Louisiana rail hub (Reserve/Convent)",
+                   "anchor": "Louisiana rail hub (Reserve/Convent)", "origin_states": LA_ORIGIN_STATES,
                    "note": "East Gulf soybean ship inspections (Mississippi River ports) less the barge loadings above and below Lock 27: beans that reached the "
                            "Louisiana export elevators by rail or truck. A residual, so it carries the barge estimates' errors."})
     groups.append({"name": "Mobile and the other non-Mississippi East Gulf ports", "kind": "mobile", "pins": mob_pl, "target_mbu": mobile_mbu,
-                   "anchor": "Mobile hub (Mobile/Pascagoula)", "note": "FGIS soybean ship inspections at the East Gulf ports other than the Mississippi River."})
+                   "anchor": "Mobile hub (Mobile/Pascagoula)", "origin_states": MOBILE_ORIGIN_STATES, "note": "FGIS soybean ship inspections at the East Gulf ports other than the Mississippi River."})
     for g in groups:
         g["hub"] = hub_of(g["name"])
     return {"fgis": fg, "pnw_rail": {"railroads": ["BNSF", "UP"], "note": "BNSF and UP feed nearly all of the Pacific Northwest; CPKC is left out"},
-            "rail_hubs": {"txgulf": ["BNSF", "UP", "CPKC"], "mexico": ["BNSF", "UP", "CPKC"], "lagulf": ["UP", "CPKC", "CN"], "mobile": ["CSXT", "CN"]},
+            "rail_hubs": {"txgulf": ["BNSF", "UP", "CPKC"], "mexico": ["BNSF", "UP", "CPKC"], "lagulf": ["UP", "CPKC", "CN"], "mobile": ["CSXT", "CN", "NS"]},
             "measured_arrivals_mbu": measured, "area_total_mbu": area_total, "unplaced_lock_nodes": unplaced, "groups": groups,
             "dropped": DROP_PINS,
             "east_gulf_other_mbu": fg["east_gulf_mbu"] - measured - area_total,

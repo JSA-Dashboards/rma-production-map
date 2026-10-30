@@ -48,7 +48,8 @@
   ],
   "mobile": [
    "CSXT",
-   "CN"
+   "CN",
+   "NS"
   ]
  },
  "measured_arrivals_mbu": 410.2194866666667,
@@ -446,6 +447,12 @@
    ],
    "target_mbu": 210.21396070333333,
    "anchor": "Louisiana rail hub (Reserve/Convent)",
+   "origin_states": [
+    "IL",
+    "IA",
+    "WI",
+    "MN"
+   ],
    "note": "East Gulf soybean ship inspections (Mississippi River ports) less the barge loadings above and below Lock 27: beans that reached the Louisiana export elevators by rail or truck. A residual, so it carries the barge estimates' errors.",
    "hub": "Louisiana Rail"
   },
@@ -457,6 +464,14 @@
    ],
    "target_mbu": 18.5844591,
    "anchor": "Mobile hub (Mobile/Pascagoula)",
+   "origin_states": [
+    "IL",
+    "IN",
+    "OH",
+    "KY",
+    "TN",
+    "IA"
+   ],
    "note": "FGIS soybean ship inspections at the East Gulf ports other than the Mississippi River.",
    "hub": "Mobile"
   }

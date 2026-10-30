@@ -45,13 +45,23 @@ def load_nodes(path: str = NODES) -> dict:
 
 # Hubs the model feeds by rail rather than by barge: which railroads reach them (indices into county_rail_service.json's [BNSF, UP, CPKC, CN, CSXT, NS]).
 # The Pacific Northwest is fed almost entirely by BNSF and UP; Texas Gulf and the Mexican border take BNSF, UP and CPKC (the former KCS, strong at Laredo);
-# Louisiana's export elevators take UP, CPKC and CN (the old Illinois Central, the line down from Illinois and Iowa); Mobile takes CSX and CN.
-RAIL_KINDS = {"pnw": (0, 1), "txgulf": (0, 1, 2), "mexico": (0, 1, 2), "lagulf": (1, 2, 3), "mobile": (3, 4)}
+# Louisiana's export elevators take UP, CPKC and CN (the old Illinois Central, the line down from Illinois and Iowa); Mobile takes CSX, CN and NS.
+RAIL_KINDS = {"pnw": (0, 1), "txgulf": (0, 1, 2), "mexico": (0, 1, 2), "lagulf": (1, 2, 3), "mobile": (3, 4, 5)}
+
+# Crush plants fed by barge from upriver instead of (or as well as) county trucks, as a share of the plant's need. Bunge Destrehan takes the barge and
+# stops it before export; ADM Quincy and Cargill Owensboro take some, from north of where they sit. A barge bean a plant takes is a bean the Gulf export
+# elevators do not receive. Quincy and Owensboro are capped by the Corps (WCUS, soybeans, 2021-24 average): barge deliveries to ALL docks on the stretch, receipts
+# plus movements within the waterway, are only 11.2M bu on the Mississippi from Minneapolis to the Missouri and 9.4M bu on the Ohio. Half of each is assumed to
+# go to these two plants: 5.6M bu of Quincy's 75.5M need (7.5%) and 4.7M bu of Owensboro's 46.2M (10%). Destrehan (40M bu) has no Corps figure on file.
+BARGE_FED_DEFAULT = {"Bunge North America Destrehan LA": 1.0, "Archer Daniels Midland Quincy IL": 0.075, "Cargill Owensboro KY": 0.10}
+# The river node whose lock-differenced loadings a plant's barge intake sits in: a barge bean offloaded between two locks is missing from the lower lock's
+# flow, so loadings in that pool (lower flow less upper flow) come out short by the intake. Destrehan sits below every measured node, so it has none.
+BARGE_POOL = {"Archer Daniels Midland Quincy IL": "MS-4", "Cargill Owensboro KY": "OH-2"}
 EAST_GULF_KINDS = ("lagulf", "mobile")         # East Gulf beans that did not arrive by barge: scale with the East Gulf, like the barge targets
 
 
 def solve(inputs: dict, *, rate=CENTS_PER_BU_MILE, tau=1.0, river_premium=0.0, plant_premium=None, util=1.0, river_share=1.0, iters=400,
-          nodes=None, lock_scale=1.0, area_mbu=None, pin_cap_mbu=None, river_scale=1.0, pnw_reach_miles=30.0, rail_scales=None, rail_rates=None):
+          nodes=None, lock_scale=1.0, area_mbu=None, pin_cap_mbu=None, river_scale=1.0, pnw_reach_miles=30.0, rail_scales=None, rail_rates=None, barge_fed=None, rail_tau=None):
     """Flows (bu) county x buyer.
 
     rate           freight, cents per bushel-mile
@@ -73,10 +83,15 @@ def solve(inputs: dict, *, rate=CENTS_PER_BU_MILE, tau=1.0, river_premium=0.0, p
                    then read as baseline (2021-25) figures; export_scenario.py turns a US soybean export number into this factor
     rail_scales    {"pnw" | "txgulf" | "mexico": factor} for the rail-fed export hubs (West Coast, West Gulf, Mexico vs their 2021-25 averages); the East Gulf
                    rail hubs ("lagulf", "mobile") follow river_scale
-    pnw_reach_miles  a county sends beans to a rail-fed hub only if track of a railroad that serves it is within this many miles of its centroid
-                   (data/draw/county_rail_service.json)
     rail_rates     {rail kind: cents per bushel-mile} freight for the rail haul to each rail-fed hub (a missing kind = the truck `rate`)
-    pnw_reach_miles  applies to every rail-fed hub, measured to the railroads in RAIL_KINDS
+    pnw_reach_miles  a county sends beans to a rail-fed hub only if track of a railroad that serves it (RAIL_KINDS) is within this many miles of its
+                   centroid (data/draw/county_rail_service.json); applies to every rail-fed hub
+    rail_tau       {rail kind: crossover softness, cents/bu} for a rail-fed hub that should spread over more origins than `tau` allows (None = tau).
+                   Freight alone sends a hub's beans from the nearest rail counties; basis differences between origin states offset freight differences
+                   of 20-30 cents, so the hubs fed from many states (Louisiana, Mobile) need a wider crossover
+    barge_fed      {plant key: share of its need that arrives by barge} (None = BARGE_FED_DEFAULT). That part is not drawn from counties by truck: it comes
+                   out of the barge loadings, so it is taken off what reaches the export elevators (the Louisiana rail and truck hub's target rises by
+                   the same amount, because the East Gulf inspections are fixed) and, for a plant with a BARGE_POOL, added back to that pool's loadings
     pin_cap_mbu    {river pin key: M bu/yr} ceilings, on top of any `cap_mbu` set on the pin in the inputs. A capped pin takes at most its cap
                    and the rest of its group's target spreads over the group's other pins (a ceiling, not a target)
     """
@@ -84,6 +99,9 @@ def solve(inputs: dict, *, rate=CENTS_PER_BU_MILE, tau=1.0, river_premium=0.0, p
     miles = np.array([[np.nan if m is None else m for m in row] for row in inputs["miles"]], float)
     supply = np.array([c["supply_bu"] for c in cty], float)
     need = np.array([p["need_bu"] for p in plants], float) * util
+    bf = BARGE_FED_DEFAULT if barge_fed is None else barge_fed
+    barge_in = need * np.array([min(max(float(bf.get(p["key"], 0.0)), 0.0), 1.0) for p in plants])      # beans these plants take off the barges
+    need = need - barge_in
     n_p, n_r = len(plants), len(river)
     prem = np.zeros(n_p + n_r)
     prem[n_p:] = river_premium
@@ -99,6 +117,17 @@ def solve(inputs: dict, *, rate=CENTS_PER_BU_MILE, tau=1.0, river_premium=0.0, p
     residual = max(0.0, total - plant_need)
     if nodes is not None:
         groups = _groups(inputs, nodes, n_p, lock_scale, area_mbu or {}, river_scale, {**{k: river_scale for k in EAST_GULF_KINDS}, **(rail_scales or {})})
+        for j, p in enumerate(plants):
+            if barge_in[j] <= 0:
+                continue
+            pool = BARGE_POOL.get(p["key"])
+            tgt = [g for g in groups if g["kind"] == "lock" and pool and g["name"].startswith(pool)]
+            if tgt:                                                            # the intake was loaded upstream and missing from this pool's lock-differenced flow
+                tgt[0]["target_bu"] += barge_in[j]
+            else:                                                              # no loading to add back to: the Gulf elevators get that much less by barge
+                for g in groups:
+                    if g["kind"] == "lagulf":
+                        g["target_bu"] += barge_in[j]
         want = sum(g["target_bu"] for g in groups)
         tscale = min(1.0, residual / want) if want else 1.0                   # targets can't exceed what is left after crush
         for g in groups:
@@ -112,6 +141,9 @@ def solve(inputs: dict, *, rate=CENTS_PER_BU_MILE, tau=1.0, river_premium=0.0, p
                 cost[:, cols_k] = np.where(np.isnan(miles[:, cols_k]), 1e6, miles[:, cols_k] * rates[kind] - prem[cols_k][None, :])
         if any(rail_cols[k] and rates[k] is not None for k in RAIL_KINDS):
             K = np.exp(-(cost - cost.min(axis=1, keepdims=True)) / max(tau, 1e-3))
+        for kind, cols_k in rail_cols.items():
+            if cols_k and (rail_tau or {}).get(kind):
+                K[:, cols_k] = np.exp(-(cost[:, cols_k] - cost.min(axis=1, keepdims=True)) / max(rail_tau[kind], 1e-3))
         for kind, cols_k in rail_cols.items():
             if cols_k:
                 served = np.array([min(rs.get(c["fips"], [9999] * 6)[k] for k in RAIL_KINDS[kind]) <= pnw_reach_miles for c in cty])
@@ -174,7 +206,7 @@ def solve(inputs: dict, *, rate=CENTS_PER_BU_MILE, tau=1.0, river_premium=0.0, p
             if n_r:
                 v[n_p:] = (river_total / max(rv, 1e-300)) if river_total > 0 else 0.0
     flow = u[:, None] * K * v[None, :]
-    out = {"flow": flow, "supply": supply, "need": need, "scale": scale, "river_total": river_total, "other_total": other_total,
+    out = {"flow": flow, "supply": supply, "need": need, "barge_in": barge_in, "scale": scale, "river_total": river_total, "other_total": other_total,
            "miles": miles, "cost": cost}
     if groups is not None:
         out["groups"] = [{"name": g["name"], "kind": g["kind"], "hub": g["hub"], "anchor": g.get("anchor"), "cols": g["cols"], "target_bu": g["target_bu"],
@@ -233,7 +265,7 @@ def summarize(inputs: dict, res: dict, state="IL"):
         f = flow[:, j]
         got = f.sum()
         rows.append({"plant": p["key"], "state": p["state"], "need_mbu": res["need"][j] / 1e6, "drawn_mbu": got / 1e6,
-                     "from_state_mbu": f[in_state].sum() / 1e6,
+                     "from_state_mbu": f[in_state].sum() / 1e6, "barge_mbu": float(res["barge_in"][j]) / 1e6 if "barge_in" in res else 0.0,
                      "avg_miles": float(np.nansum(f * miles[:, j]) / got) if got else 0.0,
                      "river_access": p.get("river", "")})
     rr = []
