@@ -66,6 +66,8 @@ EXTRA_RIVER_PINS = [
     {"key": "Container hub: Norfolk VA", "state": "VA", "lat": 36.85, "lon": -76.30, "site": "cont-norfolk"},
     {"key": "Container hub: Charleston SC", "state": "SC", "lat": 32.78, "lon": -79.93, "site": "cont-charleston"},
     {"key": "Container hub: New Jersey", "state": "NJ", "lat": 40.67, "lon": -74.20, "site": "cont-nj"},
+    # The Great Lakes ports (Toledo, Chicago, Lake Ontario) as one hub point at Toledo, where almost all the soybeans load.
+    {"key": "Great Lakes hub (Toledo)", "state": "OH", "lat": 41.68, "lon": -83.46, "site": "great-lakes-hub"},
     {"key": "Louis Dreyfus Cahokia IL", "state": "IL", "lat": 38.5662, "lon": -90.1794, "site": "ldc-cahokia"},
     {"key": "Bruce Oakley Cahokia IL", "state": "IL", "lat": 38.5662, "lon": -90.1794, "site": "oakley-cahokia"},
 ]

@@ -250,7 +250,7 @@ def _groups(inputs, nodes, n_p, lock_scale, area_mbu, river_scale=1.0, rail_scal
             continue
         if g["kind"] == "lock":
             tgt = g["target_mbu"] * lock_scale * river_scale
-        elif g["kind"] in RAIL_KINDS or g["kind"] == "container":
+        elif g["kind"] in RAIL_KINDS or g["kind"] in ("container", "lakes"):
             key = "container" if g["kind"] in ("container", "cont_east") else g["kind"]          # all container hubs scale together
             tgt = area_mbu.get(g["name"], g["target_mbu"]) * (rail_scale or {}).get(key, 1.0)
         else:

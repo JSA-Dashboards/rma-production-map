@@ -73,6 +73,11 @@ def fgis_south_atlantic():
     return _fgis_series("fgis_reg='EAST COAST' and port='S. ATLANTIC' and type_carrier_text='SHIP'")
 
 
+def fgis_lakes():
+    """Soybeans loaded on ships at the Great Lakes ports (Toledo, Chicago, Lake Ontario, Duluth), M bu by marketing year."""
+    return _fgis_series("fgis_reg='LAKES' and type_carrier_text='SHIP'")
+
+
 def fgis_containers():
     """Soybeans inspected into containers, all ports and the interior, M bu by marketing year."""
     return _fgis_series("type_carrier_text='CONTAINER'")
@@ -116,6 +121,7 @@ def main(psd_json=None, from_wasde=False):
     t["mexico_rail_mbu"] = fgis_mexico_rail().reindex(t.index).fillna(0.0)
     t["south_atlantic_mbu"] = fgis_south_atlantic().reindex(t.index).fillna(0.0)
     t["container_mbu"] = fgis_containers().reindex(t.index).fillna(0.0)
+    t["lakes_mbu"] = fgis_lakes().reindex(t.index).fillna(0.0)
     t["fgis_inspected_mbu"] = by.sum(axis=1)
     t = t.join(ex.set_index("marketYear").exports_mbu.rename("usda_exports_mbu"), how="inner")
     last_full = datetime.date.today().year - (0 if datetime.date.today().month >= 9 else 1) - 1      # the marketing year that just ended
@@ -128,10 +134,11 @@ def main(psd_json=None, from_wasde=False):
     t["mexico_rail_share_pct"] = t.mexico_rail_mbu / t.fgis_inspected_mbu * 100
     t["south_atlantic_share_pct"] = t.south_atlantic_mbu / t.fgis_inspected_mbu * 100
     t["container_share_pct"] = t.container_mbu / t.fgis_inspected_mbu * 100
+    t["lakes_share_pct"] = t.lakes_mbu / t.fgis_inspected_mbu * 100
     t.index.name = "marketing_year_start"
     cols = ["usda_exports_mbu", "fgis_inspected_mbu", "inspected_over_usda", "east_gulf_mbu", "west_gulf_mbu", "west_coast_mbu", "interior_mbu", "mexico_rail_mbu",
-            "south_atlantic_mbu", "container_mbu", "east_gulf_share_pct", "us_gulf_share_pct", "west_coast_share_pct", "interior_share_pct", "west_gulf_share_pct",
-            "mexico_rail_share_pct", "south_atlantic_share_pct", "container_share_pct"]
+            "south_atlantic_mbu", "container_mbu", "lakes_mbu", "east_gulf_share_pct", "us_gulf_share_pct", "west_coast_share_pct", "interior_share_pct", "west_gulf_share_pct",
+            "mexico_rail_share_pct", "south_atlantic_share_pct", "container_share_pct", "lakes_share_pct"]
     csv_text = t[cols].round(3).to_csv()
     if os.path.exists(cpath) and len(t) < sum(1 for _ in open(cpath)) - 1:
         _fail(f"the share table would shrink from {sum(1 for _ in open(cpath)) - 1} to {len(t)} marketing years")

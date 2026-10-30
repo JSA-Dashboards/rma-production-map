@@ -142,12 +142,16 @@ CENSUS_COAST = {"LOS ANGELES": "West", "LONG BEACH": "West", "OAKLAND": "West", 
                     "VANCOUVER BC": "West", "HONOLULU": "West", "NORFOLK": "East", "NEW YORK": "East", "BALTIMORE": "East", "CHARLESTON": "East", "SAVANNAH": "East",
                     "WILMINGTON NC": "East", "PHILADELPHIA": "East", "JACKSONVILLE": "East", "MIAMI": "East", "PT EVERGLADES": "East", "GLOUCESTER CY": "East",
                     "TAMPA": "Gulf", "MOBILE": "Gulf", "HOUSTON": "Gulf", "NEW ORLEANS PORT REGION": "Gulf"}
+# Great Lakes soybeans (FGIS LAKES region, ships): Toledo is nearly all of it. They come by truck and rail from northwest Ohio, Indiana and Michigan, so the hub has no
+# rail-reach limit; FGIS records the port, not the farm state, so the origin states are an assumption.
+LAKES_ORIGIN_STATES = ["OH", "IN", "MI", "IL"]
+LAKES_PINS = ["Great Lakes hub"]
 TXG_PINS = ["Texas Gulf hub"]
 LA_PINS = ["Louisiana rail hub"]                                                       # export elevators below Baton Rouge fed by rail and truck rather than barge
 MOBILE_PINS = ["Mobile hub"]                                                          # Houston / Galveston / Corpus Christi, modeled as one hub
 MEX_PINS = ["Mexico rail: "]                                                           # border crossings the grain rails into Mexico through
 FGIS_FALLBACK = {"east_gulf_mbu": 1043.8, "west_coast_columbia_mbu": 273.6, "west_coast_puget_mbu": 107.9, "west_coast_mbu": 381.5,
-                 "west_gulf_mbu": 30.1, "mexico_rail_mbu": 126.4, "east_gulf_port_mbu": 18.6, "south_atlantic_mbu": 47.9,
+                 "west_gulf_mbu": 30.1, "mexico_rail_mbu": 126.4, "east_gulf_port_mbu": 18.6, "south_atlantic_mbu": 47.9, "lakes_mbu": 12.2,
                  "mexico_rail_states_mbu": {"MO": 31.8, "NE": 24.6, "IA": 19.6, "KS": 18.6, "ND": 14.0, "MN": 6.7, "WI": 4.0, "LA": 3.5, "IL": 2.0, "SD": 1.2}}
 
 
@@ -169,14 +173,15 @@ def fgis_soy_exports():
         reg = x.groupby("fgis_reg").mbu.sum() / 5
         wc = x[x.fgis_reg == "WEST COAST"].groupby("port").mbu.sum() / 5
         eg_port = x[(x.fgis_reg == "EAST GULF") & (x.port == "EAST GULF")].mbu.sum() / 5
-        sa_ship = x[(x.fgis_reg == "EAST COAST") & (x.port == "S. ATLANTIC") & (x.type_carrier_text == "SHIP")].mbu.sum() / 5          # Mobile and the other non-Mississippi East Gulf ports
+        sa_ship = x[(x.fgis_reg == "EAST COAST") & (x.port == "S. ATLANTIC") & (x.type_carrier_text == "SHIP")].mbu.sum() / 5
+        lakes_ship = x[(x.fgis_reg == "LAKES") & (x.type_carrier_text == "SHIP")].mbu.sum() / 5          # Mobile and the other non-Mississippi East Gulf ports
         m = pd.DataFrame(json.load(urllib.request.urlopen("https://agtransport.usda.gov/resource/sruw-w49i.json?" + urllib.parse.urlencode(qm), timeout=120)))
         m["year"], m["month"] = m.year.astype(int), m.month.astype(int)
         m["my"] = m.year.where(m.month >= 9, m.year - 1)
         m["mbu"] = m.lbs.astype(float) / 60 / 1e6
         ms = (m[(m.my >= 2021) & (m.my <= 2025)].groupby("state").mbu.sum() / 5).sort_values(ascending=False)
         return {"east_gulf_mbu": float(reg["EAST GULF"]), "west_coast_columbia_mbu": float(wc["COLUMBIA R."]), "west_coast_puget_mbu": float(wc["PUGET SOUND"]),
-                "west_coast_mbu": float(reg["WEST COAST"]), "west_gulf_mbu": float(reg["WEST GULF"]), "mexico_rail_mbu": float(ms.sum()), "east_gulf_port_mbu": float(eg_port), "south_atlantic_mbu": float(sa_ship),
+                "west_coast_mbu": float(reg["WEST COAST"]), "west_gulf_mbu": float(reg["WEST GULF"]), "mexico_rail_mbu": float(ms.sum()), "east_gulf_port_mbu": float(eg_port), "south_atlantic_mbu": float(sa_ship), "lakes_mbu": float(lakes_ship),
                 "mexico_rail_states_mbu": {k: round(float(v), 2) for k, v in ms.items() if v >= 0.05}, "source": "FGIS soybean inspections, marketing years 2021/22-2025/26 average, all carriers"}
     except Exception as e:                                       # keep the build working offline
         return {**FGIS_FALLBACK, "source": f"fallback constants ({type(e).__name__})"}
@@ -185,7 +190,7 @@ def fgis_soy_exports():
 HUBS = [("Illinois River", "IL-"), ("Upper Mississippi", "MS-"), ("Ohio River", "OH-"), ("Arkansas River", "AK"), ("St. Louis", "St. Louis City"),
         ("St. Louis", "East St. Louis"), ("Lower Mississippi", "Cape Girardeau"), ("Lower Mississippi", "Lower Mississippi"), ("Pacific Northwest", "Pacific Northwest"),
         ("Texas Gulf", "Texas Gulf"), ("Mexico Rail", "Mexico by rail"), ("Louisiana Rail", "Louisiana rail"), ("Mobile", "Mobile"),
-        ("South Atlantic", "South Atlantic")]
+        ("South Atlantic", "South Atlantic"), ("Great Lakes", "Great Lakes")]
 
 
 def container_facts():
@@ -279,7 +284,8 @@ def build_groups(segs, nodes, pins, usda, bu):
     la_pl = [p["key"] for p in pins if any(t.lower() in p["key"].lower() for t in LA_PINS)]
     mob_pl = [p["key"] for p in pins if any(t.lower() in p["key"].lower() for t in MOBILE_PINS)]
     sa_pl = [p["key"] for p in pins if any(t.lower() in p["key"].lower() for t in SATL_PINS)]
-    placed.update(la_pl + mob_pl + sa_pl + [p["key"] for p in pins if p["key"].startswith("Container hub:")])
+    lk_pl = [p["key"] for p in pins if any(t.lower() in p["key"].lower() for t in LAKES_PINS)]
+    placed.update(la_pl + mob_pl + sa_pl + lk_pl + [p["key"] for p in pins if p["key"].startswith("Container hub:")])
     lower = [p["key"] for p in pins if p["key"] not in placed and p["key"] not in DROP_PINS]
     groups.append({"name": "Lower Mississippi, Cairo to Baton Rouge", "kind": "area", "pins": lower, "target_mbu": port(6034),
                    "note": "Waterway 6034 soybean shipments (Mouth of Ohio River to Baton Rouge); every remaining tracker pin below Lock 27"})
@@ -305,6 +311,10 @@ def build_groups(segs, nodes, pins, usda, bu):
     groups.append({"name": ename, "kind": "cont_east", "pins": epins, "origin_states": SATL_ORIGIN_STATES,
                    "target_mbu": float(sum(sm.get(s_, 0.0) for s_ in estates) + ct["atlantic_port_mbu"]),
                    "note": "Containers loaded in the East Coast port states (SC, MD, NC, VA, NJ, PA, DE) plus those inspected at the South and North Atlantic ports, 2021-25 average"})
+    groups.append({"name": "Great Lakes (Toledo, Chicago, Lake Ontario)", "kind": "lakes", "pins": lk_pl, "target_mbu": float(fg["lakes_mbu"]),
+                   "anchor": "Great Lakes hub (Toledo)", "origin_states": LAKES_ORIGIN_STATES,
+                   "note": "FGIS soybean ship inspections at the Great Lakes ports, 2021-25 average. Toledo is 11M bu of it. It fell from 22M bu in 2021/22 to 4-6M bu in "
+                           "2023-25, so the average runs well above recent years."})
     groups.append({"name": "South Atlantic (Norfolk, Chesapeake, Charleston, Savannah)", "kind": "satl", "pins": [p["key"] for p in pins if any(t.lower() in p["key"].lower() for t in SATL_PINS)],
                    "target_mbu": float(fg["south_atlantic_mbu"]), "anchor": "South Atlantic hub (Norfolk/Chesapeake)", "origin_states": SATL_ORIGIN_STATES,
                    "note": "FGIS soybean ship inspections at the South Atlantic ports, 2021-25 average (down from 67M bu in 2021/22 to about 35M in 2025/26). Containers (16M bu) are not in it."})

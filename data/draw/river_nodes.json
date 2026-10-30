@@ -8,6 +8,7 @@
   "mexico_rail_mbu": 126.38779999999998,
   "east_gulf_port_mbu": 18.5844591,
   "south_atlantic_mbu": 47.94728985666667,
+  "lakes_mbu": 12.227237800000001,
   "mexico_rail_states_mbu": {
    "MO": 31.79,
    "NE": 24.6,
@@ -635,6 +636,23 @@
    "target_mbu": 43.93,
    "note": "Containers loaded in the East Coast port states (SC, MD, NC, VA, NJ, PA, DE) plus those inspected at the South and North Atlantic ports, 2021-25 average",
    "hub": "Container: East Coast port transloads (Baltimore to Charleston)"
+  },
+  {
+   "name": "Great Lakes (Toledo, Chicago, Lake Ontario)",
+   "kind": "lakes",
+   "pins": [
+    "Great Lakes hub (Toledo)"
+   ],
+   "target_mbu": 12.227237800000001,
+   "anchor": "Great Lakes hub (Toledo)",
+   "origin_states": [
+    "OH",
+    "IN",
+    "MI",
+    "IL"
+   ],
+   "note": "FGIS soybean ship inspections at the Great Lakes ports, 2021-25 average. Toledo is 11M bu of it. It fell from 22M bu in 2021/22 to 4-6M bu in 2023-25, so the average runs well above recent years.",
+   "hub": "Great Lakes"
   },
   {
    "name": "South Atlantic (Norfolk, Chesapeake, Charleston, Savannah)",
