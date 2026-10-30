@@ -1,0 +1,145 @@
+location_id,location,type,commodity,year,total_tons,shipments_tons,receipts_tons,intra_tons,thru_tons
+2253,"South Louisiana, LA, Port of",PORT,Wheat,2024,6463457,3188118,3169982,105357,0
+2253,"South Louisiana, LA, Port of",PORT,Wheat,2023,4297879,2118795,2179084,0,0
+2253,"South Louisiana, LA, Port of",PORT,Wheat,2022,3783117,1823840,1951774,7503,0
+2253,"South Louisiana, LA, Port of",PORT,Wheat,2021,3270396,1577226,1690898,2272,0
+2253,"South Louisiana, LA, Port of",PORT,Wheat,2020,3647003,1993947,1620181,32875,0
+2253,"South Louisiana, LA, Port of",PORT,Corn,2024,38079945,18745291,19295505,39149,0
+2253,"South Louisiana, LA, Port of",PORT,Corn,2023,35544591,18427100,17117491,0,0
+2253,"South Louisiana, LA, Port of",PORT,Corn,2022,46127102,23712481,22405186,9435,0
+2253,"South Louisiana, LA, Port of",PORT,Corn,2021,57066139,29075952,27961760,28427,0
+2253,"South Louisiana, LA, Port of",PORT,Corn,2020,44507675,23540208,20929310,38157,0
+2253,"South Louisiana, LA, Port of",PORT,Soybeans,2024,43093932,22429928,20602661,61343,0
+2253,"South Louisiana, LA, Port of",PORT,Soybeans,2023,38000780,19917612,18069159,14009,0
+2253,"South Louisiana, LA, Port of",PORT,Soybeans,2022,42435410,21588267,20843083,4060,0
+2253,"South Louisiana, LA, Port of",PORT,Soybeans,2021,35901098,16858339,19031510,11249,0
+2253,"South Louisiana, LA, Port of",PORT,Soybeans,2020,51463636,27571698,23880347,11591,0
+2253,"South Louisiana, LA, Port of",PORT,Grain Mill Products,2024,37897,2662,35235,0,0
+2253,"South Louisiana, LA, Port of",PORT,Grain Mill Products,2023,52387,0,52387,0,0
+2253,"South Louisiana, LA, Port of",PORT,Grain Mill Products,2022,57562,0,57562,0,0
+2253,"South Louisiana, LA, Port of",PORT,Grain Mill Products,2021,62578,0,62578,0,0
+2253,"South Louisiana, LA, Port of",PORT,Grain Mill Products,2020,90916,0,90916,0,0
+2253,"South Louisiana, LA, Port of",PORT,Wheat,2019,3839682,2061822,1743294,34566,0
+2253,"South Louisiana, LA, Port of",PORT,Corn,2019,33906690,17384267,16481507,40916,0
+2253,"South Louisiana, LA, Port of",PORT,Soybeans,2019,47618381,24507809,23031224,79348,0
+2253,"South Louisiana, LA, Port of",PORT,Grain Mill Products,2019,213583,129254,84329,0,0
+2251,"New Orleans, LA",PORT,Wheat,2024,1161440,789748,371692,0,0
+2251,"New Orleans, LA",PORT,Wheat,2023,669641,339692,329949,0,0
+2251,"New Orleans, LA",PORT,Wheat,2022,1043248,526172,515345,1731,0
+2251,"New Orleans, LA",PORT,Wheat,2021,1148867,617876,530991,0,0
+2251,"New Orleans, LA",PORT,Wheat,2020,1461167,776051,685116,0,0
+2251,"New Orleans, LA",PORT,Corn,2024,8909519,6273996,2635523,0,0
+2251,"New Orleans, LA",PORT,Corn,2023,6445889,3824131,2620351,1407,0
+2251,"New Orleans, LA",PORT,Corn,2022,8029063,4598482,3430581,0,0
+2251,"New Orleans, LA",PORT,Corn,2021,12236457,7032106,5202547,1804,0
+2251,"New Orleans, LA",PORT,Corn,2020,9281970,4137466,5144504,0,0
+2251,"New Orleans, LA",PORT,Soybeans,2024,8624446,5618415,3006031,0,0
+2251,"New Orleans, LA",PORT,Soybeans,2023,8582914,4912061,3670853,0,0
+2251,"New Orleans, LA",PORT,Soybeans,2022,7042685,4135682,2907003,0,0
+2251,"New Orleans, LA",PORT,Soybeans,2021,7230786,4623909,2606877,0,0
+2251,"New Orleans, LA",PORT,Soybeans,2020,8759824,4086316,4673508,0,0
+2251,"New Orleans, LA",PORT,Grain Mill Products,2024,7013,5298,1715,0,0
+2251,"New Orleans, LA",PORT,Grain Mill Products,2023,3777,1943,1834,0,0
+2251,"New Orleans, LA",PORT,Grain Mill Products,2022,16648,9447,7201,0,0
+2251,"New Orleans, LA",PORT,Grain Mill Products,2021,20174,11408,8766,0,0
+2251,"New Orleans, LA",PORT,Grain Mill Products,2020,65063,10560,54503,0,0
+2251,"New Orleans, LA",PORT,Wheat,2019,3039204,1628721,1410483,0,0
+2251,"New Orleans, LA",PORT,Corn,2019,6304420,3671389,2633031,0,0
+2251,"New Orleans, LA",PORT,Soybeans,2019,7436700,3840747,3595953,0,0
+2251,"New Orleans, LA",PORT,Grain Mill Products,2019,82151,30928,51223,0,0
+2255,"Plaquemines Port District, LA",PORT,Wheat,2024,1344195,622339,721856,0,0
+2255,"Plaquemines Port District, LA",PORT,Wheat,2023,2003835,1043715,960120,0,0
+2255,"Plaquemines Port District, LA",PORT,Wheat,2022,2390435,1268762,1121673,0,0
+2255,"Plaquemines Port District, LA",PORT,Wheat,2021,2088698,1048191,1040507,0,0
+2255,"Plaquemines Port District, LA",PORT,Wheat,2020,1860107,946822,913285,0,0
+2255,"Plaquemines Port District, LA",PORT,Corn,2024,4213563,2094990,2118573,0,0
+2255,"Plaquemines Port District, LA",PORT,Corn,2023,3792042,1945849,1846193,0,0
+2255,"Plaquemines Port District, LA",PORT,Corn,2022,4143625,2121421,2022204,0,0
+2255,"Plaquemines Port District, LA",PORT,Corn,2021,7600890,3794413,3806477,0,0
+2255,"Plaquemines Port District, LA",PORT,Corn,2020,5421433,2668010,2753423,0,0
+2255,"Plaquemines Port District, LA",PORT,Soybeans,2024,3553100,1759636,1793464,0,0
+2255,"Plaquemines Port District, LA",PORT,Soybeans,2023,3743959,1955987,1787972,0,0
+2255,"Plaquemines Port District, LA",PORT,Soybeans,2022,5347465,2567642,2779823,0,0
+2255,"Plaquemines Port District, LA",PORT,Soybeans,2021,2907458,1368822,1538636,0,0
+2255,"Plaquemines Port District, LA",PORT,Soybeans,2020,6878983,3570513,3308470,0,0
+2255,"Plaquemines Port District, LA",PORT,Grain Mill Products,2024,74319,67571,6748,0,0
+2255,"Plaquemines Port District, LA",PORT,Grain Mill Products,2023,36369,29366,7003,0,0
+2255,"Plaquemines Port District, LA",PORT,Grain Mill Products,2022,182766,170241,12525,0,0
+2255,"Plaquemines Port District, LA",PORT,Grain Mill Products,2021,98490,98490,0,0,0
+2255,"Plaquemines Port District, LA",PORT,Grain Mill Products,2020,238945,225755,13190,0,0
+2255,"Plaquemines Port District, LA",PORT,Wheat,2019,1760169,976895,783274,0,0
+2255,"Plaquemines Port District, LA",PORT,Corn,2019,3683139,1936527,1746612,0,0
+2255,"Plaquemines Port District, LA",PORT,Soybeans,2019,4292475,2269158,2023317,0,0
+2255,"Plaquemines Port District, LA",PORT,Grain Mill Products,2019,208556,195636,12920,0,0
+2252,"Port of Greater Baton Rouge, LA",PORT,Wheat,2024,189619,113525,76094,0,0
+2252,"Port of Greater Baton Rouge, LA",PORT,Wheat,2023,123873,50972,72901,0,0
+2252,"Port of Greater Baton Rouge, LA",PORT,Wheat,2022,240600,106551,134049,0,0
+2252,"Port of Greater Baton Rouge, LA",PORT,Wheat,2021,320167,118555,201612,0,0
+2252,"Port of Greater Baton Rouge, LA",PORT,Wheat,2020,97352,18005,79347,0,0
+2252,"Port of Greater Baton Rouge, LA",PORT,Corn,2024,4676810,2628531,2021483,26796,0
+2252,"Port of Greater Baton Rouge, LA",PORT,Corn,2023,3536355,1847920,1682759,5676,0
+2252,"Port of Greater Baton Rouge, LA",PORT,Corn,2022,4655803,2263966,2389974,1863,0
+2252,"Port of Greater Baton Rouge, LA",PORT,Corn,2021,5238456,2514950,2711464,12042,0
+2252,"Port of Greater Baton Rouge, LA",PORT,Corn,2020,4098551,2126110,1941717,30724,0
+2252,"Port of Greater Baton Rouge, LA",PORT,Soybeans,2024,5845093,2914622,2906800,23671,0
+2252,"Port of Greater Baton Rouge, LA",PORT,Soybeans,2023,4273578,2218869,2051544,3165,0
+2252,"Port of Greater Baton Rouge, LA",PORT,Soybeans,2022,5829964,3016438,2801883,11643,0
+2252,"Port of Greater Baton Rouge, LA",PORT,Soybeans,2021,6349066,2843599,3489898,15569,0
+2252,"Port of Greater Baton Rouge, LA",PORT,Soybeans,2020,8839164,4466630,4352043,20491,0
+2252,"Port of Greater Baton Rouge, LA",PORT,Grain Mill Products,2024,31194,1929,29265,0,0
+2252,"Port of Greater Baton Rouge, LA",PORT,Grain Mill Products,2023,30134,0,30134,0,0
+2252,"Port of Greater Baton Rouge, LA",PORT,Grain Mill Products,2022,3152,0,3152,0,0
+2252,"Port of Greater Baton Rouge, LA",PORT,Grain Mill Products,2021,11277,0,11277,0,0
+2252,"Port of Greater Baton Rouge, LA",PORT,Grain Mill Products,2020,4846,0,4846,0,0
+2252,"Port of Greater Baton Rouge, LA",PORT,Wheat,2019,143273,67850,75423,0,0
+2252,"Port of Greater Baton Rouge, LA",PORT,Corn,2019,2597289,1348400,1243065,5824,0
+2252,"Port of Greater Baton Rouge, LA",PORT,Soybeans,2019,5685344,3031343,2650208,3793,0
+2252,"Port of Greater Baton Rouge, LA",PORT,Grain Mill Products,2019,7144,0,7144,0,0
+6033,"Mississippi River, Baton Rouge to New Orleans",WATERWAY,Wheat,2024,7824910,3377356,3242920,105357,1099277
+6033,"Mississippi River, Baton Rouge to New Orleans",WATERWAY,Wheat,2023,5706891,2161530,2231652,0,1313709
+6033,"Mississippi River, Baton Rouge to New Orleans",WATERWAY,Wheat,2022,5628037,1939460,2040139,13181,1635257
+6033,"Mississippi River, Baton Rouge to New Orleans",WATERWAY,Wheat,2021,5176794,1723219,1846509,2272,1604794
+6033,"Mississippi River, Baton Rouge to New Orleans",WATERWAY,Wheat,2020,5378487,2064232,1664916,36112,1613227
+6033,"Mississippi River, Baton Rouge to New Orleans",WATERWAY,Corn,2024,48576771,22467316,21333481,41212,4734762
+6033,"Mississippi River, Baton Rouge to New Orleans",WATERWAY,Corn,2023,43796909,20552689,18787735,0,4456485
+6033,"Mississippi River, Baton Rouge to New Orleans",WATERWAY,Corn,2022,56223996,25963646,24778926,21591,5459833
+6033,"Mississippi River, Baton Rouge to New Orleans",WATERWAY,Corn,2021,71516190,31795583,30705210,28427,8986970
+6033,"Mississippi River, Baton Rouge to New Orleans",WATERWAY,Corn,2020,56530856,25732144,22906131,38157,7854424
+6033,"Mississippi River, Baton Rouge to New Orleans",WATERWAY,Soybeans,2024,54404213,26040578,23645438,64699,4653498
+6033,"Mississippi River, Baton Rouge to New Orleans",WATERWAY,Soybeans,2023,47719463,22191389,20064931,65172,5397971
+6033,"Mississippi River, Baton Rouge to New Orleans",WATERWAY,Soybeans,2022,54054646,24759244,23677914,15874,5601614
+6033,"Mississippi River, Baton Rouge to New Orleans",WATERWAY,Soybeans,2021,46775557,20078909,22595563,66190,4034895
+6033,"Mississippi River, Baton Rouge to New Orleans",WATERWAY,Soybeans,2020,69113634,32864435,29264507,13238,6971454
+6033,"Mississippi River, Baton Rouge to New Orleans",WATERWAY,Grain Mill Products,2024,69091,4591,64500,0,0
+6033,"Mississippi River, Baton Rouge to New Orleans",WATERWAY,Grain Mill Products,2023,82521,0,82521,0,0
+6033,"Mississippi River, Baton Rouge to New Orleans",WATERWAY,Grain Mill Products,2022,60714,0,60714,0,0
+6033,"Mississippi River, Baton Rouge to New Orleans",WATERWAY,Grain Mill Products,2021,76983,0,75483,0,1500
+6033,"Mississippi River, Baton Rouge to New Orleans",WATERWAY,Grain Mill Products,2020,143802,0,143802,0,0
+6033,"Mississippi River, Baton Rouge to New Orleans",WATERWAY,Wheat,2019,6177046,2142096,1795217,36466,2203267
+6033,"Mississippi River, Baton Rouge to New Orleans",WATERWAY,Corn,2019,40869511,18734275,17743159,44739,4347338
+6033,"Mississippi River, Baton Rouge to New Orleans",WATERWAY,Soybeans,2019,59066189,27671126,25964845,97135,5333083
+6033,"Mississippi River, Baton Rouge to New Orleans",WATERWAY,Grain Mill Products,2019,287875,142850,135583,0,9442
+6032,"Mississippi River, New Orleans to Mouth of Passes",WATERWAY,Wheat,2024,5785904,1332742,1093548,0,3359614
+6032,"Mississippi River, New Orleans to Mouth of Passes",WATERWAY,Wheat,2023,4818452,1383407,1290069,0,2144976
+6032,"Mississippi River, New Orleans to Mouth of Passes",WATERWAY,Wheat,2022,5332573,1770957,1638749,0,1922867
+6032,"Mississippi River, New Orleans to Mouth of Passes",WATERWAY,Wheat,2021,4918055,1630620,1569318,2180,1715937
+6032,"Mississippi River, New Orleans to Mouth of Passes",WATERWAY,Wheat,2020,5319257,1655613,1592033,6368,2065243
+6032,"Mississippi River, New Orleans to Mouth of Passes",WATERWAY,Corn,2024,34433859,7237265,4752105,0,22444489
+6032,"Mississippi River, New Orleans to Mouth of Passes",WATERWAY,Corn,2023,30445003,5424054,4466544,1407,20552998
+6032,"Mississippi River, New Orleans to Mouth of Passes",WATERWAY,Corn,2022,38108736,6660494,5452785,0,25995457
+6032,"Mississippi River, New Orleans to Mouth of Passes",WATERWAY,Corn,2021,51315979,10572078,8987435,1804,31754662
+6032,"Mississippi River, New Orleans to Mouth of Passes",WATERWAY,Corn,2020,40245672,6684889,7891495,0,25669288
+6032,"Mississippi River, New Orleans to Mouth of Passes",WATERWAY,Soybeans,2024,37561216,6629170,4666942,0,26265104
+6032,"Mississippi River, New Orleans to Mouth of Passes",WATERWAY,Soybeans,2023,34506657,6719275,5401734,0,22385648
+6032,"Mississippi River, New Orleans to Mouth of Passes",WATERWAY,Soybeans,2022,37037037,6528573,5644142,0,24864322
+6032,"Mississippi River, New Orleans to Mouth of Passes",WATERWAY,Soybeans,2021,29626077,5486244,4027956,0,20111877
+6032,"Mississippi River, New Orleans to Mouth of Passes",WATERWAY,Soybeans,2020,46599776,6761356,6953529,0,32884891
+6032,"Mississippi River, New Orleans to Mouth of Passes",WATERWAY,Grain Mill Products,2024,101840,72869,8463,0,20508
+6032,"Mississippi River, New Orleans to Mouth of Passes",WATERWAY,Grain Mill Products,2023,53818,31309,8837,0,13672
+6032,"Mississippi River, New Orleans to Mouth of Passes",WATERWAY,Grain Mill Products,2022,199414,179688,19726,0,0
+6032,"Mississippi River, New Orleans to Mouth of Passes",WATERWAY,Grain Mill Products,2021,117036,109898,7138,0,0
+6032,"Mississippi River, New Orleans to Mouth of Passes",WATERWAY,Grain Mill Products,2020,255968,236315,19653,0,0
+6032,"Mississippi River, New Orleans to Mouth of Passes",WATERWAY,Wheat,2019,6886434,2574225,2186903,0,2125306
+6032,"Mississippi River, New Orleans to Mouth of Passes",WATERWAY,Corn,2019,28623987,5553439,4359649,3408,18707491
+6032,"Mississippi River, New Orleans to Mouth of Passes",WATERWAY,Soybeans,2019,38855126,5901786,5317549,0,27635791
+6032,"Mississippi River, New Orleans to Mouth of Passes",WATERWAY,Grain Mill Products,2019,377447,212968,20033,0,144446

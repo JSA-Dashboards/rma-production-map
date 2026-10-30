@@ -61,7 +61,7 @@ EAST_GULF_KINDS = ("lagulf", "mobile")         # East Gulf beans that did not ar
 
 
 def solve(inputs: dict, *, rate=CENTS_PER_BU_MILE, tau=1.0, river_premium=0.0, plant_premium=None, util=1.0, river_share=1.0, iters=400,
-          nodes=None, lock_scale=1.0, area_mbu=None, pin_cap_mbu=None, river_scale=1.0, pnw_reach_miles=30.0, rail_scales=None, rail_rates=None, barge_fed=None, rail_tau=None):
+          nodes=None, lock_scale=1.0, area_mbu=None, pin_cap_mbu=None, river_scale=1.0, pnw_reach_miles=30.0, rail_scales=None, rail_rates=None, barge_fed=None, rail_tau=None, plant_extra_mbu=None):
     """Flows (bu) county x buyer.
 
     rate           freight, cents per bushel-mile
@@ -89,6 +89,8 @@ def solve(inputs: dict, *, rate=CENTS_PER_BU_MILE, tau=1.0, river_premium=0.0, p
     rail_tau       {rail kind: crossover softness, cents/bu} for a rail-fed hub that should spread over more origins than `tau` allows (None = tau).
                    Freight alone sends a hub's beans from the nearest rail counties; basis differences between origin states offset freight differences
                    of 20-30 cents, so the hubs fed from many states (Louisiana, Mobile) need a wider crossover
+    plant_extra_mbu  {plant key: M bu/yr} soybeans a plant crushes beyond the workbook (a plant that expanded since): added to its need before the
+                   barge-fed share is taken
     barge_fed      {plant key: share of its need that arrives by barge} (None = BARGE_FED_DEFAULT). That part is not drawn from counties by truck: it comes
                    out of the barge loadings, so it is taken off what reaches the export elevators (the Louisiana rail and truck hub's target rises by
                    the same amount, because the East Gulf inspections are fixed) and, for a plant with a BARGE_POOL, added back to that pool's loadings
@@ -99,6 +101,7 @@ def solve(inputs: dict, *, rate=CENTS_PER_BU_MILE, tau=1.0, river_premium=0.0, p
     miles = np.array([[np.nan if m is None else m for m in row] for row in inputs["miles"]], float)
     supply = np.array([c["supply_bu"] for c in cty], float)
     need = np.array([p["need_bu"] for p in plants], float) * util
+    need = need + np.array([float((plant_extra_mbu or {}).get(p["key"], 0.0)) * 1e6 for p in plants])
     bf = BARGE_FED_DEFAULT if barge_fed is None else barge_fed
     barge_in = need * np.array([min(max(float(bf.get(p["key"], 0.0)), 0.0), 1.0) for p in plants])      # beans these plants take off the barges
     need = need - barge_in

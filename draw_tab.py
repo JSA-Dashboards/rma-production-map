@@ -28,12 +28,12 @@ def _in_box(paths, box):
 
 
 @st.cache_data(show_spinner="Solving the draw…")
-def _solve(rate, tau, river_premium, util, lock_scale, area_items, cap_items, plant_premium_items, river_scale=1.0, scale_items=(), rate_items=(), pnw_reach=30.0, barge_items=(), tau_items=()):
+def _solve(rate, tau, river_premium, util, lock_scale, area_items, cap_items, plant_premium_items, river_scale=1.0, scale_items=(), rate_items=(), pnw_reach=30.0, barge_items=(), tau_items=(), extra_items=()):
     inp = dm.load()
     res = dm.solve(inp, rate=rate, tau=tau, river_premium=river_premium, util=util, nodes=dm.load_nodes(), lock_scale=lock_scale,
                    area_mbu=dict(area_items), pin_cap_mbu=dict(cap_items), plant_premium=dict(plant_premium_items),
                    river_scale=river_scale, rail_scales=dict(scale_items), rail_rates=dict(rate_items), pnw_reach_miles=pnw_reach, barge_fed=dict(barge_items),
-                   rail_tau=dict(tau_items))
+                   rail_tau=dict(tau_items), plant_extra_mbu=dict(extra_items))
     return res
 
 
@@ -281,7 +281,8 @@ def render():
         bnames = {"Bunge North America Destrehan LA": "Bunge Destrehan LA", "Archer Daniels Midland Quincy IL": "ADM Quincy IL",
                   "Cargill Owensboro KY": "Cargill Owensboro KY"}
         barge_fed = {}
-        for (k, lab), c_ in zip(bnames.items(), st.columns(3)):
+        bcols = st.columns(4)
+        for (k, lab), c_ in zip(bnames.items(), bcols):
             v = c_.number_input(lab + " (%)", 0.0, 100.0, float(dm.BARGE_FED_DEFAULT[k] * 100), 0.5, key=f"draw_barge_{k}",
                                 help=("Takes the barge and stops it before export: all of its beans arrive by barge. No Corps receipts figure is on file for the "
                                       "lower river to check it against." if k.endswith("LA") else
@@ -289,6 +290,12 @@ def render():
                                       "Mississippi from Minneapolis to the Missouri and 9.4M bu on the Ohio (receipts plus moves within the waterway, 2021-24 average), "
                                       "so half of that is assumed to reach this plant: 7.5% of Quincy's need, 10% of Owensboro's. Raise it if you know better."))
             barge_fed[k] = v / 100.0
+        dest_add = bcols[3].number_input("Destrehan crush added (M bu/yr)", 0.0, 200.0, 0.0, 5.0, key="draw_dest_add",
+                                         help="The workbook has Destrehan at 130,000 bu/day (40M bu/yr) and does not include the new plant Bunge Chevron Ag Renewables "
+                                              "is building beside it (ground broken March 2024, expected to run in 2026; startup unconfirmed, capacity not published). "
+                                              "Bunge and Chevron said in 2022 they would roughly double Destrehan and Cairo's combined 7,000 tons a day. Enter the "
+                                              "added crush here: all of it arrives by barge, so the Gulf elevators receive that much less by barge (the model holds "
+                                              "the East Gulf's inspections fixed, so the Louisiana rail and truck hub absorbs it).")
         st.caption("A plant's barge beans are not trucked from nearby counties and never reach the export elevators, so the Louisiana rail and truck hub, "
                    "which is what is left of the East Gulf's inspections, grows by what Destrehan takes. Quincy and Owensboro sit between locks, so their "
                    "intake is also added back to the loadings of their river stretch (the lock-differenced loadings come out short by what is offloaded there).")
@@ -302,7 +309,8 @@ def render():
                  tuple(sorted((k, v) for k, v in prem.items() if v)), river_scale,
                  (("pnw", pnw_scale), ("txgulf", txg_scale), ("mexico", mex_scale)),
                  (("pnw", pnw_rate), ("txgulf", txg_rate), ("mexico", mex_rate), ("lagulf", la_rate), ("mobile", mob_rate)), pnw_reach,
-                 tuple(sorted(barge_fed.items())), (("lagulf", la_tau), ("mobile", la_tau)))
+                 tuple(sorted(barge_fed.items())), (("lagulf", la_tau), ("mobile", la_tau)),
+                 (("Bunge North America Destrehan LA", dest_add),))
     plants_t, river_t, cty_t = dm.summarize(inp, res, state)
     if any(abs(x - 1.0) > 1e-3 for x in (river_scale, pnw_scale, txg_scale, mex_scale)):
         st.caption(f"Export scenario applied: barge-loading and East Gulf rail targets ×{river_scale:.2f}, Pacific Northwest rail ×{pnw_scale:.2f}, "
