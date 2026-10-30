@@ -70,6 +70,8 @@ def _fail(msg):
 
 def main(psd_json=None):
     rows = json.load(open(psd_json))["rows"] if psd_json else fetch_psd()
+    if not rows:
+        _fail("the PSD API returned no rows (a wrong or expired FAS_API_KEY, or the API is down)")
     ex = psd_exports(rows)
     if ex.empty or (ex.exports_mbu <= 0).any():
         _fail("the PSD response had no export rows or a non-positive export number")
