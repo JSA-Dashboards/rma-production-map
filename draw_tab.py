@@ -257,7 +257,9 @@ def render():
                 if abs(v - round(g["target_mbu"], 1)) > 1e-9:
                     area_over[g["name"]] = v
         st.caption("Below Lock 27: Corps Waterborne Commerce of the U.S., shipments (beans loaded out of the area); nothing measures it directly and the Lower "
-                   "Mississippi figure is the whole stretch from Cairo to Baton Rouge. Louisiana rail and truck = the East Gulf's ship inspections less the barge loadings (a residual); Mobile = FGIS at the other East Gulf ports. "
+                   "Mississippi figure is the whole stretch from Cairo to Baton Rouge. Louisiana rail and truck = the East Gulf's ship inspections less the barge arrivals (a residual). Cross-check: the Corps records 917M bu of waterborne "
+                   "soybean receipts at the four Louisiana river ports against 990M bu shipped (2021-24 average, wcus_louisiana_ports.csv), which would put it nearer "
+                   "110-150M bu if every receipt counts. Mobile = FGIS at the other East Gulf ports. "
                    "Pacific Northwest and Texas Gulf: FGIS soybean inspections by port, "
                    "2021/22-2025/26 average. Mexico by rail: FGIS soybeans inspected on a railcar for Mexico, same years.")
         capped = [r for r in inp["river"] if r.get("cap_mbu") is not None]
