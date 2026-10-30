@@ -445,7 +445,7 @@
    "pins": [
     "Louisiana rail hub (Reserve/Convent)"
    ],
-   "target_mbu": 210.21396070333333,
+   "target_mbu": 130.0,
    "anchor": "Louisiana rail hub (Reserve/Convent)",
    "origin_states": [
     "IL",
@@ -453,7 +453,7 @@
     "WI",
     "MN"
    ],
-   "note": "East Gulf soybean ship inspections (Mississippi River ports) less the barge loadings above and below Lock 27: beans that reached the Louisiana export elevators by rail or truck. A residual, so it carries the barge estimates' errors.",
+   "note": "Beans that reached the Louisiana export elevators by rail or truck: set to 130M bu, the midpoint of the 110-150M the Corps' waterborne receipts at the Louisiana ports imply. The inspections-less-barge-loadings residual is 210M bu.",
    "hub": "Louisiana Rail"
   },
   {

@@ -53,6 +53,11 @@ EXTRA_RIVER_PINS = [
 ]
 
 
+# Annual crush (M bu) where the Crush Downtime Calculator is behind a plant. Bunge Destrehan: the workbook has 130,000 bu/day (40M bu/yr); Kolten says the
+# plant doubled (the new Bunge Chevron Ag Renewables plant beside it) and now crushes 85M bu a year.
+PLANT_NEED_OVERRIDES_MBU = {"Bunge North America Destrehan LA": 85.0}
+
+
 def hav(lat1, lon1, lat2, lon2):
     """Great-circle miles, broadcasting."""
     p1, p2 = np.radians(lat1), np.radians(lat2)
@@ -73,6 +78,11 @@ def main():
 
     B.BUYER_STATES = {"AL","AR","DE","GA","IL","IN","IA","KS","KY","LA","MD","MI","MN","MS","MO","NE","NJ","NY","NC","ND","OH","OK","PA","SC","SD","TN","TX","VA","WI","CO","FL","WV","NM","ID","MT","WA","OR"}
     plants = B.plants()
+    for p in plants:
+        if p["key"] in PLANT_NEED_OVERRIDES_MBU:
+            p["need_bu"] = PLANT_NEED_OVERRIDES_MBU[p["key"]] * 1e6
+            p["dmax"] = int(round(p["need_bu"] / (B.RUN_RATE * B.RUN_DAYS), -2))
+            p["need_note"] = "Annual crush overridden to 85M bu (the plant doubled; the workbook still has 40M bu)"
     pts = json.load(open(os.path.join(D, "rail_map", "map_points.json")))
     river = [{"key": r["name"], "state": r.get("state", ""), "lat": r["lat"], "lon": r["lon"]} for r in pts["river"]]
     for r in river:                                       # the tracker geocodes several different Cahokia terminals to the same point

@@ -114,6 +114,10 @@ TXG_ORIGIN_STATES = ["TX", "OK", "KS", "NE", "MO", "IA", "MN", "SD", "ND", "CO",
 LA_ORIGIN_STATES = ["IL", "IA", "WI", "MN"]
 # Mobile is fed by CSX, NS and CN from the eastern Corn Belt (AMS's one lane is Casey, IL); the Delta is left out for the same reason as Louisiana.
 MOBILE_ORIGIN_STATES = ["IL", "IN", "OH", "KY", "TN", "IA"]
+# Beans that reach the Louisiana export elevators by rail or truck, M bu/yr. Kolten set it to the 110-150M range the Corps receipts imply (waterborne soybean receipts
+# at the four Louisiana river ports 917M bu against 990M shipped, 2021-24 average; wcus_louisiana_ports.csv): the midpoint. The residual (East Gulf inspections less the
+# barge loadings the locks and port tonnage measure) is about 210M bu, so the barge loadings look roughly 80M bu short or the receipts double count transfers.
+LA_RAIL_TRUCK_MBU = 130.0
 TXG_PINS = ["Texas Gulf hub"]
 LA_PINS = ["Louisiana rail hub"]                                                       # export elevators below Baton Rouge fed by rail and truck rather than barge
 MOBILE_PINS = ["Mobile hub"]                                                          # Houston / Galveston / Corpus Christi, modeled as one hub
@@ -227,11 +231,12 @@ def build_groups(segs, nodes, pins, usda, bu):
     # 800M bu), and it also holds trucks that go straight to the Louisiana elevators.
     area_total = sum(g["target_mbu"] for g in groups if g["kind"] == "area")
     mobile_mbu = float(fg["east_gulf_port_mbu"])
-    la_mbu = max(0.0, fg["east_gulf_mbu"] - measured - area_total - mobile_mbu)
+    la_residual_mbu = max(0.0, fg["east_gulf_mbu"] - measured - area_total - mobile_mbu)
+    la_mbu = LA_RAIL_TRUCK_MBU
     groups.append({"name": "Louisiana rail and truck (Reserve, Convent, Ama, Destrehan, New Orleans)", "kind": "lagulf", "pins": la_pl, "target_mbu": la_mbu,
                    "anchor": "Louisiana rail hub (Reserve/Convent)", "origin_states": LA_ORIGIN_STATES,
-                   "note": "East Gulf soybean ship inspections (Mississippi River ports) less the barge loadings above and below Lock 27: beans that reached the "
-                           "Louisiana export elevators by rail or truck. A residual, so it carries the barge estimates' errors."})
+                   "note": f"Beans that reached the Louisiana export elevators by rail or truck: set to {LA_RAIL_TRUCK_MBU:.0f}M bu, the midpoint of the 110-150M the Corps' "
+                           f"waterborne receipts at the Louisiana ports imply. The inspections-less-barge-loadings residual is {la_residual_mbu:.0f}M bu."})
     groups.append({"name": "Mobile and the other non-Mississippi East Gulf ports", "kind": "mobile", "pins": mob_pl, "target_mbu": mobile_mbu,
                    "anchor": "Mobile hub (Mobile/Pascagoula)", "origin_states": MOBILE_ORIGIN_STATES, "note": "FGIS soybean ship inspections at the East Gulf ports other than the Mississippi River."})
     for g in groups:

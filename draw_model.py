@@ -52,7 +52,8 @@ RAIL_KINDS = {"pnw": (0, 1), "txgulf": (0, 1, 2), "mexico": (0, 1, 2), "lagulf":
 # stops it before export; ADM Quincy and Cargill Owensboro take some, from north of where they sit. A barge bean a plant takes is a bean the Gulf export
 # elevators do not receive. Quincy and Owensboro are capped by the Corps (WCUS, soybeans, 2021-24 average): barge deliveries to ALL docks on the stretch, receipts
 # plus movements within the waterway, are only 11.2M bu on the Mississippi from Minneapolis to the Missouri and 9.4M bu on the Ohio. Half of each is assumed to
-# go to these two plants: 5.6M bu of Quincy's 75.5M need (7.5%) and 4.7M bu of Owensboro's 46.2M (10%). Destrehan (40M bu) has no Corps figure on file.
+# go to these two plants: 5.6M bu of Quincy's 75.5M need (7.5%) and 4.7M bu of Owensboro's 46.2M (10%). Destrehan (85M bu a year since it doubled) has no
+# Corps figure of its own: Port of South Louisiana's receipts include Reserve and Convent.
 BARGE_FED_DEFAULT = {"Bunge North America Destrehan LA": 1.0, "Archer Daniels Midland Quincy IL": 0.075, "Cargill Owensboro KY": 0.10}
 # The river node whose lock-differenced loadings a plant's barge intake sits in: a barge bean offloaded between two locks is missing from the lower lock's
 # flow, so loadings in that pool (lower flow less upper flow) come out short by the intake. Destrehan sits below every measured node, so it has none.
@@ -92,8 +93,8 @@ def solve(inputs: dict, *, rate=CENTS_PER_BU_MILE, tau=1.0, river_premium=0.0, p
     plant_extra_mbu  {plant key: M bu/yr} soybeans a plant crushes beyond the workbook (a plant that expanded since): added to its need before the
                    barge-fed share is taken
     barge_fed      {plant key: share of its need that arrives by barge} (None = BARGE_FED_DEFAULT). That part is not drawn from counties by truck: it comes
-                   out of the barge loadings, so it is taken off what reaches the export elevators (the Louisiana rail and truck hub's target rises by
-                   the same amount, because the East Gulf inspections are fixed) and, for a plant with a BARGE_POOL, added back to that pool's loadings
+                   out of the barge loadings, so it is taken off what reaches the export elevators and, for a plant with a BARGE_POOL, added back to that
+                   pool's loadings. The Louisiana rail and truck hub's target is an explicit estimate (LA_RAIL_TRUCK_MBU in build_river_segments.py)
     pin_cap_mbu    {river pin key: M bu/yr} ceilings, on top of any `cap_mbu` set on the pin in the inputs. A capped pin takes at most its cap
                    and the rest of its group's target spreads over the group's other pins (a ceiling, not a target)
     """
@@ -126,11 +127,7 @@ def solve(inputs: dict, *, rate=CENTS_PER_BU_MILE, tau=1.0, river_premium=0.0, p
             pool = BARGE_POOL.get(p["key"])
             tgt = [g for g in groups if g["kind"] == "lock" and pool and g["name"].startswith(pool)]
             if tgt:                                                            # the intake was loaded upstream and missing from this pool's lock-differenced flow
-                tgt[0]["target_bu"] += barge_in[j]
-            else:                                                              # no loading to add back to: the Gulf elevators get that much less by barge
-                for g in groups:
-                    if g["kind"] == "lagulf":
-                        g["target_bu"] += barge_in[j]
+                tgt[0]["target_bu"] += barge_in[j]                             # (a plant with no pool, Destrehan, only stops trucking county beans)
         want = sum(g["target_bu"] for g in groups)
         tscale = min(1.0, residual / want) if want else 1.0                   # targets can't exceed what is left after crush
         for g in groups:

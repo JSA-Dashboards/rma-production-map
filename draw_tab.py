@@ -257,9 +257,9 @@ def render():
                 if abs(v - round(g["target_mbu"], 1)) > 1e-9:
                     area_over[g["name"]] = v
         st.caption("Below Lock 27: Corps Waterborne Commerce of the U.S., shipments (beans loaded out of the area); nothing measures it directly and the Lower "
-                   "Mississippi figure is the whole stretch from Cairo to Baton Rouge. Louisiana rail and truck = the East Gulf's ship inspections less the barge arrivals (a residual). Cross-check: the Corps records 917M bu of waterborne "
-                   "soybean receipts at the four Louisiana river ports against 990M bu shipped (2021-24 average, wcus_louisiana_ports.csv), which would put it nearer "
-                   "110-150M bu if every receipt counts. Mobile = FGIS at the other East Gulf ports. "
+                   "Mississippi figure is the whole stretch from Cairo to Baton Rouge. Louisiana rail and truck = 130M bu, the midpoint of the 110-150M the Corps' waterborne receipts imply: 917M bu "
+                   "of soybeans received at the four Louisiana river ports against 990M bu shipped (2021-24 average, wcus_louisiana_ports.csv). The East Gulf's "
+                   "inspections less the barge loadings the model measures would give about 210M, so those loadings look about 80M bu short. Mobile = FGIS at the other East Gulf ports. "
                    "Pacific Northwest and Texas Gulf: FGIS soybean inspections by port, "
                    "2021/22-2025/26 average. Mexico by rail: FGIS soybeans inspected on a railcar for Mexico, same years.")
         capped = [r for r in inp["river"] if r.get("cap_mbu") is not None]
@@ -293,13 +293,11 @@ def render():
                                       "so half of that is assumed to reach this plant: 7.5% of Quincy's need, 10% of Owensboro's. Raise it if you know better."))
             barge_fed[k] = v / 100.0
         dest_add = bcols[3].number_input("Destrehan crush added (M bu/yr)", 0.0, 200.0, 0.0, 5.0, key="draw_dest_add",
-                                         help="The workbook has Destrehan at 130,000 bu/day (40M bu/yr) and does not include the new plant Bunge Chevron Ag Renewables "
-                                              "is building beside it (ground broken March 2024, expected to run in 2026; startup unconfirmed, capacity not published). "
-                                              "Bunge and Chevron said in 2022 they would roughly double Destrehan and Cairo's combined 7,000 tons a day. Enter the "
-                                              "added crush here: all of it arrives by barge, so the Gulf elevators receive that much less by barge (the model holds "
-                                              "the East Gulf's inspections fixed, so the Louisiana rail and truck hub absorbs it).")
-        st.caption("A plant's barge beans are not trucked from nearby counties and never reach the export elevators, so the Louisiana rail and truck hub, "
-                   "which is what is left of the East Gulf's inspections, grows by what Destrehan takes. Quincy and Owensboro sit between locks, so their "
+                                         help="Destrehan is set to 85M bu a year (the plant doubled with the new Bunge Chevron Ag Renewables plant beside it; the workbook still has "
+                                              "40M bu). Add crush here only to test more: all of it arrives by barge, so it is not trucked from nearby counties. "
+                                              "It does not change the Louisiana rail and truck hub, whose target is set directly.")
+        st.caption("A plant's barge beans are not trucked from nearby counties and never reach the export elevators. "
+                   "The Louisiana rail and truck hub's target is set directly. Quincy and Owensboro sit between locks, so their "
                    "intake is also added back to the loadings of their river stretch (the lock-differenced loadings come out short by what is offloaded there).")
     with st.expander("Plant bid adjustments (cents/bu over the base, per plant)"):
         keys = [p["key"] for p in inp["plants"] if state is None or p["state"] == state][:12] or [p["key"] for p in inp["plants"][:6]]
