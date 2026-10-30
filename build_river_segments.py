@@ -106,21 +106,37 @@ AK_PINS = ["Wagoner", "Webbers Falls", "Port 33", "Van Buren", "Pine Bluff"]    
 PNW_PINS = ["PNW export (rail)", "Kennewick"]                                         # beans that leave by rail to the coast
 DROP_PINS = ["CHS Macon", "ADM Livingston Point, KY"]                                  # inland / mis-placed in the tracker
 EXTRA_PINS = {"MS-5": ["Meredosia", "Naples"]}                                         # IL River terminals below La Grange
-FGIS_FALLBACK = {"east_gulf_mbu": 1017.0, "west_coast_mbu": 377.0}
+FGIS_FALLBACK = {"east_gulf_mbu": 1043.8, "west_coast_columbia_mbu": 273.6, "west_coast_puget_mbu": 107.9, "west_coast_mbu": 381.5}
 
 
 def fgis_soy_exports():
-    """Average annual soybean ship inspections (M bu), 2021-25, by FGIS region, from AgTransport sruw-w49i."""
+    """Average annual soybean inspections (M bu) for marketing years 2021/22-2025/26 (certificate month September onward), all carriers: the East
+    Gulf, and the West Coast by port (Columbia River, Puget Sound). Same basis as export_scenario.py, from AgTransport sruw-w49i."""
     import urllib.parse
     import urllib.request
-    q = {"$select": "fgis_reg,sum(pounds) as lbs", "$group": "fgis_reg", "$limit": "50",
-         "$where": "grain='SOYBEANS' and year>=2021 and year<=2025 and type_carrier_text='SHIP'"}
+    q = {"$select": "year,month,fgis_reg,port,sum(pounds) as lbs", "$group": "year,month,fgis_reg,port", "$limit": "50000",
+         "$where": "grain='SOYBEANS' and year>=2021 and year<=2026"}
     try:
-        rows = json.load(urllib.request.urlopen("https://agtransport.usda.gov/resource/sruw-w49i.json?" + urllib.parse.urlencode(q), timeout=90))
-        by = {r["fgis_reg"]: float(r["lbs"]) / 60 / 1e6 / 5 for r in rows}
-        return {"east_gulf_mbu": by["EAST GULF"], "west_coast_mbu": by["WEST COAST"], "source": "FGIS ship inspections 2021-25 avg"}
+        f = pd.DataFrame(json.load(urllib.request.urlopen("https://agtransport.usda.gov/resource/sruw-w49i.json?" + urllib.parse.urlencode(q), timeout=120)))
+        f["year"], f["month"] = f.year.astype(int), f.month.astype(int)
+        f["my"] = f.year.where(f.month >= 9, f.year - 1)
+        f["mbu"] = f.lbs.astype(float) / 60 / 1e6
+        x = f[(f.my >= 2021) & (f.my <= 2025)]
+        reg = x.groupby("fgis_reg").mbu.sum() / 5
+        wc = x[x.fgis_reg == "WEST COAST"].groupby("port").mbu.sum() / 5
+        return {"east_gulf_mbu": float(reg["EAST GULF"]), "west_coast_columbia_mbu": float(wc["COLUMBIA R."]), "west_coast_puget_mbu": float(wc["PUGET SOUND"]),
+                "west_coast_mbu": float(reg["WEST COAST"]), "source": "FGIS soybean inspections, marketing years 2021/22-2025/26 average, all carriers"}
     except Exception as e:                                       # keep the build working offline
         return {**FGIS_FALLBACK, "source": f"fallback constants ({type(e).__name__})"}
+
+
+HUBS = [("Illinois River", "IL-"), ("Upper Mississippi", "MS-"), ("Ohio River", "OH-"), ("Arkansas River", "AK"), ("St. Louis", "St. Louis City"),
+        ("St. Louis", "East St. Louis"), ("Lower Mississippi", "Cape Girardeau"), ("Lower Mississippi", "Lower Mississippi"), ("Pacific Northwest", "Pacific Northwest")]
+
+
+def hub_of(name):
+    """The region a node belongs to: the unit the map and the hub table work in. Individual terminals are only a check on a hub's volume."""
+    return next((h for h, prefix in HUBS if name.startswith(prefix)), name)
 
 
 def build_groups(segs, nodes, pins, usda, bu):
@@ -134,10 +150,14 @@ def build_groups(segs, nodes, pins, usda, bu):
         placed.update(pl)
         groups.append({"name": n["node"], "kind": "lock", "pins": pl, "target_mbu": max(0.0, n["soy_mbu"]), "range_mbu": [n["soy_mbu_min"], n["soy_mbu_max"]]})
     for name, tags, tgt, kind in (("AK Arkansas River (Lock 1)", AK_PINS, ak_mbu, "lock"),
-                                  ("PNW export by rail", PNW_PINS, fg["west_coast_mbu"], "pnw")):
+                                  ("Pacific Northwest: Columbia River (Portland, Vancouver, Kalama, Longview)", PNW_PINS, fg["west_coast_columbia_mbu"], "pnw"),
+                                  ("Pacific Northwest: Puget Sound (Seattle, Tacoma)", ["Puget Sound"], fg["west_coast_puget_mbu"], "pnw")):
         pl = [p["key"] for p in pins if any(t.lower() in p["key"].lower() for t in tags)]
         placed.update(pl)
-        groups.append({"name": name, "kind": kind, "pins": pl, "target_mbu": float(tgt)})
+        g = {"name": name, "kind": kind, "pins": pl, "target_mbu": float(tgt)}
+        if kind == "pnw":                                    # where the hub's circle sits on the map: the coast, not an inland loading point
+            g["anchor"] = "PNW Puget Sound hub (Seattle/Tacoma)" if "Puget" in name else "PNW export (rail)"
+        groups.append(g)
     measured = sum(g["target_mbu"] for g in groups if g["kind"] == "lock")
     unplaced = [{"name": g["name"], "target_mbu": g["target_mbu"]} for g in groups if g["kind"] == "lock" and not g["pins"]]
     groups = [g for g in groups if g["pins"]]
@@ -167,8 +187,11 @@ def build_groups(segs, nodes, pins, usda, bu):
     lower = [p["key"] for p in pins if p["key"] not in placed and p["key"] not in DROP_PINS]
     groups.append({"name": "Lower Mississippi, Cairo to Baton Rouge", "kind": "area", "pins": lower, "target_mbu": port(6034),
                    "note": "Waterway 6034 soybean shipments (Mouth of Ohio River to Baton Rouge); every remaining tracker pin below Lock 27"})
+    for g in groups:
+        g["hub"] = hub_of(g["name"])
     area_total = sum(g["target_mbu"] for g in groups if g["kind"] == "area")
-    return {"fgis": fg, "measured_arrivals_mbu": measured, "area_total_mbu": area_total, "unplaced_lock_nodes": unplaced, "groups": groups,
+    return {"fgis": fg, "pnw_rail": {"railroads": ["BNSF", "UP"], "note": "BNSF and UP feed nearly all of the Pacific Northwest; CPKC is left out"},
+            "measured_arrivals_mbu": measured, "area_total_mbu": area_total, "unplaced_lock_nodes": unplaced, "groups": groups,
             "dropped": DROP_PINS,
             "east_gulf_other_mbu": fg["east_gulf_mbu"] - measured - area_total,
             "note": "east_gulf_other_mbu = East Gulf soybean ship inspections less barge loadings above and below Lock 27: beans that reach the Gulf by rail or are otherwise unaccounted"}

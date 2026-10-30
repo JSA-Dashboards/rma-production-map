@@ -19,6 +19,7 @@ import numpy as np
 
 INPUTS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "draw", "draw_inputs.json")
 NODES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "draw", "river_nodes.json")
+RAIL_SERVICE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "draw", "county_rail_service.json")
 CENTS_PER_BU_MILE = 0.02            # Kolten's NY note: 3 cents/bu for 152 miles
 
 
@@ -29,6 +30,13 @@ def load(path: str = INPUTS) -> dict:
 
 
 @lru_cache(maxsize=1)
+def load_rail_service(path: str = RAIL_SERVICE) -> dict:
+    """{county fips: [miles to BNSF, UP, CPKC track]} from build_county_rail_service.py."""
+    with open(path, encoding="utf8") as fh:
+        return json.load(fh)["counties"]
+
+
+@lru_cache(maxsize=1)
 def load_nodes(path: str = NODES) -> dict:
     """River pin groups with annual soybean targets, from build_river_segments.py (lock tonnage + Gulf inspections)."""
     with open(path, encoding="utf8") as fh:
@@ -36,7 +44,7 @@ def load_nodes(path: str = NODES) -> dict:
 
 
 def solve(inputs: dict, *, rate=CENTS_PER_BU_MILE, tau=1.0, river_premium=0.0, plant_premium=None, util=1.0, river_share=1.0, iters=400,
-          nodes=None, lock_scale=1.0, pnw_mbu=None, area_mbu=None, pin_cap_mbu=None, river_scale=1.0, pnw_scale=1.0):
+          nodes=None, lock_scale=1.0, area_mbu=None, pin_cap_mbu=None, river_scale=1.0, pnw_scale=1.0, pnw_reach_miles=30.0, pnw_rate=None):
     """Flows (bu) county x buyer.
 
     rate           freight, cents per bushel-mile
@@ -51,12 +59,15 @@ def solve(inputs: dict, *, rate=CENTS_PER_BU_MILE, tau=1.0, river_premium=0.0, p
                    Upriver nodes are the soybeans the Corps/USDA lock tonnage says load in that pool; 'Below Lock 27' is East Gulf soybean
                    inspections less the barge arrivals the locks measure; PNW is West Coast inspections. A node's pins share its target by proximity.
     lock_scale     multiplies the lock-implied upriver targets (1.0 = the 2021-25 average)
-    pnw_mbu        override for beans railed to the Pacific Northwest (M bu/yr)
     area_mbu       {area name: M bu/yr} overrides for the below-Lock-27 areas (St. Louis City, East St. Louis area, Cape Girardeau to Chester,
-                   Lower Mississippi), whose defaults are the Corps' WCUS port tonnage, 2021-24 average
+                   Lower Mississippi), whose defaults are the Corps' WCUS port tonnage, 2021-24 average, and for the two Pacific Northwest hubs
+                   (Columbia River, Puget Sound), whose defaults are FGIS inspections by port
     river_scale    multiplies every barge-loading target (the lock-based nodes and the below-Lock-27 areas) after the overrides above, which are
                    then read as baseline (2021-25) figures; export_scenario.py turns a US soybean export number into this factor
-    pnw_scale      the same for the Pacific Northwest rail node
+    pnw_scale      the same for the Pacific Northwest hubs
+    pnw_reach_miles  the Pacific Northwest is fed almost entirely by BNSF and UP rail, so a county sends it beans only if BNSF or UP track is within
+                   this many miles of its centroid (data/draw/county_rail_service.json). CPKC is left out.
+    pnw_rate       freight for the rail haul to the Pacific Northwest, cents per bushel-mile (None = the truck `rate`)
     pin_cap_mbu    {river pin key: M bu/yr} ceilings, on top of any `cap_mbu` set on the pin in the inputs. A capped pin takes at most its cap
                    and the rest of its group's target spreads over the group's other pins (a ceiling, not a target)
     """
@@ -78,12 +89,20 @@ def solve(inputs: dict, *, rate=CENTS_PER_BU_MILE, tau=1.0, river_premium=0.0, p
     b = need * scale
     residual = max(0.0, total - plant_need)
     if nodes is not None:
-        groups = _groups(inputs, nodes, n_p, lock_scale, pnw_mbu, area_mbu or {}, river_scale, pnw_scale)
+        groups = _groups(inputs, nodes, n_p, lock_scale, area_mbu or {}, river_scale, pnw_scale)
         want = sum(g["target_bu"] for g in groups)
         tscale = min(1.0, residual / want) if want else 1.0                   # targets can't exceed what is left after crush
         for g in groups:
             g["target_bu"] *= tscale
         river_total = sum(g["target_bu"] for g in groups)
+        pnw_cols = [c for g in groups if g["kind"] == "pnw" for c in g["cols"]]
+        if pnw_cols:
+            if pnw_rate is not None:                                           # rail, not truck, freight on the way to the coast
+                cost[:, pnw_cols] = np.where(np.isnan(miles[:, pnw_cols]), 1e6, miles[:, pnw_cols] * pnw_rate - prem[pnw_cols][None, :])
+                K = np.exp(-(cost - cost.min(axis=1, keepdims=True)) / max(tau, 1e-3))
+            rs = load_rail_service()
+            served = np.array([min(rs.get(c["fips"], [9999, 9999, 9999])[:2]) <= pnw_reach_miles for c in cty])
+            K[np.ix_(~served, pnw_cols)] = 0.0                                 # only counties on BNSF or UP can ship to the Pacific Northwest
         for g in groups:                                                       # a site listed twice counts once within its group (same `site` id, or the same coordinates when none is given)
             xy = {}
             for j in g["cols"]:
@@ -125,7 +144,7 @@ def solve(inputs: dict, *, rate=CENTS_PER_BU_MILE, tau=1.0, river_premium=0.0, p
     out = {"flow": flow, "supply": supply, "need": need, "scale": scale, "river_total": river_total, "other_total": other_total,
            "miles": miles, "cost": cost}
     if groups is not None:
-        out["groups"] = [{"name": g["name"], "kind": g["kind"], "cols": g["cols"], "target_bu": g["target_bu"],
+        out["groups"] = [{"name": g["name"], "kind": g["kind"], "hub": g["hub"], "anchor": g.get("anchor"), "cols": g["cols"], "target_bu": g["target_bu"],
                           "drawn_bu": float(flow[:, g["cols"]].sum())} for g in groups]
         out["target_scale"] = tscale
     return out
@@ -151,7 +170,7 @@ def _fill(c, target, cap):
     return v
 
 
-def _groups(inputs, nodes, n_p, lock_scale, pnw_mbu, area_mbu, river_scale=1.0, pnw_scale=1.0):
+def _groups(inputs, nodes, n_p, lock_scale, area_mbu, river_scale=1.0, pnw_scale=1.0):
     """Group columns (index on the buyer axis) and targets (bu) from river_nodes.json plus the sliders."""
     col = {r["key"]: n_p + j for j, r in enumerate(inputs["river"])}
     out = []
@@ -162,10 +181,10 @@ def _groups(inputs, nodes, n_p, lock_scale, pnw_mbu, area_mbu, river_scale=1.0, 
         if g["kind"] == "lock":
             tgt = g["target_mbu"] * lock_scale * river_scale
         elif g["kind"] == "pnw":
-            tgt = (pnw_mbu if pnw_mbu is not None else g["target_mbu"]) * pnw_scale
+            tgt = area_mbu.get(g["name"], g["target_mbu"]) * pnw_scale
         else:
             tgt = area_mbu.get(g["name"], g["target_mbu"]) * river_scale
-        out.append({"name": g["name"], "kind": g["kind"], "cols": cols, "target_bu": tgt * 1e6})
+        out.append({"name": g["name"], "kind": g["kind"], "hub": g.get("hub", g["name"]), "anchor": g.get("anchor"), "cols": cols, "target_bu": tgt * 1e6})
     return out
 
 
@@ -174,7 +193,7 @@ def summarize(inputs: dict, res: dict, state="IL"):
     cty, plants, river = inputs["counties"], inputs["plants"], inputs["river"]
     n_p = len(plants)
     flow, miles = res["flow"], res["miles"]
-    in_state = np.array([c["state"] == state for c in cty])
+    in_state = np.array([state in (None, "US") or c["state"] == state for c in cty])
     rows = []
     for j, p in enumerate(plants):
         f = flow[:, j]
@@ -203,6 +222,26 @@ def summarize(inputs: dict, res: dict, state="IL"):
 def group_table(inputs: dict, res: dict, state="IL"):
     """Rows for the river nodes: annual target, drawn, and how much of it comes from the state's counties."""
     cty = inputs["counties"]
-    in_state = np.array([c["state"] == state for c in cty])
-    return [{"node": g["name"], "kind": g["kind"], "target_mbu": g["target_bu"] / 1e6, "drawn_mbu": g["drawn_bu"] / 1e6,
+    in_state = np.array([state in (None, "US") or c["state"] == state for c in cty])
+    return [{"node": g["name"], "kind": g["kind"], "hub": g.get("hub", g["name"]), "target_mbu": g["target_bu"] / 1e6, "drawn_mbu": g["drawn_bu"] / 1e6,
              "from_state_mbu": float(res["flow"][in_state][:, g["cols"]].sum()) / 1e6} for g in res.get("groups", [])]
+
+
+def hub_table(inputs: dict, res: dict, state="IL"):
+    """One row per hub: the soybeans the model sends it (all states), and the part that comes from the selected state."""
+    rows = {}
+    for t in group_table(inputs, res, state):
+        h = rows.setdefault(t["hub"], {"hub": t["hub"], "target_mbu": 0.0, "drawn_mbu": 0.0, "from_state_mbu": 0.0})
+        h["target_mbu"] += t["target_mbu"]
+        h["drawn_mbu"] += t["drawn_mbu"]
+        h["from_state_mbu"] += t["from_state_mbu"]
+    return sorted(rows.values(), key=lambda r: -r["drawn_mbu"])
+
+
+def county_hub_flows(inputs: dict, res: dict) -> dict:
+    """{hub: array of bushels per county} summed over the hub's groups."""
+    out = {}
+    for g in res.get("groups", []):
+        f = res["flow"][:, g["cols"]].sum(axis=1)
+        out[g["hub"]] = out[g["hub"]] + f if g["hub"] in out else f
+    return out

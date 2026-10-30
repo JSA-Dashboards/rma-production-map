@@ -36,6 +36,8 @@ EXTRA_RIVER_PINS = [
     # terminal is mainly fertilizer; 175,000 t x 2000/60 = 5.8 M bu is the ceiling even if every ton were soybeans.
     {"key": "Ingram Tyler Street Terminal, St. Louis MO", "state": "MO", "lat": 38.6467, "lon": -90.1822, "site": "ingram-tyler-st", "cap_mbu": 5.8,
      "cap_note": "Ingram's own bid notice puts all grain at Tyler Street at about 175,000 tons a year (fertilizer is its main cargo), so 5.8M bu is the ceiling even if every ton were soybeans."},
+    # A hub point, not an elevator: the Pacific Northwest is modeled by region (Columbia River, Puget Sound), fed by BNSF and UP rail.
+    {"key": "PNW Puget Sound hub (Seattle/Tacoma)", "state": "WA", "lat": 47.25, "lon": -122.42, "site": "pnw-puget-sound"},
     {"key": "Louis Dreyfus Cahokia IL", "state": "IL", "lat": 38.5662, "lon": -90.1794, "site": "ldc-cahokia"},
     {"key": "Bruce Oakley Cahokia IL", "state": "IL", "lat": 38.5662, "lon": -90.1794, "site": "oakley-cahokia"},
 ]
