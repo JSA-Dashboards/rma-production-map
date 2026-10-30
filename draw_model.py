@@ -61,8 +61,25 @@ BARGE_POOL = {"Archer Daniels Midland Quincy IL": "MS-4", "Cargill Owensboro KY"
 EAST_GULF_KINDS = ("lagulf", "mobile")         # East Gulf beans that did not arrive by barge: scale with the East Gulf, like the barge targets
 
 
+# Plants that start up partway through the period, as the month they begin crushing ("YYYY-MM"). The workbook gives a plant's full-year need; the model multiplies it by the
+# share of the marketing year the plant actually runs (run_fraction). LDC Upper Sandusky: workbook status "New", monthly-rate cell "Fall 2026"; November is an assumption.
+PLANT_START_DEFAULT = {"LDC Upper Sandusky OH": "2026-11"}
+
+
+def run_fraction(start_ym: str, ramp_months: int, my: int) -> float:
+    """Share of a full-rate marketing year (September `my` to August `my + 1`) a plant produces when it starts in `start_ym` and takes `ramp_months` to reach
+    full rate (a linear ramp: month k of the ramp runs at (k + 0.5) / ramp_months). 0 before it starts, 1 once the whole year is past the ramp."""
+    sy, sm = int(start_ym[:4]), int(start_ym[5:7])
+    start_idx = (sy - my) * 12 + (sm - 9)                                  # months from the marketing year's September to the start month
+    total = 0.0
+    for i in range(12):
+        k = i - start_idx
+        total += 0.0 if k < 0 else (1.0 if ramp_months <= 0 or k >= ramp_months else (k + 0.5) / ramp_months)
+    return total / 12.0
+
+
 def solve(inputs: dict, *, rate=CENTS_PER_BU_MILE, tau=1.0, river_premium=0.0, plant_premium=None, util=1.0, river_share=1.0, iters=400,
-          nodes=None, lock_scale=1.0, area_mbu=None, pin_cap_mbu=None, river_scale=1.0, pnw_reach_miles=30.0, rail_scales=None, rail_rates=None, barge_fed=None, rail_tau=None, plant_extra_mbu=None, supply_total_bu=None):
+          nodes=None, lock_scale=1.0, area_mbu=None, pin_cap_mbu=None, river_scale=1.0, pnw_reach_miles=30.0, rail_scales=None, rail_rates=None, barge_fed=None, rail_tau=None, plant_extra_mbu=None, supply_total_bu=None, plant_run_fraction=None):
     """Flows (bu) county x buyer.
 
     rate           freight, cents per bushel-mile
@@ -90,6 +107,7 @@ def solve(inputs: dict, *, rate=CENTS_PER_BU_MILE, tau=1.0, river_premium=0.0, p
     rail_tau       {rail kind: crossover softness, cents/bu} for a rail-fed hub that should spread over more origins than `tau` allows (None = tau).
                    Freight alone sends a hub's beans from the nearest rail counties; basis differences between origin states offset freight differences
                    of 20-30 cents, so the hubs fed from many states (Louisiana, Mobile) need a wider crossover
+    plant_run_fraction  {plant key: share of the period it runs, 0-1}: a plant that starts up partway (PLANT_START_DEFAULT, run_fraction) crushes that share of its need
     plant_extra_mbu  {plant key: M bu/yr} soybeans a plant crushes beyond the workbook (a plant that expanded since): added to its need before the
                    barge-fed share is taken
     supply_total_bu  total soybeans the counties supply, in bushels (None = the sum of the counties' 5-year average production). The tab passes production
@@ -107,6 +125,7 @@ def solve(inputs: dict, *, rate=CENTS_PER_BU_MILE, tau=1.0, river_premium=0.0, p
     supply_scale = float(supply_total_bu) / supply.sum() if supply_total_bu else 1.0
     supply = supply * supply_scale
     need = np.array([p["need_bu"] for p in plants], float) * util
+    need = need * np.array([min(max(float((plant_run_fraction or {}).get(p["key"], 1.0)), 0.0), 1.0) for p in plants])
     need = need + np.array([float((plant_extra_mbu or {}).get(p["key"], 0.0)) * 1e6 for p in plants])
     bf = BARGE_FED_DEFAULT if barge_fed is None else barge_fed
     barge_in = need * np.array([min(max(float(bf.get(p["key"], 0.0)), 0.0), 1.0) for p in plants])      # beans these plants take off the barges

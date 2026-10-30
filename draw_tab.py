@@ -28,12 +28,13 @@ def _in_box(paths, box):
 
 
 @st.cache_data(show_spinner="Solving the draw…")
-def _solve(rate, tau, river_premium, util, lock_scale, area_items, cap_items, plant_premium_items, river_scale=1.0, scale_items=(), rate_items=(), pnw_reach=30.0, barge_items=(), tau_items=(), extra_items=(), supply_total=None):
+def _solve(rate, tau, river_premium, util, lock_scale, area_items, cap_items, plant_premium_items, river_scale=1.0, scale_items=(), rate_items=(), pnw_reach=30.0, barge_items=(), tau_items=(), extra_items=(), supply_total=None, frac_items=()):
     inp = dm.load()
     res = dm.solve(inp, rate=rate, tau=tau, river_premium=river_premium, util=util, nodes=dm.load_nodes(), lock_scale=lock_scale,
                    area_mbu=dict(area_items), pin_cap_mbu=dict(cap_items), plant_premium=dict(plant_premium_items),
                    river_scale=river_scale, rail_scales=dict(scale_items), rail_rates=dict(rate_items), pnw_reach_miles=pnw_reach, barge_fed=dict(barge_items),
-                   rail_tau=dict(tau_items), plant_extra_mbu=dict(extra_items), supply_total_bu=supply_total)
+                   rail_tau=dict(tau_items), plant_extra_mbu=dict(extra_items), supply_total_bu=supply_total,
+                   plant_run_fraction=dict(frac_items))
     return res
 
 
@@ -353,6 +354,22 @@ def render():
         st.caption("A plant's barge beans are not trucked from nearby counties and never reach the export elevators. "
                    "The Louisiana rail and truck hub's target is set directly. Quincy and Owensboro sit between locks, so their "
                    "intake is also added back to the loadings of their river stretch (the lock-differenced loadings come out short by what is offloaded there).")
+    with st.expander("Plants still starting up: when they begin and how long they take to reach full rate"):
+        my_ = supply_info["my"]
+        months_ = [f"{y}-{m:02d}" for y in range(2025, 2029) for m in range(1, 13)]
+        frac_items = {}
+        for pkey, pstart in dm.PLANT_START_DEFAULT.items():
+            pname = pkey.replace(" OH", "").replace(" IN", "")
+            f1, f2, f3 = st.columns(3)
+            start_ = f1.selectbox(f"{pname} starts crushing", months_, index=months_.index(pstart), key=f"draw_start_{pkey}",
+                                  help="The workbook lists it as New with 'Fall 2026'. November 2026 is an assumption: change it when the start-up date is confirmed.")
+            ramp_ = f2.slider("Months to reach full rate", 0, 6, 3, key=f"draw_ramp_{pkey}",
+                              help="A linear ramp: with 3 months it runs at 17%, 50% and 83% of full rate in its first three months.")
+            frac_ = dm.run_fraction(start_, ramp_, my_)
+            f3.metric(f"Share of {es.label(my_)} at full rate", f"{frac_:.0%}",
+                      help="The plant's need in the workbook is a full year at 88% of Daily Max for 350 days; the model draws this share of it.")
+            frac_items[pkey] = frac_
+        st.caption("Applies to the marketing year chosen in the export scenario box above. A plant is full-rate for every later year and idle for every earlier one.")
     with st.expander("Plant bid adjustments (cents/bu over the base, per plant)"):
         keys = [p["key"] for p in inp["plants"] if state is None or p["state"] == state][:12] or [p["key"] for p in inp["plants"][:6]]
         prem = {}
@@ -364,7 +381,8 @@ def render():
                  (("pnw", pnw_scale), ("txgulf", txg_scale), ("mexico", mex_scale), ("satl", satl_scale), ("container", ctn_scale), ("lakes", lakes_scale), ("canada", canada_scale)),
                  (("pnw", pnw_rate), ("txgulf", txg_rate), ("mexico", mex_rate), ("lagulf", la_rate), ("mobile", mob_rate), ("satl", satl_rate), ("cont_east", satl_rate)), pnw_reach,
                  tuple(sorted(barge_fed.items())), (("lagulf", la_tau), ("mobile", la_tau), ("satl", la_tau), ("cont_east", la_tau)),
-                 (("Bunge North America Destrehan LA", dest_add),), supply_info["total_bu"])
+                 (("Bunge North America Destrehan LA", dest_add),), supply_info["total_bu"],
+                 tuple(sorted(frac_items.items())))
     plants_t, river_t, cty_t = dm.summarize(inp, res, state)
     if any(abs(x - 1.0) > 1e-3 for x in (river_scale, pnw_scale, txg_scale, mex_scale, satl_scale, ctn_scale, lakes_scale, canada_scale)):
         st.caption(f"Export scenario applied: barge-loading and East Gulf rail targets ×{river_scale:.2f}, Pacific Northwest rail ×{pnw_scale:.2f}, "
