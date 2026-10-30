@@ -217,6 +217,60 @@ def _hub_markers(inp, res, hubs):
     return out
 
 
+def _wpct(values, weights, q):
+    """The value below which a share q of the weight lies (a weighted percentile): used for how far a plant's beans travel."""
+    v, w = np.asarray(values, float), np.asarray(weights, float)
+    ok = ~np.isnan(v) & (w > 0)
+    if not ok.any():
+        return 0.0
+    v, w = v[ok], w[ok]
+    o = np.argsort(v)
+    c = np.cumsum(w[o]) / w.sum()
+    return float(v[o][min(int(np.searchsorted(c, q)), len(v) - 1)])
+
+
+def _plant_panel(inp, res, plants_t, j, P, H, hubs, sup, cty):
+    """The detail under a plant's draw map: how much it trucks and how far, which states and counties supply it, and who else those counties sell to."""
+    p, row = inp["plants"][j], plants_t[j]
+    f = P[:, j]
+    tot = float(f.sum())
+    st.markdown(f"**{p['key']}**: where its beans come from")
+    miles = res["miles"][:, j]
+    p80, p95 = _wpct(miles, f, 0.8), _wpct(miles, f, 0.95)
+    own = float(sum(f[i] for i, c in enumerate(cty) if c["state"] == p["state"]))
+    order = np.argsort(-f)
+    n90 = int(np.searchsorted(np.cumsum(f[order]) / max(tot, 1e-9), 0.9)) + 1 if tot > 0 else 0
+    m = st.columns(6)
+    m[0].metric("Trucked from counties", f"{tot / 1e6:,.1f} M bu", help="What the model draws from the counties for this plant, after any barge share and start-up fraction.")
+    m[1].metric("By barge", f"{row.get('barge_mbu', 0.0):,.1f} M bu", help="Soybeans that reach the plant by barge from upriver (the Barge-fed plants box).")
+    m[2].metric("Average haul", f"{row['avg_miles']:,.0f} mi")
+    m[3].metric("80% within", f"{p80:,.0f} mi", f"95% within {p95:,.0f} mi", delta_color="off")
+    m[4].metric("From its own state", f"{own / max(tot, 1e-9) * 100:.0f}%", p["state"], delta_color="off")
+    m[5].metric("Counties for 90%", f"{n90}")
+    if tot <= 0:
+        st.info("This plant draws no beans from counties in this run (all of its supply arrives by barge, or it is idle).")
+        return
+    sts = pd.Series(f / 1e6, index=[c["state"] for c in cty]).groupby(level=0).sum().sort_values(ascending=False)
+    sts = sts[sts > 0.01].head(10)
+    sdf = pd.DataFrame({"State": sts.index, "M bu": sts.values, "% of the plant": sts.values / (tot / 1e6) * 100})
+    B = np.column_stack([P, H])
+    names = [q["key"] for q in inp["plants"]] + [h + " hub" for h in hubs]
+    rows = []
+    for i in order[:12]:
+        if f[i] <= 0:
+            break
+        o = B[i].copy()
+        o[j] = 0.0
+        nb = int(o.argmax())
+        rows.append({"County": f'{cty[i]["name"]}, {cty[i]["state"]}', "County beans (M bu)": sup[i] / 1e6, "To this plant": f[i] / 1e6,
+                     "% of the county": f[i] / max(sup[i], 1.0) * 100, "Road miles": miles[i], "Next-biggest buyer": names[nb] if o[nb] > 0 else "",
+                     "Its share (%)": o[nb] / max(sup[i], 1.0) * 100})
+    c1, c2 = st.columns([1, 2.4])
+    c1.dataframe(sdf.style.format({"M bu": "{:,.1f}", "% of the plant": "{:.0f}"}), hide_index=True, use_container_width=True)
+    c2.dataframe(pd.DataFrame(rows).style.format({"County beans (M bu)": "{:,.1f}", "To this plant": "{:,.2f}", "% of the county": "{:.0f}", "Road miles": "{:,.0f}",
+                                                  "Its share (%)": "{:.0f}"}), hide_index=True, use_container_width=True)
+
+
 def render():
     import draw_auth
     if not draw_auth.require_password():             # a shared password; the portal pre-authenticates its own users
@@ -327,11 +381,16 @@ def render():
                 if abs(v - float(r["cap_mbu"])) > 1e-9:
                     cap_over[r["key"]] = v
     o1, o2, o3 = st.columns([2.2, 1.6, 1])
-    show_mode = o1.selectbox("Map shows", ["Top buyer (plant or hub)"] + [f"Draw area: {h}" for h in hubs_in_order], key="draw_show",
-                             help="The top buyer of each county, or one hub's draw area: the share of each county's beans that goes to that hub.")
+    plant_modes = {f"Plant draw area: {p['key']} ({p['need_bu'] / 1e6:.0f} M bu)": j
+                   for j, p in sorted(enumerate(inp["plants"]), key=lambda t: -t[1]["need_bu"])}            # every plant, biggest first
+    show_mode = o1.selectbox("Map shows", ["Top buyer (plant or hub)"] + [f"Draw area: {h}" for h in hubs_in_order] + list(plant_modes), key="draw_show",
+                             help="The top buyer of each county; one hub's draw area; or one plant's draw area (the plants are listed biggest first, with the workbook's "
+                                  "annual need): the share of each county's beans that goes to it, with the plant's detail under the map.")
+    plant_j = plant_modes.get(show_mode)
     show_terms = o2.checkbox("Show individual terminals (a check on volumes)", value=False, key="draw_terms")
     show_rivers = o3.checkbox("Rivers", value=True, key="draw_rivers")
     us_mode = state is None
+    map_us = us_mode or plant_j is not None                           # a plant's draw map always shows the whole country, centred on the plant
     rails = st.multiselect("Railroads", list(rm.RAILROADS), default=["UP", "BNSF"] if us_mode else ["UP", "BNSF", "CSXT", "NS", "CN", "TPW", "IAIS"],
                            format_func=lambda k: rm.RAILROADS[k][0], key="draw_rails_us" if us_mode else "draw_rails")
     with st.expander("Barge-fed plants: the share of a plant's soybeans that arrive by barge from upriver"):
@@ -384,6 +443,9 @@ def render():
                  (("Bunge North America Destrehan LA", dest_add),), supply_info["total_bu"],
                  tuple(sorted(frac_items.items())))
     plants_t, river_t, cty_t = dm.summarize(inp, res, state)
+    for j_, r_ in enumerate(plants_t):                               # how far each plant's beans travel
+        fj = res["flow"][:, j_]
+        r_["p80_miles"] = _wpct(res["miles"][:, j_], fj, 0.8) if fj.sum() > 0 else 0.0
     if any(abs(x - 1.0) > 1e-3 for x in (river_scale, pnw_scale, txg_scale, mex_scale, satl_scale, ctn_scale, lakes_scale, canada_scale)):
         st.caption(f"Export scenario applied: barge-loading and East Gulf rail targets ×{river_scale:.2f}, Pacific Northwest rail ×{pnw_scale:.2f}, "
                    f"Texas Gulf ×{txg_scale:.2f}, Mexico by rail ×{mex_scale:.2f}, South Atlantic ×{satl_scale:.2f}, containers ×{ctn_scale:.2f}, Great Lakes ×{lakes_scale:.2f}, Canada ×{canada_scale:.2f}.")
@@ -436,11 +498,23 @@ def render():
     top_load = {r["plant"]: r["from_state_mbu"] for r in plants_t}
     ranked = [k for k, _ in sorted(top_load.items(), key=lambda kv: -kv[1]) if top_load[k] > 0][:len(PALETTE)]
     color_of = {k: PALETTE[i] for i, k in enumerate(ranked)}
-    keep = [i for i, c in enumerate(cty) if us_mode or c["state"] in FOCUS_STATES]
+    keep = [i for i, c in enumerate(cty) if map_us or c["state"] in FOCUS_STATES]
     geo = rm._load("county_geo.json")
     fig = go.Figure()
-    focus = None if show_mode.startswith("Top buyer") else show_mode.replace("Draw area: ", "")
-    if focus is None:
+    focus = None if (show_mode.startswith("Top buyer") or plant_j is not None) else show_mode.replace("Draw area: ", "")
+    if plant_j is not None:
+        pl = inp["plants"][plant_j]
+        z = [float(P[i, plant_j] / max(sup[i], 1.0) * 100) for i in keep]
+        fips = [cty[i]["fips"] for i in keep]
+        hover = [f'{cty[i]["name"]}, {cty[i]["state"]}<br>{cty[i]["supply_bu"] / 1e6:.1f} M bu<br>to {pl["city"]}: {P[i, plant_j] / 1e6:.2f} M bu ({zz:.0f}% of the county)'
+                 for i, zz in zip(keep, z)]
+        zmax = max(10.0, float(np.percentile([v for v in z if v > 0], 95)) if any(v > 0 for v in z) else 10.0)
+        fig.add_trace(go.Choroplethmap(
+            geojson={"type": "FeatureCollection", "features": [f for f in geo["features"] if f["id"] in set(fips)]}, locations=fips, z=z, zmin=0, zmax=zmax,
+            colorscale=[[0, "#ffffff"], [1, color_of.get(pl["key"], "#c0392b")]], marker=dict(opacity=0.78, line=dict(width=0.3, color="#999")), hovertext=hover,
+            hoverinfo="text", colorbar=dict(title=dict(text=f"% of county beans<br>to {pl['city']}", font=dict(size=11)), thickness=12, len=0.5, y=0.45),
+            name=f"Draw area: {pl['key']}"))
+    elif focus is None:
         fips, colors, hover = [], [], []
         for i in keep:
             tp, th = int(P[i].argmax()), int(H[i].argmax())
@@ -479,7 +553,7 @@ def render():
             colorscale=[[0, "#ffffff"], [1, col]], marker=dict(opacity=0.75, line=dict(width=0.3, color="#999")), hovertext=hover, hoverinfo="text",
             colorbar=dict(title=dict(text=f"% of county beans<br>to {focus}", font=dict(size=11)), thickness=12, len=0.5, y=0.45), name=f"Draw area: {focus}"))
     sc0 = [cty[i] for i in keep]
-    box = (-128.0, 22.0, -65.0, 51.0) if us_mode else (min(c["lon"] for c in sc0) - 2.2, min(c["lat"] for c in sc0) - 2.2,
+    box = (-128.0, 22.0, -65.0, 51.0) if map_us else (min(c["lon"] for c in sc0) - 2.2, min(c["lat"] for c in sc0) - 2.2,
                                                        max(c["lon"] for c in sc0) + 2.2, max(c["lat"] for c in sc0) + 2.2)
     if show_rivers:                                                      # the navigable grain rivers, as on the Rail Map tab
         water = rm._load("waterways.json")
@@ -493,12 +567,18 @@ def render():
                                     hovertemplate="%{fullData.name}<extra></extra>"))
     lon, lat = rm._line_xy(_in_box(rm._load("state_lines.json"), box), step=0)
     fig.add_trace(go.Scattermap(lon=lon, lat=lat, mode="lines", line=dict(width=2.2, color="#2b2b2b"), name="State lines", hoverinfo="skip"))
-    pts = [p for p in inp["plants"] if us_mode or p["state"] in FOCUS_STATES]
+    pts = [p for p in inp["plants"] if map_us or p["state"] in FOCUS_STATES]
     fig.add_trace(go.Scattermap(
-        lon=[p["lon"] for p in pts], lat=[p["lat"] for p in pts], mode="markers" if us_mode else "markers+text",
+        lon=[p["lon"] for p in pts], lat=[p["lat"] for p in pts], mode="markers" if map_us else "markers+text",
         marker=dict(size=[8 + 14 * (p["need_bu"] / 1e8) ** 0.5 for p in pts], color="#222"),
         text=[p["city"] for p in pts], textposition="top right", textfont=dict(size=10), name="Crush plants",
         hovertext=[f'{p["key"]}<br>need {p["need_bu"] / 1e6:,.1f} M bu/yr' for p in pts], hoverinfo="text"))
+    if plant_j is not None:                                            # the selected plant: a red ring under a black dot, with its name
+        pl = inp["plants"][plant_j]
+        fig.add_trace(go.Scattermap(lon=[pl["lon"]], lat=[pl["lat"]], mode="markers", marker=dict(size=32, color="#c0392b"), hoverinfo="skip", showlegend=False))
+        fig.add_trace(go.Scattermap(lon=[pl["lon"]], lat=[pl["lat"]], mode="markers+text", marker=dict(size=18, color="#111"), text=[pl["key"]], textposition="top right",
+                                    textfont=dict(size=13, color="#111"), name="Selected plant", hovertext=[f'{pl["key"]}<br>need {pl["need_bu"] / 1e6:,.1f} M bu/yr'],
+                                    hoverinfo="text"))
     hm = _hub_markers(inp, res, hubs)
     href = 2.0 * max([m["vol"] for m in hm] + [1.0]) / (46 ** 2)               # the biggest hub is about 46 px across
     hub_tbl = {t["hub"]: t for t in dm.hub_table(inp, res, state)}
@@ -526,14 +606,21 @@ def render():
     fig.add_annotation(text=scenario_text, xref="paper", yref="paper", x=0.01, y=0.01, xanchor="left", yanchor="bottom", showarrow=False,
                        font=dict(size=11, color="#222"), bgcolor="rgba(255,255,255,0.85)", borderpad=4)
     sc = [c for c in cty if state is None or c["state"] == state]
-    center = dict(lat=39.0, lon=-98.0) if us_mode else dict(lat=float(np.mean([c["lat"] for c in sc])), lon=float(np.mean([c["lon"] for c in sc])))
-    fig.update_layout(map=dict(style="carto-positron", center=center, zoom=3.1 if us_mode else (5.4 if state in ("IL", "IN", "OH", "KY") else 5.0)),
+    if plant_j is not None:
+        center, zoom_ = dict(lat=inp["plants"][plant_j]["lat"], lon=inp["plants"][plant_j]["lon"]), 5.0
+    else:
+        center = dict(lat=39.0, lon=-98.0) if us_mode else dict(lat=float(np.mean([c["lat"] for c in sc])), lon=float(np.mean([c["lon"] for c in sc])))
+        zoom_ = 3.1 if us_mode else (5.4 if state in ("IL", "IN", "OH", "KY") else 5.0)
+    fig.update_layout(map=dict(style="carto-positron", center=center, zoom=zoom_),
                       height=640, margin=dict(l=0, r=0, t=0, b=0), legend=dict(orientation="h", y=1.0, bgcolor="rgba(255,255,255,0.85)", font=dict(size=11)))
     st.plotly_chart(fig, use_container_width=True, key="draw_map")
     st.caption("Fill = where most of a county's beans go (colour = that crush plant or export hub; grey = a plant outside the list), or, in a hub's draw-area "
-               "view, the share of each county's beans that goes to that hub. Hub circles are sized by the soybeans the hub loads a year under the export "
+               "view (or a plant's), the share of each county's beans that goes to that hub or plant. Hub circles are sized by the soybeans the hub loads a year under the export "
                "scenario above. The Pacific Northwest draws only from counties on BNSF or UP track; Texas Gulf and Mexico by rail from counties on BNSF, UP or "
                "CPKC track, the Great Lakes from OH, IN, MI and IL by truck and rail, Canada from the states behind each gateway (MI at Detroit, NY at Buffalo, ND at Pembina), Louisiana from UP, CPKC or CN track and Mobile from CSX, NS or CN track and the South Atlantic from CSX or NS track; Mexico's draw by state is held to FGIS rail inspections.")
+
+    if plant_j is not None:
+        _plant_panel(inp, res, plants_t, plant_j, P, H, hubs, sup, cty)
 
     st.markdown(f"**Export hubs** (annual M bu): what each hub loads under the scenario, and how much of it comes from {label}")
     ht = pd.DataFrame(dm.hub_table(inp, res, state))
@@ -545,8 +632,9 @@ def render():
     df = pd.DataFrame(plants_t)
     df = df[(df["from_state_mbu"] > 0.5) | (df["barge_mbu"] > 0)].sort_values("from_state_mbu", ascending=False)
     df = df.rename(columns={"plant": "Plant", "state": "St", "need_mbu": "Need (trucked)", "barge_mbu": "By barge", "drawn_mbu": "Total drawn", "from_state_mbu": f"From {label}",
-                            "avg_miles": "Avg haul (mi)", "river_access": "River/CIF"})
-    st.dataframe(df.style.format({"Need (trucked)": "{:,.1f}", "By barge": "{:,.1f}", "Total drawn": "{:,.1f}", f"From {label}": "{:,.1f}", "Avg haul (mi)": "{:,.0f}"}),
+                            "avg_miles": "Avg haul (mi)", "p80_miles": "80% within (mi)", "river_access": "River/CIF"})
+    st.dataframe(df.style.format({"Need (trucked)": "{:,.1f}", "By barge": "{:,.1f}", "Total drawn": "{:,.1f}", f"From {label}": "{:,.1f}", "Avg haul (mi)": "{:,.0f}",
+                                  "80% within (mi)": "{:,.0f}"}),
                  hide_index=True, use_container_width=True)
     with st.expander("Terminal and node detail: a check on the hub volumes"):
         st.markdown(f"**Terminals drawing {label} beans** (top 15, annual M bu)")

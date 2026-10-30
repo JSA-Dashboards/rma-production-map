@@ -62,8 +62,8 @@ EAST_GULF_KINDS = ("lagulf", "mobile")         # East Gulf beans that did not ar
 
 
 # Plants that start up partway through the period, as the month they begin crushing ("YYYY-MM"). The workbook gives a plant's full-year need; the model multiplies it by the
-# share of the marketing year the plant actually runs (run_fraction). LDC Upper Sandusky: workbook status "New", monthly-rate cell "Fall 2026"; November is an assumption.
-PLANT_START_DEFAULT = {"LDC Upper Sandusky OH": "2026-11"}
+# share of the marketing year the plant actually runs (run_fraction). LDC Upper Sandusky: workbook status "New", monthly-rate cell "Fall 2026"; Kolten set February 2027 (10-30).
+PLANT_START_DEFAULT = {"LDC Upper Sandusky OH": "2027-02"}
 
 
 def run_fraction(start_ym: str, ramp_months: int, my: int) -> float:
