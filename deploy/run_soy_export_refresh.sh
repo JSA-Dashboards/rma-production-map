@@ -41,13 +41,14 @@ main() {
   "$PY" build_soy_balance.py          # US balance sheet (carry-in stocks, production, imports, crush) from the WASDE report files; no key
   "$PY" build_soy_balance.py --crop corn                 # the corn balance sheet (ethanol, feed, exports) from the same files
   "$PY" build_corn_export_shares.py                      # corn exports by region from FGIS, joined to the corn balance and the Canada table
+  "$PY" build_truck_rates.py                             # USDA AMS truck rates and EIA diesel behind the model's trucking cost; no key
 
-  if git diff --quiet -- data/draw/soy_exports_wasde.json data/draw/soy_export_shares_by_my.csv data/draw/soy_balance_wasde.json data/draw/corn_balance_wasde.json data/draw/corn_export_shares_by_my.csv; then
+  if git diff --quiet -- data/draw/soy_exports_wasde.json data/draw/soy_export_shares_by_my.csv data/draw/soy_balance_wasde.json data/draw/corn_balance_wasde.json data/draw/corn_export_shares_by_my.csv data/draw/truck_rates_ams.json; then
     echo "nothing to commit"
   else
     git config user.email '275148418+koltenpostin93-blip@users.noreply.github.com'
     git config user.name 'JSA Droplet'
-    git add data/draw/soy_exports_wasde.json data/draw/soy_export_shares_by_my.csv data/draw/soy_balance_wasde.json data/draw/corn_balance_wasde.json data/draw/corn_export_shares_by_my.csv
+    git add data/draw/soy_exports_wasde.json data/draw/soy_export_shares_by_my.csv data/draw/soy_balance_wasde.json data/draw/corn_balance_wasde.json data/draw/corn_export_shares_by_my.csv data/draw/truck_rates_ams.json
     git commit -q -m "data: refresh US soybean export numbers, Gulf shares and the balance sheet from USDA PSD, FGIS and the WASDE files ($(date +%F))"
     if [ "${SOY_NO_PUSH:-0}" = 1 ]; then
       echo "SOY_NO_PUSH=1: committed locally, not pushed"

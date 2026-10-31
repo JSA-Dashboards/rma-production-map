@@ -1,0 +1,36 @@
+{
+ "built": "2026-10-30",
+ "quarters": [
+  "2025Q2",
+  "2025Q3",
+  "2025Q4",
+  "2026Q1"
+ ],
+ "unit": "dollars per loaded mile, average of the last four quarters",
+ "regions": {
+  "National": {
+   "25": 6.942,
+   "100": 4.308,
+   "200": 3.362
+  },
+  "North Central": {
+   "25": 7.02,
+   "100": 4.328,
+   "200": 3.253
+  },
+  "Rocky Mountain": {
+   "25": 5.73,
+   "100": 4.14,
+   "200": 4.225
+  },
+  "South Central": {
+   "25": 6.06,
+   "100": 3.895,
+   "200": 3.37
+  }
+ },
+ "diesel_base": 3.784,
+ "diesel_now": 6.352,
+ "diesel_now_date": "2026-10-26",
+ "source": "USDA AMS Quarterly Grain Truck Rates (AgTransport fxkn-2w9c) and EIA weekly diesel (x88w-atzp)"
+}

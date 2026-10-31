@@ -53,13 +53,13 @@ def _in_box(paths, box):
 
 
 @st.cache_data(show_spinner="Solving the draw…")
-def _solve(crop, rate, tau, river_premium, util, lock_scale, area_items, cap_items, plant_premium_items, river_scale=1.0, scale_items=(), rate_items=(), pnw_reach=30.0, barge_items=(), tau_items=(), extra_items=(), supply_total=None, frac_items=()):
+def _solve(crop, rate, tau, river_premium, util, lock_scale, area_items, cap_items, plant_premium_items, river_scale=1.0, scale_items=(), rate_items=(), pnw_reach=30.0, barge_items=(), tau_items=(), extra_items=(), supply_total=None, frac_items=(), truck=None, vol_resp=0.0, vol_band=0.10):
     inp = dm.load(PATHS[crop][0])
     res = dm.solve(inp, rate=rate, tau=tau, river_premium=river_premium, util=util, nodes=dm.load_nodes(PATHS[crop][1]), lock_scale=lock_scale,
                    area_mbu=dict(area_items), pin_cap_mbu=dict(cap_items), plant_premium=dict(plant_premium_items),
                    river_scale=river_scale, rail_scales=dict(scale_items), rail_rates=dict(rate_items), pnw_reach_miles=pnw_reach, barge_fed=dict(barge_items),
                    rail_tau=dict(tau_items), plant_extra_mbu=dict(extra_items), supply_total_bu=supply_total,
-                   plant_run_fraction=dict(frac_items))
+                   plant_run_fraction=dict(frac_items), truck=truck, volume_response=vol_resp, volume_band=vol_band)
     return res
 
 
@@ -586,6 +586,7 @@ def _render(crop):
     PLN = "ethanol plants" if corn else "crush plants"
     FS = FOCUS_CORN if corn else FOCUS_STATES
     inp = dm.load(PATHS[crop][0])
+    ams = dm.load_truck_rates()
     st.markdown(f"### Draw Territory: {W}")
     nodes = dm.load_nodes(PATHS[crop][1])
     area_groups = [g for g in nodes["groups"] if g["kind"] in ("area", "pnw", "txgulf", "mexico", "lagulf", "mobile", "satl", "container", "cont_east", "lakes", "canada")]
@@ -610,8 +611,10 @@ def _render(crop):
     region = c1.selectbox("Region to show", ["All US"] + FS, index=1, key=f"draw_state_{crop}")
     state = None if region == "All US" else region
     label = "US" if state is None else state
-    tau = c2.slider("Crossover (cents/bu)", 0.25, 4.0, 1.0, 0.25, key="draw_tau",
-                    help="How much a county's crop spread across the nearer plants. Small = sharp territories, large = a lot of overlap.")
+    tau = c2.slider("Crossover (cents/bu)", 1.0, 60.0, 20.0, 1.0, key="draw_tau_ams",
+                    help="How much territories overlap, in the same real cents a bushel as freight: small = sharp territories (the nearest buyer takes most), large = a lot of "
+                         "overlap. It is not taken from bids or basis. The default keeps the territories as they were: about 50 miles of overlap at the AMS truck rate, an average "
+                         "plant haul near 110 miles (soybeans). Average plant haul runs about 53 miles at 2.5 cents, 65 at 8, 80 at 12 and 113 at 20.")
     util = c3.slider("Ethanol plant run rate" if corn else "Plant run rate vs workbook", 0.7, 1.1, 0.95 if corn else 1.0, 0.05, key=f"draw_util_{crop}",
                      help=("1.0 = full nameplate capacity (million gallons a year at 2.9 gallons a bushel). 0.95 reproduces USDA's 5.65 billion bushels of ethanol corn use."
                            if corn else "1.0 = the workbook's Daily Max × 0.88 × 350 days."))
@@ -619,20 +622,21 @@ def _render(crop):
                            help=f"Scales the {W} loaded on the Illinois, upper Mississippi and Ohio, as measured by lock tonnage "
                                 "(1.0 = the 2021-25 average). Those figures are scaled estimates, good to about ±10%.")
     c5, c6, c7, c8 = st.columns(4)
-    rate = c5.number_input("Truck freight (cents / bu / mile)", 0.005, 0.10, dm.CENTS_PER_BU_MILE, 0.005, format="%.3f", key="draw_rate",
-                           help="Your note: 3 cents a bushel for 152 miles = 0.02.")
-    river_prem = c6.number_input(f"River bid over {'ethanol' if corn else 'crush'} bids (cents/bu)", -30.0, 30.0, 0.0, 1.0, key="draw_river_prem",
-                                 help=f"How much more (or less) the river terminals pay for a bushel than the {PLN}, after their basis. "
-                                      "Positive pulls beans toward the river.")
+    diesel = c5.number_input("Diesel ($ a gallon)", 2.5, 9.0, round(float(ams["diesel_now"]), 2), 0.05, key="draw_diesel",
+                             help=f"EIA's US on-highway price for {ams['diesel_now_date']} is ${ams['diesel_now']:.2f}. USDA AMS's truck rates are quarterly and run behind: their last four quarters "
+                                  f"({', '.join(ams['quarters'])}) averaged ${ams['diesel_base']:.2f}, so the model adds the fuel for the difference (6 miles a gallon) to the AMS rates.")
+    rate = dm.CENTS_PER_BU_MILE                                       # only the fallback: freight comes from the AMS curve below
+    river_prem = 0.0                                                  # bids and basis are not used for now
     pnw_rate = c7.number_input("Rail freight to the Pacific NW (cents / bu / mile)", 0.001, 0.10, 0.015, 0.001, format="%.3f", key="draw_pnw_rate",
                                help=_CORN_RAIL if corn else "From USDA AMS rail tariff rates for soybeans to Seattle/Kalama (Oct 2026): BNSF shuttle runs about $6,200-6,350 a car (about 168-172 "
                                     "cents a bushel on AMS's 3,700 bu/car) from 1,700 to 2,180 lane miles, so the tariff alone barely rises with distance "
                                     "(0.002 cents per bushel-mile) and the BNSF fuel surcharge ($0.45/mile) adds about 0.012: total about 0.015. UP's surcharge is higher "
                                     "($0.68/mile, about 0.018) on a lower tariff (Cozad NE $5,365 a car). The Rail FOB portal's BN seed gives 0.020. "
                                     "A lower rate widens the area that feeds the coast; a higher one pulls it toward the Dakotas.")
-    pnw_reach = c8.number_input("BNSF / UP reach (miles)", 5.0, 150.0, 30.0, 5.0, key="draw_pnw_reach",
-                                help="A county can send beans to the Pacific Northwest only if BNSF or UP track is within this many miles of its centre "
-                                     "(CPKC is left out: it feeds little of the coast).")
+    pnw_reach = c8.number_input("Max truck haul to a rail loader (miles)", 5.0, 150.0, 60.0, 5.0, key="draw_reach_ams",
+                                help="A county can send grain to a rail hub only if a railroad that serves the hub is within this many miles of its centre. The truck haul to that "
+                                     "track is charged at the AMS rate, so a county far from track is dearer to the hub rather than cut off at a line (Pacific Northwest: BNSF and UP; "
+                                     "CPKC is left out because it feeds little of the coast).")
     c9, c10, c11, c12, c13, c14 = st.columns(6)
     txg_rate = c9.number_input("Rail freight to Texas Gulf (cents / bu / mile)", 0.001, 0.20, 0.050, 0.005, format="%.3f", key="draw_txg_rate",
                                help=_CORN_RAIL if corn else "From USDA AMS rail tariffs for soybeans to Houston (Oct 2026): BNSF and UP shuttles run about $0.93 a bushel from Concordia KS (852 miles) "
@@ -662,12 +666,21 @@ def _render(crop):
                                       "lane to Chesapeake (CSX from Marion OH, 760 miles, $0.87-1.02 a bushel). The South Atlantic draws from CSX or NS track in the "
                                       "eastern Corn Belt and the Mid-Atlantic (OH, IN, MI, IL, KY, TN, VA, NC, SC, MD, DE, PA, NJ, WV, GA): nothing records where its "
                                       "soybeans come from.")
-    la_tau = c13.number_input("Eastern rail crossover (cents / bu)", 1.0, 60.0, 20.0, 1.0, key="draw_la_tau",
-                              help="How far the rail draw of Louisiana, Mobile and the South Atlantic spreads across origin states. Freight alone sends it all from the nearest "
-                                   "states (Illinois); basis differences between states offset freight differences of 20-30 cents, so beans also come from Iowa, "
-                                   "Wisconsin and Minnesota. Small = nearest first, large = spread widely.")
-    st.caption("Rail hubs use the same reach (miles to track) as the Pacific Northwest. Pacific Northwest = BNSF + UP; Texas Gulf and the Mexican border = BNSF + UP + CPKC; "
+    la_tau = None                                                     # one crossover for every buyer now: the eastern rail hubs no longer need their own
+    st.caption("Rail hubs use the same maximum truck haul to a loader as the Pacific Northwest. Pacific Northwest = BNSF + UP; Texas Gulf and the Mexican border = BNSF + UP + CPKC; "
                "Louisiana = UP + CPKC + CN; Mobile = CSX + NS + CN; South Atlantic = CSX + NS.")
+    with st.expander("Truck freight (USDA AMS)"):
+        t1, t2, t3 = st.columns(3)
+        regions_ = list(ams["regions"])
+        t_region = t1.selectbox("AMS truck region", regions_, index=regions_.index("North Central") if "North Central" in regions_ else 0, key="draw_truck_region",
+                                help="AMS's survey regions. North Central is the corn and soybean belt; South Central and the Rocky Mountains run lower at short hauls.")
+        t_bu = t2.number_input("Bushels per truckload", 600.0, 1200.0, 900.0 if corn else 830.0, 10.0, key=f"draw_truck_bu_{crop}",
+                               help="About 49,000 lb of grain: 900 bushels of corn (56 lb) or 830 of soybeans (60 lb).")
+        t_mult = t3.number_input("Truck rate vs AMS (x)", 0.5, 2.0, 1.0, 0.05, key="draw_truck_mult", help="1.0 = the AMS rate, plus the fuel adjustment for the diesel price above.")
+        truck = dm.truck_curve(ams, t_region, diesel, t_bu, t_mult)
+        st.caption("Trucking cost at 25 / 50 / 100 / 200 / 300 road miles, cents a bushel: " + " / ".join(f"{float(dm.truck_cents(m, truck)):.0f}" for m in (25, 50, 100, 200, 300))
+                   + f" (AMS {', '.join(ams['quarters'][:1])} to {ams['quarters'][-1]} rates, diesel ${diesel:.2f}). The cost has a fixed part of about "
+                   f"{float(dm.truck_cents(0.0, truck)):.0f} cents (loading, unloading, waiting) and rises more slowly with distance beyond 100 miles.")
     with st.expander("Hub targets (M bu/yr): baseline = Corps port tonnage below Lock 27 and FGIS inspections by port (Pacific Northwest, Texas Gulf) and FGIS rail "
                      "inspections for Mexico, 2021-25 average; the export scenario scales them"):
         area_over = {}
@@ -743,19 +756,14 @@ def _render(crop):
                           help="The plant's need in the workbook is a full year at 88% of Daily Max for 350 days; the model draws this share of it.")
                 frac_items[pkey] = frac_
             st.caption("Applies to the marketing year chosen in the export scenario box above. A plant is full-rate for every later year and idle for every earlier one.")
-    with st.expander("Plant bid adjustments (cents/bu over the base, per plant)"):
-        keys = [p["key"] for p in inp["plants"] if state is None or p["state"] == state][:12] or [p["key"] for p in inp["plants"][:6]]
-        prem = {}
-        cols = st.columns(3)
-        for i, k in enumerate(keys):
-            prem[k] = cols[i % 3].number_input(k, -20.0, 20.0, 0.0, 0.5, key=f"draw_prem_{k}")
+    prem = {}                                                         # bids and basis are not used for now
     res = _solve(crop, rate, tau, river_prem, util, lock_scale, tuple(sorted(area_over.items())), tuple(sorted(cap_over.items())),
                  tuple(sorted((k, v) for k, v in prem.items() if v)), river_scale,
                  (("pnw", pnw_scale), ("txgulf", txg_scale), ("mexico", mex_scale), ("satl", satl_scale), ("container", ctn_scale), ("lakes", lakes_scale), ("canada", canada_scale)),
                  (("pnw", pnw_rate), ("txgulf", txg_rate), ("mexico", mex_rate), ("lagulf", la_rate), ("mobile", mob_rate), ("satl", satl_rate), ("cont_east", satl_rate)), pnw_reach,
-                 tuple(sorted(barge_fed.items())), (("lagulf", la_tau), ("mobile", la_tau), ("satl", la_tau), ("cont_east", la_tau)),
+                 tuple(sorted(barge_fed.items())), (),
                  (("Bunge North America Destrehan LA", dest_add),), supply_info["total_bu"],
-                 tuple(sorted(frac_items.items())))
+                 tuple(sorted(frac_items.items())), truck, 0.0, 0.0)
     plants_t, river_t, cty_t = dm.summarize(inp, res, state)
     for j_, r_ in enumerate(plants_t):                               # how far each plant's beans travel
         fj = res["flow"][:, j_]

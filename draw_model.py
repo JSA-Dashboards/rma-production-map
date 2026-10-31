@@ -22,7 +22,38 @@ NODES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "draw",
 INPUTS_CORN = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "draw", "draw_inputs_corn.json")        # the corn model: same solver, other inputs
 NODES_CORN = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "draw", "river_nodes_corn.json")
 RAIL_SERVICE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "draw", "county_rail_service.json")
-CENTS_PER_BU_MILE = 0.02            # Kolten's NY note: 3 cents/bu for 152 miles
+CENTS_PER_BU_MILE = 0.02            # Kolten's NY note: 3 cents/bu for 152 miles. Superseded by the AMS truck curve below (10-25x higher); kept only as the fallback when no curve is given
+TRUCK_RATES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "draw", "truck_rates_ams.json")
+MPG = 6.0                           # loaded semi, for the fuel adjustment to today's diesel
+CIRC_TRACK = 1.244                  # straight-line miles to track to road miles, the same circuity the miles matrix uses
+
+
+@lru_cache(maxsize=1)
+def load_truck_rates(path: str = TRUCK_RATES) -> dict:
+    """USDA AMS quarterly truck rates ($ per loaded mile at 25, 100 and 200 miles, by region) and diesel, from build_truck_rates.py."""
+    with open(path, encoding="utf8") as fh:
+        return json.load(fh)
+
+
+def truck_curve(rates: dict, region: str = "National", diesel: float | None = None, bu_per_load: float = 900.0, mult: float = 1.0, mpg: float = MPG) -> dict:
+    """Truck freight as a cost curve in cents per bushel by one-way road miles, from AMS's survey: a truckload costs rate x miles at 25, 100 and 200 miles (the rate per mile falls
+    with distance, so the cost is concave and has a fixed element of about $90 a load: loading, unloading and waiting). Between the anchors it is linear, below 25 it runs back along the
+    25-100 mile slope, beyond 200 it keeps the 100-200 slope. `diesel` adds the fuel the survey does not yet show: (diesel - the AMS quarters' diesel) / mpg, dollars per loaded mile.
+    `bu_per_load` is about 900 for corn (56 lb) and 830 for soybeans (60 lb); `mult` scales the whole curve (a region or a carrier you know is dearer)."""
+    r = rates["regions"][region]
+    t25, t100, t200 = float(r["25"]) * 25, float(r["100"]) * 100, float(r["200"]) * 200
+    s_short = (t100 - t25) / 75.0
+    t0 = max(0.0, t25 - s_short * 25)
+    s_long = max((t200 - t100) / 100.0, 0.5)
+    fuel = 0.0 if diesel is None else (float(diesel) - float(rates["diesel_base"])) / mpg
+    return {"miles": [0.0, 25.0, 100.0, 200.0], "usd": [t0, t25, t100, t200], "slope_far": s_long, "fuel": fuel, "bu": float(bu_per_load), "mult": float(mult)}
+
+
+def truck_cents(miles, curve: dict):
+    """Cents per bushel to truck `miles` (an array) under truck_curve()."""
+    m = np.asarray(miles, float)
+    usd = np.interp(m, curve["miles"], curve["usd"]) + np.maximum(m - 200.0, 0.0) * curve["slope_far"] + curve["fuel"] * m
+    return usd * curve["mult"] / curve["bu"] * 100.0
 
 
 @lru_cache(maxsize=4)
@@ -81,10 +112,17 @@ def run_fraction(start_ym: str, ramp_months: int, my: int) -> float:
 
 
 def solve(inputs: dict, *, rate=CENTS_PER_BU_MILE, tau=1.0, river_premium=0.0, plant_premium=None, util=1.0, river_share=1.0, iters=400,
-          nodes=None, lock_scale=1.0, area_mbu=None, pin_cap_mbu=None, river_scale=1.0, pnw_reach_miles=30.0, rail_scales=None, rail_rates=None, barge_fed=None, rail_tau=None, plant_extra_mbu=None, supply_total_bu=None, plant_run_fraction=None):
+          nodes=None, lock_scale=1.0, area_mbu=None, pin_cap_mbu=None, river_scale=1.0, pnw_reach_miles=30.0, rail_scales=None, rail_rates=None, barge_fed=None, rail_tau=None, plant_extra_mbu=None, supply_total_bu=None, plant_run_fraction=None,
+          truck=None, volume_response=0.0, volume_band=0.10):
     """Flows (bu) county x buyer.
 
-    rate           freight, cents per bushel-mile
+    rate           freight, cents per bushel-mile: used only when `truck` is None
+    truck          a truck_curve(): trucking cost in cents per bushel by road miles from USDA AMS rates (concave, diesel-adjusted). It prices every truck haul, and the truck
+                   leg from a county to the rail loader that feeds a rail hub (so a county far from track is dearer to a rail hub, instead of a hard cutoff).
+    volume_response  how much a buyer's volume moves per cent a bushel its bid is above the base (fraction: 0.01 = 1% of volume per cent), for the crush or ethanol plants (the
+                   per-plant bid adjustments) and, with `river_premium`, the barge-loading targets. Capped at +/- `volume_band`. Without it a bid advantage does nothing: with
+                   fixed volumes the solver absorbs any constant added to one buyer's cost. The swing comes out of, or goes into, 'other' (feed, stocks).
+    volume_band    the cap on that swing, as a fraction of the volume (0.10 = +/-10%)
     tau            crossover softness, cents/bu: smaller = sharper territories, larger = more overlap
     river_premium  cents/bu the river terminals pay over the crush plants (net of their own basis), applied to every terminal
     plant_premium  {plant key: cents/bu} per-plant bid advantage
@@ -127,6 +165,8 @@ def solve(inputs: dict, *, rate=CENTS_PER_BU_MILE, tau=1.0, river_premium=0.0, p
     supply_scale = float(supply_total_bu) / supply.sum() if supply_total_bu else 1.0
     supply = supply * supply_scale
     need = np.array([p["need_bu"] for p in plants], float) * util
+    if volume_response:                                                                       # a plant with a better bid than the base takes more, within the band
+        need = need * np.array([1.0 + np.clip(volume_response * (plant_premium or {}).get(p["key"], 0.0), -volume_band, volume_band) for p in plants])
     need = need * np.array([min(max(float((plant_run_fraction or {}).get(p["key"], 1.0)), 0.0), 1.0) for p in plants])
     need = need + np.array([float((plant_extra_mbu or {}).get(p["key"], 0.0)) * 1e6 for p in plants])
     bf = BARGE_FED_DEFAULT if barge_fed is None else barge_fed
@@ -137,7 +177,7 @@ def solve(inputs: dict, *, rate=CENTS_PER_BU_MILE, tau=1.0, river_premium=0.0, p
     prem[n_p:] = river_premium
     for j, p in enumerate(plants):
         prem[j] = (plant_premium or {}).get(p["key"], 0.0)
-    cost = miles * rate - prem[None, :]
+    cost = (truck_cents(miles, truck) if truck else miles * rate) - prem[None, :]
     cost = np.where(np.isnan(cost), 1e6, cost)
     K = np.exp(-(cost - cost.min(axis=1, keepdims=True)) / max(tau, 1e-3))      # per-row shift cancels in the row scaling
 
@@ -154,6 +194,11 @@ def solve(inputs: dict, *, rate=CENTS_PER_BU_MILE, tau=1.0, river_premium=0.0, p
             tgt = [g for g in groups if g["kind"] == "lock" and pool and g["name"].startswith(pool)]
             if tgt:                                                            # the intake was loaded upstream and missing from this pool's lock-differenced flow
                 tgt[0]["target_bu"] += barge_in[j]                             # (a plant with no pool, Destrehan, only stops trucking county beans)
+        if volume_response:                                                                   # the river terminals' bid over the plants moves the barge-loading targets
+            rv = 1.0 + float(np.clip(volume_response * river_premium, -volume_band, volume_band))
+            for g in groups:
+                if g["kind"] in ("lock", "area"):
+                    g["target_bu"] *= rv
         want = sum(g["target_bu"] for g in groups)
         tscale = min(1.0, residual / want) if want else 1.0                   # targets can't exceed what is left after crush
         for g in groups:
@@ -162,9 +207,11 @@ def solve(inputs: dict, *, rate=CENTS_PER_BU_MILE, tau=1.0, river_premium=0.0, p
         rs = load_rail_service()
         rates = {k: (rail_rates or {}).get(k) for k in RAIL_KINDS}
         rail_cols = {kind: [c for g in groups if g["kind"] == kind for c in g["cols"]] for kind in RAIL_KINDS}
+        track = {kind: np.array([min(rs.get(c["fips"], [9999] * 6)[k] for k in RAIL_KINDS[kind]) for c in cty]) for kind in RAIL_KINDS}    # miles to the nearest serving track
         for kind, cols_k in rail_cols.items():
-            if cols_k and rates[kind] is not None:                             # rail, not truck, freight on the way to the coast or the border
-                cost[:, cols_k] = np.where(np.isnan(miles[:, cols_k]), 1e6, miles[:, cols_k] * rates[kind] - prem[cols_k][None, :])
+            if cols_k and rates[kind] is not None:                             # rail, not truck, freight on the way to the coast or the border, plus the truck leg to the loader
+                leg = truck_cents(track[kind] * CIRC_TRACK, truck)[:, None] if truck else 0.0
+                cost[:, cols_k] = np.where(np.isnan(miles[:, cols_k]), 1e6, miles[:, cols_k] * rates[kind] + leg - prem[cols_k][None, :])
         if any(rail_cols[k] and rates[k] is not None for k in RAIL_KINDS):
             K = np.exp(-(cost - cost.min(axis=1, keepdims=True)) / max(tau, 1e-3))
         for kind, cols_k in rail_cols.items():
@@ -172,7 +219,7 @@ def solve(inputs: dict, *, rate=CENTS_PER_BU_MILE, tau=1.0, river_premium=0.0, p
                 K[:, cols_k] = np.exp(-(cost[:, cols_k] - cost.min(axis=1, keepdims=True)) / max(rail_tau[kind], 1e-3))
         for kind, cols_k in rail_cols.items():
             if cols_k:
-                served = np.array([min(rs.get(c["fips"], [9999] * 6)[k] for k in RAIL_KINDS[kind]) <= pnw_reach_miles for c in cty])
+                served = track[kind] <= pnw_reach_miles
                 K[np.ix_(~served, cols_k)] = 0.0                               # only counties on a railroad that reaches the hub can ship to it
         st = np.array([c["state"] for c in cty])
         for g in groups:
