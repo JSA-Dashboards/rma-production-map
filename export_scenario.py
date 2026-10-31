@@ -149,3 +149,34 @@ def sensitivity(exports_mbu: float, crop: str = "soy") -> pd.DataFrame:
     rows.append((f"Lowest year since 2011 ({label(int(x.east_gulf_share_pct.idxmin()))})", lo, insp * lo / 100, np.nan, insp * lo / 100 / baseline(h)["east_gulf"]))
     rows.append((f"Highest year since 2011 ({label(int(x.east_gulf_share_pct.idxmax()))})", hi, insp * hi / 100, np.nan, insp * hi / 100 / baseline(h)["east_gulf"]))
     return pd.DataFrame(rows, columns=["Share basis", "East Gulf share %", "East Gulf (M bu)", "West Coast (M bu)", "River scale"])
+
+
+def calendar_history(crop: str = "soy") -> pd.DataFrame:
+    """FGIS inspections by hub for each CALENDAR year (index = the year), the same columns as history(): build_fgis_hub_calendar.py. {} rows when the file is missing."""
+    try:
+        return _read(f"fgis_hub_calendar_{crop}.csv", lambda p: pd.read_csv(p, index_col=0))
+    except OSError:
+        return pd.DataFrame()
+
+
+def calendar_years(crop: str = "soy") -> list:
+    """Calendar years FGIS covers in full (all twelve months), newest first."""
+    c = calendar_history(crop)
+    return sorted((int(y) for y in c.index[c.months == 12]), reverse=True) if len(c) else []
+
+
+def calendar_scenario(year: int, crop: str = "soy") -> dict:
+    """What FGIS actually inspected, hub by hub, in calendar `year`, in the same shape as scenario(): so the model can be run on the volumes of a year the STB waybill sample
+    covers, and compared with it. 'exports' is the USDA-basis number that would give these inspections at the 2021-25 inspected/USDA ratio (it is implied, not USDA's)."""
+    c = calendar_history(crop).loc[year]
+    base = baseline(history(crop))
+    insp = float(c.fgis_inspected_mbu)
+    eg, wc, tg, it, mx, sa, ct, lk, cn = (float(c[k]) for k in ("east_gulf_mbu", "west_coast_mbu", "west_gulf_mbu", "interior_mbu", "mexico_rail_mbu", "south_atlantic_mbu",
+                                                                "container_mbu", "lakes_mbu", "canada_mbu"))
+    return {"exports": insp / base["ratio"], "inspected": insp, "east_gulf": eg, "west_coast": wc, "interior": it, "west_gulf": tg, "mexico_rail": mx, "south_atlantic": sa,
+            "container": ct, "lakes": lk, "canada": cn, "calendar_year": year,
+            "canada_scale": cn / base["canada"] if base["canada"] else 1.0, "lakes_scale": lk / base["lakes"] if base["lakes"] else 1.0,
+            "container_scale": ct / base["container"] if base["container"] else 1.0, "satl_scale": sa / base["south_atlantic"] if base["south_atlantic"] else 1.0,
+            "txgulf_scale": tg / base["west_gulf"] if base["west_gulf"] else 1.0, "mexico_scale": mx / base["mexico_rail"] if base["mexico_rail"] else 1.0,
+            "east_gulf_share": eg / insp * 100 if insp else 0.0, "west_coast_share": wc / insp * 100 if insp else 0.0,
+            "river_scale": eg / base["east_gulf"], "pnw_scale": wc / base["west_coast"], "base": base}

@@ -311,7 +311,13 @@
    ],
    "target_mbu": 361.1072835142857,
    "anchor": "PNW export (rail)",
-   "hub": "Pacific Northwest"
+   "hub": "Pacific Northwest",
+   "origin_states_mbu": {
+    "ND": 133.0,
+    "MN": 122.0,
+    "SD": 104.0
+   },
+   "note": "Draw by state held to the STB carload waybill sample (corn to Portland and Seattle, 2022-24): ND 37%, MN 34%, SD 29%."
   },
   {
    "name": "Pacific Northwest: Puget Sound (Seattle, Tacoma)",
@@ -321,7 +327,13 @@
    ],
    "target_mbu": 210.51572096428572,
    "anchor": "PNW Puget Sound hub (Seattle/Tacoma)",
-   "hub": "Pacific Northwest"
+   "hub": "Pacific Northwest",
+   "origin_states_mbu": {
+    "ND": 133.0,
+    "MN": 122.0,
+    "SD": 104.0
+   },
+   "note": "Draw by state held to the STB carload waybill sample (corn to Portland and Seattle, 2022-24): ND 37%, MN 34%, SD 29%."
   },
   {
    "name": "Texas Gulf (Houston, Galveston, Corpus Christi)",
@@ -331,20 +343,17 @@
    ],
    "target_mbu": 28.5367199,
    "anchor": "Texas Gulf hub (Houston/Galveston)",
-   "origin_states": [
-    "TX",
-    "OK",
-    "KS",
-    "NE",
-    "MO",
-    "IA",
-    "MN",
-    "SD",
-    "ND",
-    "CO",
-    "NM"
-   ],
-   "hub": "Texas Gulf"
+   "hub": "Texas Gulf",
+   "origin_states_mbu": {
+    "IL": 37.0,
+    "NE": 12.0,
+    "IA": 3.0,
+    "IN": 3.0,
+    "MO": 2.0,
+    "WI": 1.0,
+    "MN": 1.0
+   },
+   "note": "Draw by state held to the STB carload waybill sample (corn to Houston, 2022-24): IL 63%, NE 20%, IA 5%, IN 5%, MO 3%, WI 2%, MN 2%."
   },
   {
    "name": "Mexico by rail (Laredo, Eagle Pass, Brownsville, El Paso)",
@@ -464,14 +473,15 @@
    ],
    "target_mbu": 243.4791544714285,
    "anchor": "Louisiana rail hub (Reserve/Convent)",
+   "note": "East Gulf corn ship inspections (Mississippi River ports) less the barge loadings above and below Lock 27 and Mobile: corn that reached the Louisiana export elevators by rail or truck. A residual, so it carries the barge estimates' errors. Fed from IL, IA, WI, MN and IN (Indiana added from the STB waybill sample, which sees New Orleans only).",
+   "hub": "Louisiana Rail",
    "origin_states": [
     "IL",
     "IA",
     "WI",
-    "MN"
-   ],
-   "note": "East Gulf corn ship inspections (Mississippi River ports) less the barge loadings above and below Lock 27 and Mobile: corn that reached the Louisiana export elevators by rail or truck. A residual, so it carries the barge estimates' errors.",
-   "hub": "Louisiana Rail"
+    "MN",
+    "IN"
+   ]
   },
   {
    "name": "Mobile and the other non-Mississippi East Gulf ports",

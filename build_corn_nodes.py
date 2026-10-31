@@ -25,6 +25,34 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 D = os.path.join(HERE, "data", "draw")
 FGIS = "https://agtransport.usda.gov/resource/sruw-w49i.json?"
 LB = 56.0
+# Which states feed a rail hub, from the STB carload waybill sample (build_rail_waybill.py, corn 2022-24, M bu a year). Where the sample sees the whole hub the draw by state is
+# held to it (origin_states_mbu, the way Mexico is held to FGIS); where it sees only a slice the states are only limited (origin_states).
+#   Pacific Northwest (Portland, Seattle, Richland): ND 133, MN 122, SD 104 (NE 11, WI 6, IA 5 left out). Distance alone had drawn 28% of it from NE and IA.
+#   Texas Gulf (Houston): IL 37, NE 12, IA 3, IN 3, MO 2, WI 1, MN 1. Most of that tonnage has an unknown export flag, so some is Houston-area feed, but the origins are real
+#     rail flows into Houston and the model had no way to draw Illinois there.
+#   Louisiana: the sample sees New Orleans only (84 of the hub's 322 M bu; Baton Rouge and the rest are withheld): IL 65, IN 10, IA 3, WI 2, NE 2, KY 1. Iowa and Minnesota stay
+#     (13% of Iowa's rail corn ends in withheld areas, and the soybean model's states for this hub are IL, IA, WI, MN); Indiana is added; NE and KY are 2% and 1% of what is seen.
+CORN_ORIGIN_RULES = {
+    "pnw": {"origin_states_mbu": {"ND": 133.0, "MN": 122.0, "SD": 104.0}},
+    "txgulf": {"origin_states_mbu": {"IL": 37.0, "NE": 12.0, "IA": 3.0, "IN": 3.0, "MO": 2.0, "WI": 1.0, "MN": 1.0}},
+    "lagulf": {"origin_states": ["IL", "IA", "WI", "MN", "IN"]},
+}
+CORN_ORIGIN_NOTE = {"pnw": "Draw by state held to the STB carload waybill sample (corn to Portland and Seattle, 2022-24): ND 37%, MN 34%, SD 29%.",
+                    "txgulf": "Draw by state held to the STB carload waybill sample (corn to Houston, 2022-24): IL 63%, NE 20%, IA 5%, IN 5%, MO 3%, WI 2%, MN 2%.",
+                    "lagulf": "Fed from IL, IA, WI, MN and IN (Indiana added from the STB waybill sample, which sees New Orleans only)."}
+
+
+def apply_origin_rules(groups):
+    """Set each rail hub's origin states for corn, replacing the soybean builder's lists."""
+    for g in groups:
+        rule = CORN_ORIGIN_RULES.get(g["kind"])
+        if not rule:
+            continue
+        g.pop("origin_states", None)
+        g.pop("origin_states_mbu", None)
+        g.update({k: (dict(v) if isinstance(v, dict) else list(v)) for k, v in rule.items()})
+        if CORN_ORIGIN_NOTE[g["kind"]] not in g.get("note", ""):
+            g["note"] = (g.get("note", "") + " " + CORN_ORIGIN_NOTE[g["kind"]]).strip()
 
 
 def fgis_corn_exports():
@@ -83,6 +111,7 @@ def main():
             g["target_mbu"] = eg_left
             g["note"] = ("East Gulf corn ship inspections (Mississippi River ports) less the barge loadings above and below Lock 27 and Mobile: corn that reached the "
                          "Louisiana export elevators by rail or truck. A residual, so it carries the barge estimates' errors.")
+    apply_origin_rules(groups)                                                                 # corn's own origin states (the soybean builder's lists are not used)
     nodes["groups"] = groups
     nodes["crop"] = "corn"
     with open(os.path.join(D, "river_nodes_corn.json"), "w") as fh:

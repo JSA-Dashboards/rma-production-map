@@ -14,6 +14,7 @@ from plotly.subplots import make_subplots
 
 import draw_model as dm
 import export_scenario as es
+import rail_check
 import rail_map as rm
 
 FOCUS_STATES = ["IL", "IN", "IA", "MO", "WI", "KY", "OH"]
@@ -107,20 +108,40 @@ def _reset_exports(key, value):
     st.session_state[key] = value
 
 
+def _match_year(crop, key):
+    """'Match a waybill year': run the model on FGIS's actual volumes, hub by hub, for a calendar year the STB waybill sample also covers, so the model and the railroads
+    describe the same year. Returns the year, or None for the ordinary marketing-year scenario. The year is also left in session state for the rail validation panel."""
+    ys = [y for y in es.calendar_years(crop) if y in rail_check.waybill_years(crop)]
+    pick = None
+    if ys:
+        pick = st.selectbox("Match a waybill year", ["No: the marketing-year scenario below"] + [str(y) for y in ys], key=key,
+                            help="Sets every hub to what FGIS actually inspected there in that calendar year (January to December, the way the STB waybill sample counts), instead "
+                                 "of a USDA export number split by historical shares. Supply follows the crop marketed through most of that year. The rail validation panel then "
+                                 "compares the model with the waybill for that same year.")
+    year = int(pick) if pick and pick[0].isdigit() else None
+    st.session_state[f"{key}_year"] = year
+    return year
+
+
 def _export_panel():
     """US soybean export number -> East Gulf / West Coast bushels by the historical share -> scale factors for the river targets."""
     wz, h = es.wasde()["years"], es.history()
     years = sorted((int(k) for k in wz if int(k) >= 2015), reverse=True)
     with st.expander("Export scenario: US soybean exports and the Gulf's share", expanded=True):
+        match = _match_year("soy", "draw_match")
         c1, c2, c3 = st.columns([1, 1.2, 2.2])
-        my = c1.selectbox("Marketing year", years, index=0, format_func=es.label, key="draw_exp_my")
+        my_m = max(min(match - 1, years[0]), years[-1]) if match else None
+        my = c1.selectbox("Marketing year" + (" (supply)" if match else ""), years, index=years.index(my_m) if match else 0, format_func=es.label,
+                          key=f"draw_exp_my_m{match}" if match else "draw_exp_my", disabled=bool(match))
         usda = float(round(wz[str(my)]["exports_mbu"], 1))
         key = f"draw_exp_val_{my}"
         asof = wz[str(my)]["as_of"]
-        exports = c2.number_input("US soybean exports (M bu)", 0.0, 3500.0, usda, 10.0, key=key,
+        implied = es.calendar_scenario(match, "soy")["exports"] if match else None
+        exports = c2.number_input("US soybean exports (M bu)" + (", implied" if match else ""), 0.0, 3500.0, round(implied, 1) if match else usda, 10.0,
+                                  key=f"{key}_m{match}" if match else key, disabled=bool(match),
                                   help=f"USDA's {es.label(my)} figure from the WASDE of {asof[4:]}/{asof[:4]} (a projection while the year is open, "
                                        "USDA's final number once it is over). Type any number to test it.")
-        basis = c3.selectbox("Share basis", es.BASES, index=0, key="draw_exp_basis",
+        basis = c3.selectbox("Share basis", es.BASES, index=0, key="draw_exp_basis", disabled=bool(match),
                              help="How the export number is split by where it leaves from. The averages apply a fixed share; the marginal rule moves each "
                                   "region by its historical response to a change in the total (the Gulf takes about 53 of every 100M bu, the West Coast 32, the interior 5).")
         year, manual = None, None
@@ -130,9 +151,12 @@ def _export_panel():
             m1, m2 = st.columns(2)
             manual = (m1.number_input("East Gulf share (%)", 0.0, 100.0, 58.0, 0.5, key="draw_exp_eg"),
                       m2.number_input("West Coast share (%)", 0.0, 100.0, 21.0, 0.5, key="draw_exp_wc"))
-        sc = es.scenario(exports, basis, year=year, manual=manual)
+        sc = es.calendar_scenario(match, "soy") if match else es.scenario(exports, basis, year=year, manual=manual)
         b = sc["base"]
-        if abs(exports - usda) > 0.05:
+        if match:
+            st.info(f"Matched to calendar {match}: every hub below is what FGIS inspected there in {match}. The export number is implied (inspections divided by the 2021-25 "
+                    "inspected-to-USDA ratio), not USDA's, and the share basis does not apply.")
+        elif abs(exports - usda) > 0.05:
             st.button(f"Reset to USDA ({usda:,.0f})", key="draw_exp_reset", on_click=_reset_exports, args=(key, usda))
         m = st.columns(5)
         m[0].metric("Inspected for export", f"{sc['inspected']:,.0f} M bu",
@@ -207,16 +231,19 @@ def _export_panel():
                           plot_bgcolor="white", yaxis=dict(title="% of soybeans inspected for export", ticksuffix="%", gridcolor="#e5e5e5"),
                           xaxis=dict(type="category", tickangle=-45))
         st.plotly_chart(fig, use_container_width=True, key="draw_exp_chart")
-        sens = es.sensitivity(exports).rename(columns={"East Gulf share %": "East Gulf share (%)"})
-        st.markdown(f"**The same {exports:,.0f}M bu under each share assumption** (the spread from the share alone)")
-        st.dataframe(sens.style.format({"East Gulf share (%)": "{:.1f}", "East Gulf (M bu)": "{:,.0f}", "West Coast (M bu)": "{:,.0f}",
-                                        "River scale": "{:.2f}"}, na_rep=""), hide_index=True, use_container_width=True)
+        if not match:
+            sens = es.sensitivity(exports).rename(columns={"East Gulf share %": "East Gulf share (%)"})
+            st.markdown(f"**The same {exports:,.0f}M bu under each share assumption** (the spread from the share alone)")
+            st.dataframe(sens.style.format({"East Gulf share (%)": "{:.1f}", "East Gulf (M bu)": "{:,.0f}", "West Coast (M bu)": "{:,.0f}",
+                                            "River scale": "{:.2f}"}, na_rep=""), hide_index=True, use_container_width=True)
         st.caption("Shares are of soybeans inspected for export (USDA FGIS), by marketing year from September: East Gulf = the Mississippi River, West Coast = "
                    "the Pacific Northwest, Texas Gulf = Houston/Galveston and Corpus Christi, interior = rail, truck and container loaded inland (Mexico by rail is part of it). USDA's export number is the PSD / WASDE estimate. Refresh with "
                    "build_soy_export_shares.py after each WASDE.")
     if apply_:
         text = (f"Export scenario {es.label(my)}: US exports {exports:,.0f}M bu, East Gulf {sc['east_gulf']:,.0f}M bu "
                 f"(x{sc['river_scale']:.2f} of the 2021-25 average)")
+        if match:
+            text = f"Matched to calendar {match}: FGIS's actual hub volumes (East Gulf {sc['east_gulf']:,.0f}M bu, x{sc['river_scale']:.2f} of the 2021-25 average); supply of {es.label(my)}"
         return {"river": round(sc["river_scale"], 4), "pnw": round(sc["pnw_scale"], 4), "txg": round(sc["txgulf_scale"], 4),
                 "mex": round(sc["mexico_scale"], 4), "satl": round(sc["satl_scale"], 4), "ctn": round(sc["container_scale"], 4), "lakes": round(sc["lakes_scale"], 4), "canada": round(sc["canada_scale"], 4), "supply": supply_info}, text
     return {"river": 1.0, "pnw": 1.0, "txg": 1.0, "mex": 1.0, "satl": 1.0, "ctn": 1.0, "lakes": 1.0, "canada": 1.0, "supply": supply_info}, "Hub volumes at the 2021-25 average (no export scenario)"
@@ -228,15 +255,20 @@ def _export_panel_corn():
     bal_all, h = es.balance("corn"), es.history("corn")
     years = sorted((int(k) for k in bal_all if int(k) >= 2019), reverse=True)
     with st.expander("Export scenario: US corn exports and where they leave from", expanded=True):
+        match = _match_year("corn", "drawc_match")
         c1, c2, c3 = st.columns([1, 1.2, 2.2])
-        my = c1.selectbox("Marketing year", years, index=0, format_func=es.label, key="drawc_exp_my")
+        my_m = max(min(match - 1, years[0]), years[-1]) if match else None
+        my = c1.selectbox("Marketing year" + (" (supply)" if match else ""), years, index=years.index(my_m) if match else 0, format_func=es.label,
+                          key=f"drawc_exp_my_m{match}" if match else "drawc_exp_my", disabled=bool(match))
         bal = bal_all[str(my)]
         usda = float(round(bal["exports"], 1))
         key = f"drawc_exp_val_{my}"
-        exports = c2.number_input("US corn exports (M bu)", 0.0, 6000.0, usda, 25.0, key=key,
+        implied = es.calendar_scenario(match, "corn")["exports"] if match else None
+        exports = c2.number_input("US corn exports (M bu)" + (", implied" if match else ""), 0.0, 6000.0, round(implied, 1) if match else usda, 25.0,
+                                  key=f"{key}_m{match}" if match else key, disabled=bool(match),
                                   help=f"USDA's {es.label(my)} figure from the WASDE of {bal['as_of'][5:]}/{bal['as_of'][:4]} (a projection while the year is open, USDA's final "
                                        "number once it is over). Type any number to test it.")
-        basis = c3.selectbox("Share basis", es.BASES, index=0, key="drawc_exp_basis",
+        basis = c3.selectbox("Share basis", es.BASES, index=0, key="drawc_exp_basis", disabled=bool(match),
                              help="How the export number is split by where it leaves from. The averages apply a fixed share of FGIS inspections; the marginal rule moves each "
                                   "region by its historical response to a change in the total.")
         year, manual = None, None
@@ -245,9 +277,12 @@ def _export_panel_corn():
         elif basis == es.BASES[5]:
             m1, m2 = st.columns(2)
             manual = (m1.number_input("East Gulf share (%)", 0.0, 100.0, 52.0, 0.5, key="drawc_exp_eg"), m2.number_input("West Coast share (%)", 0.0, 100.0, 22.0, 0.5, key="drawc_exp_wc"))
-        sc = es.scenario(exports, basis, year=year, manual=manual, crop="corn")
+        sc = es.calendar_scenario(match, "corn") if match else es.scenario(exports, basis, year=year, manual=manual, crop="corn")
         b = sc["base"]
-        if abs(exports - usda) > 0.05:
+        if match:
+            st.info(f"Matched to calendar {match}: every hub below is what FGIS inspected there in {match}. The export number is implied (inspections divided by the 2021-25 "
+                    "inspected-to-USDA ratio), not USDA's, and the share basis does not apply.")
+        elif abs(exports - usda) > 0.05:
             st.button(f"Reset to USDA ({usda:,.0f})", key="drawc_exp_reset", on_click=_reset_exports, args=(key, usda))
 
         def card(col, label, k, help_):
@@ -287,14 +322,17 @@ def _export_panel_corn():
         fig.update_layout(height=250, margin=dict(l=10, r=10, t=10, b=30), legend=dict(orientation="h", y=1.15, x=0), paper_bgcolor="white", plot_bgcolor="white",
                           yaxis=dict(title="% of corn inspected for export", ticksuffix="%", gridcolor="#e5e5e5"), xaxis=dict(type="category", tickangle=-45))
         st.plotly_chart(fig, use_container_width=True, key="drawc_exp_chart")
-        sens = es.sensitivity(exports, "corn").rename(columns={"East Gulf share %": "East Gulf share (%)"})
-        st.markdown(f"**The same {exports:,.0f}M bu under each share assumption** (the spread from the share alone)")
-        st.dataframe(sens.style.format({"East Gulf share (%)": "{:.1f}", "East Gulf (M bu)": "{:,.0f}", "West Coast (M bu)": "{:,.0f}", "River scale": "{:.2f}"}, na_rep=""),
-                     hide_index=True, use_container_width=True)
+        if not match:
+            sens = es.sensitivity(exports, "corn").rename(columns={"East Gulf share %": "East Gulf share (%)"})
+            st.markdown(f"**The same {exports:,.0f}M bu under each share assumption** (the spread from the share alone)")
+            st.dataframe(sens.style.format({"East Gulf share (%)": "{:.1f}", "East Gulf (M bu)": "{:,.0f}", "West Coast (M bu)": "{:,.0f}", "River scale": "{:.2f}"}, na_rep=""),
+                         hide_index=True, use_container_width=True)
         st.caption("Shares are of corn inspected for export (USDA FGIS), by marketing year from September. USDA's export number is the WASDE estimate. Refresh with "
                    "build_corn_export_shares.py and build_soy_balance.py --crop corn after each WASDE.")
     if apply_:
         text = f"Export scenario {es.label(my)}: US corn exports {exports:,.0f}M bu, East Gulf {sc['east_gulf']:,.0f}M bu (x{sc['river_scale']:.2f} of the 2021-25 average)"
+        if match:
+            text = f"Matched to calendar {match}: FGIS's actual hub volumes (East Gulf {sc['east_gulf']:,.0f}M bu, x{sc['river_scale']:.2f} of the 2021-25 average); supply of {es.label(my)}"
         return {"river": round(sc["river_scale"], 4), "pnw": round(sc["pnw_scale"], 4), "txg": round(sc["txgulf_scale"], 4), "mex": round(sc["mexico_scale"], 4),
                 "satl": round(sc["satl_scale"], 4), "ctn": 1.0, "lakes": round(sc["lakes_scale"], 4), "canada": round(sc["canada_scale"], 4), "supply": supply_info}, text
     return {"river": 1.0, "pnw": 1.0, "txg": 1.0, "mex": 1.0, "satl": 1.0, "ctn": 1.0, "lakes": 1.0, "canada": 1.0, "supply": supply_info}, "Hub volumes at the 2021-25 average (no export scenario)"
@@ -979,6 +1017,10 @@ def _render(crop):
     if st.toggle("Hub gallery: the export hubs' draw areas", value=False, key="draw_hubgallery",
                  help="The biggest export hubs' draw maps in one grid on one scale and one national view, with a ranking table."):
         _hub_gallery(inp, res, hubs, H, hm, sup, cty, geo)
+    if st.toggle("Rail validation: the model against railroad carload data (STB waybill sample)", value=False, key="draw_railcheck",
+                 help="The rail hubs' volume and origin states, and where else rail takes the crop (feedyards, mills, processors), from STB's carload waybill sample. "
+                      "It does not feed the model."):
+        rail_check.render(crop, inp, res, hub_flow, dm.hub_table(inp, res, "US"), _img_config, st.session_state.get("drawc_match_year" if corn else "draw_match_year"))
 
     st.markdown(f"**Export hubs** (annual M bu): what each hub loads under the scenario, and how much of it comes from {label}")
     ht = pd.DataFrame(dm.hub_table(inp, res, state))
