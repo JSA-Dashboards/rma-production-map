@@ -375,7 +375,11 @@ def _plant_stats(res, j, P, cty):
 
 
 _SHORT = [("Archer Daniels Midland", "ADM"), ("Louis Dreyfus Commodities LLC", "LDC"), ("Bunge North America", "Bunge"), ("Incobrasa Industries", "Incobrasa"),
-          ("Consolidated Grain & Barge", "CGB"), ("Perdue Grain and Oilseed", "Perdue"), (" Inc.", ""), (" Inc", ""), (" LLC", ""), (" Co.", "")]
+          ("Consolidated Grain & Barge", "CGB"), ("Perdue Grain and Oilseed", "Perdue"), ("Louis Dreyfus Commodities", "LDC"),
+          ("Little Sioux Corn Processors, LP", "Little Sioux"), ("Valero Renewable Fuels", "Valero"), ("POET Biorefining", "POET"), ("Vantage Corn Processors", "Vantage"),
+          ("Homeland Energy Solutions", "Homeland Energy"),
+          ("Container: East Coast port transloads (Baltimore to Charleston)", "Container: East Coast ports"), ("Canada: via Buffalo and Ogdensburg (NY)", "Canada: Buffalo/Ogdensburg"),
+          ("Canada: via Detroit (MI, OH, IN)", "Canada: via Detroit"), ("Canada: via Pembina (ND)", "Canada: via Pembina"), (" Inc.", ""), (" Inc", ""), (" LLC", ""), (" Co.", "")]
 
 
 def _short(key):
@@ -980,17 +984,22 @@ def _render(crop):
                                             marker=dict(size=[max(t["vol"], 0.5) for t in ts], sizemode="area", sizeref=ref, sizemin=4, color=color, opacity=0.85),
                                             hovertext=[t["hover"] for t in ts], hoverinfo="text"))
     show_leg = plant_j is None                                          # a plant's map has no legend: its title and colour bar say it all
-    LEG_COLS, LEG_ROW, MAP_H = 5, 22, 640                               # a safe guess of columns across the page, pixels a legend row takes, the map's own height
+    LEG_COLS, LEG_ROW, MAP_H = 4, 21, 640                               # columns that fit a normal page (an entry takes about 245 px with its spacing), a row's pixels, the map's height
     if show_leg:
-        for t_ in fig.data:                                             # long names are cut so the entries sit in an even grid
-            if t_.showlegend is not False and t_.name and len(t_.name) > 34:
-                t_.name = t_.name[:31].rstrip() + "..."
+        taken = {}
+        for t_ in fig.data:                                             # short, distinct names so the entries sit in an even grid: no bracketed notes, cut at 34, no two alike
+            if t_.showlegend is False or not t_.name:
+                continue
+            nm = re.sub(r"\s*\([^)]*\)", "", _short(t_.name)).strip() or t_.name
+            nm = nm if len(nm) <= 32 else nm[:29].rstrip() + "..."
+            taken[nm] = taken.get(nm, 0) + 1
+            t_.name = nm if taken[nm] == 1 else f"{nm[:30].rstrip()} ({taken[nm]})"
         n_leg = sum(1 for t_ in fig.data if t_.showlegend is not False and t_.name)
-        leg_px = -(-n_leg // LEG_COLS) * LEG_ROW + 16
+        leg_px = -(-n_leg // LEG_COLS) * LEG_ROW + 10
     else:
         leg_px = 0
     fig_h = MAP_H + leg_px
-    frac = leg_px / fig_h                                               # the share of the figure's height under the map
+    frac = leg_px / fig_h                                               # the share of the figure's height the legend takes, above the map
     if plant_j is not None:                                            # a title inside the figure, so the saved picture says what it shows
         pr = plants_t[plant_j]
         map_title = (f"<b>{inp['plants'][plant_j]['key']}</b>: {pr['drawn_mbu']:,.1f} M bu trucked from counties, average haul {pr['avg_miles']:,.0f} mi, "
@@ -999,9 +1008,9 @@ def _render(crop):
         map_title = f"Top buyer of each county's {W} ({'ethanol plant' if corn else 'crush plant'} or export hub)"
     else:
         map_title = f"<b>{focus}</b>: where its {W} {'comes' if corn else 'come'} from (share of each county's crop)"
-    fig.add_annotation(text=map_title, xref="paper", yref="paper", x=0.01, y=1 - 45 / fig_h, xanchor="left", yanchor="top", showarrow=False,
+    fig.add_annotation(text=map_title, xref="paper", yref="paper", x=0.01, y=1 - (leg_px + 45) / fig_h, xanchor="left", yanchor="top", showarrow=False,
                        font=dict(size=14, color="#111"), bgcolor="rgba(255,255,255,0.88)", borderpad=5)
-    fig.add_annotation(text=scenario_text, xref="paper", yref="paper", x=0.01, y=frac + 8 / fig_h, xanchor="left", yanchor="bottom", showarrow=False,
+    fig.add_annotation(text=scenario_text, xref="paper", yref="paper", x=0.01, y=8 / fig_h, xanchor="left", yanchor="bottom", showarrow=False,
                        font=dict(size=11, color="#222"), bgcolor="rgba(255,255,255,0.85)", borderpad=4)
     sc = [c for c in cty if state is None or c["state"] == state]
     if plant_j is not None:
@@ -1009,9 +1018,9 @@ def _render(crop):
     else:
         center = dict(lat=39.0, lon=-98.0) if us_mode else dict(lat=float(np.mean([c["lat"] for c in sc])), lon=float(np.mean([c["lon"] for c in sc])))
         zoom_ = 3.1 if us_mode else (5.4 if state in ("IL", "IN", "OH", "KY") else 5.0)
-    fig.update_layout(map=dict(style="carto-positron", center=center, zoom=zoom_, domain=dict(x=[0, 1], y=[frac, 1])),
+    fig.update_layout(map=dict(style="carto-positron", center=center, zoom=zoom_, domain=dict(x=[0, 1], y=[0, 1 - frac])),
                       height=fig_h, margin=dict(l=0, r=0, t=0, b=0), showlegend=show_leg,
-                      legend=dict(orientation="h", x=0, xanchor="left", y=frac, yanchor="top", font=dict(size=10), entrywidth=235, entrywidthmode="pixels",
+                      legend=dict(orientation="h", x=0, xanchor="left", y=1, yanchor="top", font=dict(size=10), entrywidth=200, entrywidthmode="pixels",
                                   itemsizing="constant", bgcolor="rgba(255,255,255,0)", tracegroupgap=0))
     st.plotly_chart(fig, use_container_width=True, key="draw_map", config=_img_config(f"draw {show_mode}", height=fig_h))
     st.caption("Save this map as a picture with the camera icon at the top right of the map (the title, legend and scenario line are part of the picture).")
