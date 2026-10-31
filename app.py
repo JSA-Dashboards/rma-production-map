@@ -4020,6 +4020,12 @@ def main():
         unsafe_allow_html=True,
     )
 
+    # The whole dashboard sits behind one shared password (draw_auth: APP_PASSWORD or DRAW_PASSWORD, Streamlit secrets or the environment). With none set it stays
+    # locked, never open. The JSA admin portal pre-authenticates its own users (preauth in its sync/apps.json), so its login is the only gate there.
+    import draw_auth
+    if not draw_auth.require_password("JSA Agricultural Intelligence Dashboard"):
+        return
+
     # Load base resources shared across both tabs
     with st.spinner("Loading..."):
         rma_data   = load_data()

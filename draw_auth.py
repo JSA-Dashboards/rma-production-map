@@ -1,8 +1,10 @@
 """
-Password gate for the Draw Territory tab: one shared password, kept out of the code.
+Password gate for the RMA dashboard (the whole app, called at the top of main()) and the Draw Territory tab (the same login, so one entry covers both):
+one shared password, kept out of the code.
 
-The password is read from DRAW_PASSWORD, first from Streamlit secrets (Streamlit Cloud: Settings > Secrets; locally .streamlit/secrets.toml, which is
-gitignored), then from the environment (the droplet: /opt/jpsi/rma-county-map/.env). With no password configured the tab stays LOCKED, never open.
+The password is read from APP_PASSWORD, or DRAW_PASSWORD if that is not set (the name the Draw Territory gate started with), first from Streamlit secrets
+(Streamlit Cloud: Settings > Secrets; locally .streamlit/secrets.toml, which is gitignored), then from the environment (the droplet: /opt/jpsi/rma-county-map/.env).
+With no password configured the page stays LOCKED, never open.
 
 Inside the JSA admin portal the sync sets st.session_state["_authed"] (preauth in sync/apps.json), so the portal's own login is the only gate there,
 the same way the Risk Analyzer's is.
@@ -21,24 +23,31 @@ MAX_TRIES = 5            # wrong passwords in a row before a pause
 PAUSE_SECONDS = 60
 
 
+NAMES = ("APP_PASSWORD", "DRAW_PASSWORD")             # first one set wins
+
+
 def configured_password() -> str:
-    try:
-        v = st.secrets.get("DRAW_PASSWORD", "")
-    except Exception:                                        # no secrets file at all
-        v = ""
-    return str(v or os.environ.get("DRAW_PASSWORD", "") or "").strip()
+    for name in NAMES:
+        try:
+            v = st.secrets.get(name, "")
+        except Exception:                                    # no secrets file at all
+            v = ""
+        v = str(v or os.environ.get(name, "") or "").strip()
+        if v:
+            return v
+    return ""
 
 
-def require_password() -> bool:
-    """True when the visitor may see the tab. Otherwise draws the password form (or the locked notice) and returns False; the caller returns."""
+def require_password(title: str = "Draw Territory") -> bool:
+    """True when the visitor may see the page. Otherwise draws the password form (or the locked notice) and returns False; the caller returns."""
     if st.session_state.get("_authed"):
         return True
     expected = configured_password()
     _, center, _ = st.columns([1, 1.2, 1])
     with center:
-        st.markdown("##### Draw Territory")
+        st.markdown(f"##### {title}")
         if not expected:
-            st.warning("This page is locked: no password has been set for it (DRAW_PASSWORD).")
+            st.warning("This page is locked: no password has been set for it (APP_PASSWORD or DRAW_PASSWORD).")
             return False
         st.caption("Enter the password to continue.")
         wait = st.session_state.get("_draw_locked_until", 0.0) - time.time()
