@@ -905,7 +905,7 @@ def _render(crop):
         fig.add_trace(go.Choroplethmap(
             geojson={"type": "FeatureCollection", "features": [f for f in geo["features"] if f["id"] in order]}, locations=fips,
             z=[order[f] for f in fips], colorscale=[[0, "#ffffff"], [1, "#ffffff"]], showscale=False, hovertext=hover, hoverinfo="text",
-            marker=dict(opacity=0.0, line=dict(width=0.3, color="#888")), name="Counties"))
+            marker=dict(opacity=0.0, line=dict(width=0.3, color="#888")), name="Counties", showlegend=False))
         legend = [(k, v) for k, v in color_of.items()] + [(h + " hub", HUB_COLORS.get(h, RIVER_COLOR)) for h in hubs] + [("Other plants", OTHER_PLANT_COLOR)]
         for lab, col in legend:
             sel = [f for f, c_ in zip(fips, colors) if c_ == col]
@@ -941,7 +941,7 @@ def _render(crop):
         fig.add_trace(go.Scattermap(lon=lon, lat=lat, mode="lines", line=dict(width=max(1.0, width * 0.8), color=color), name=lab,
                                     hovertemplate="%{fullData.name}<extra></extra>"))
     lon, lat = rm._line_xy(_in_box(rm._load("state_lines.json"), box), step=0)
-    fig.add_trace(go.Scattermap(lon=lon, lat=lat, mode="lines", line=dict(width=2.2, color="#2b2b2b"), name="State lines", hoverinfo="skip"))
+    fig.add_trace(go.Scattermap(lon=lon, lat=lat, mode="lines", line=dict(width=2.2, color="#2b2b2b"), name="State lines", hoverinfo="skip", showlegend=False))
     pts = [p for p in inp["plants"] if map_us or p["state"] in FS]
     fig.add_trace(go.Scattermap(
         lon=[p["lon"] for p in pts], lat=[p["lat"] for p in pts], mode="markers" if map_us else "markers+text",
@@ -956,11 +956,12 @@ def _render(crop):
                                     hoverinfo="text"))
     hm = _hub_markers(inp, res, hubs)
     href = 2.0 * max([m["vol"] for m in hm] + [1.0]) / (46 ** 2)               # the biggest hub is about 46 px across
+    fig.add_trace(go.Scattermap(lon=[None], lat=[None], mode="markers", marker=dict(size=14, color="#777", opacity=0.9), name="Hub circle: area = M bu/yr", hoverinfo="skip"))
     hub_tbl = {t["hub"]: t for t in dm.hub_table(inp, res, state)}
     for m in hm:
         t = hub_tbl.get(m["hub"], {})
         fig.add_trace(go.Scattermap(
-            lon=[m["lon"]], lat=[m["lat"]], mode="markers+text", name=f'{m["hub"]} hub (area = M bu/yr)', text=[f'{m["hub"]}  {m["vol"]:,.0f}'], textposition="top right",
+            lon=[m["lon"]], lat=[m["lat"]], mode="markers+text", name=f'{m["hub"]} hub (area = M bu/yr)', showlegend=False, text=[f'{m["hub"]}  {m["vol"]:,.0f}'], textposition="top right",
             textfont=dict(size=12, color="#111"), marker=dict(size=[m["vol"]], sizemode="area", sizeref=href, sizemin=9, color=HUB_COLORS.get(m["hub"], "#2b6cb0"), opacity=0.9),
             hovertext=[f'<b>{m["hub"]} hub</b><br>Modeled: {m["vol"]:,.1f} M bu/yr<br>From {label}: {t.get("from_state_mbu", 0):,.1f} M bu'], hoverinfo="text"))
     if show_terms:
@@ -972,12 +973,24 @@ def _render(crop):
             fig.add_trace(go.Scattermap(lon=[t["lon"] for t in capped_sites], lat=[t["lat"] for t in capped_sites], mode="markers", name="Has a ceiling",
                                         marker=dict(size=[max(t["vol"], 0.5) * 1.7 for t in capped_sites], sizemode="area", sizeref=ref, sizemin=7, color="#d62728"),
                                         hoverinfo="skip"))
-        for kind, lab, color in (("lock", "Terminals above Lock 27 (area = M bu/yr)", "#2b6cb0"), ("area", "Terminals below Lock 27 (area = M bu/yr)", "#00897b")):
+        for kind, lab, color in (("lock", "River terminals above Lock 27", "#2b6cb0"), ("area", "River terminals below Lock 27", "#00897b")):
             ts = [t for t in sites if t["kind"] == kind]
             if ts:
                 fig.add_trace(go.Scattermap(lon=[t["lon"] for t in ts], lat=[t["lat"] for t in ts], mode="markers", name=lab,
                                             marker=dict(size=[max(t["vol"], 0.5) for t in ts], sizemode="area", sizeref=ref, sizemin=4, color=color, opacity=0.85),
                                             hovertext=[t["hover"] for t in ts], hoverinfo="text"))
+    show_leg = plant_j is None                                          # a plant's map has no legend: its title and colour bar say it all
+    LEG_COLS, LEG_ROW, MAP_H = 5, 22, 640                               # a safe guess of columns across the page, pixels a legend row takes, the map's own height
+    if show_leg:
+        for t_ in fig.data:                                             # long names are cut so the entries sit in an even grid
+            if t_.showlegend is not False and t_.name and len(t_.name) > 34:
+                t_.name = t_.name[:31].rstrip() + "..."
+        n_leg = sum(1 for t_ in fig.data if t_.showlegend is not False and t_.name)
+        leg_px = -(-n_leg // LEG_COLS) * LEG_ROW + 16
+    else:
+        leg_px = 0
+    fig_h = MAP_H + leg_px
+    frac = leg_px / fig_h                                               # the share of the figure's height under the map
     if plant_j is not None:                                            # a title inside the figure, so the saved picture says what it shows
         pr = plants_t[plant_j]
         map_title = (f"<b>{inp['plants'][plant_j]['key']}</b>: {pr['drawn_mbu']:,.1f} M bu trucked from counties, average haul {pr['avg_miles']:,.0f} mi, "
@@ -986,9 +999,9 @@ def _render(crop):
         map_title = f"Top buyer of each county's {W} ({'ethanol plant' if corn else 'crush plant'} or export hub)"
     else:
         map_title = f"<b>{focus}</b>: where its {W} {'comes' if corn else 'come'} from (share of each county's crop)"
-    fig.add_annotation(text=map_title, xref="paper", yref="paper", x=0.01, y=0.93, xanchor="left", yanchor="top", showarrow=False,
+    fig.add_annotation(text=map_title, xref="paper", yref="paper", x=0.01, y=1 - 45 / fig_h, xanchor="left", yanchor="top", showarrow=False,
                        font=dict(size=14, color="#111"), bgcolor="rgba(255,255,255,0.88)", borderpad=5)
-    fig.add_annotation(text=scenario_text, xref="paper", yref="paper", x=0.01, y=0.01, xanchor="left", yanchor="bottom", showarrow=False,
+    fig.add_annotation(text=scenario_text, xref="paper", yref="paper", x=0.01, y=frac + 8 / fig_h, xanchor="left", yanchor="bottom", showarrow=False,
                        font=dict(size=11, color="#222"), bgcolor="rgba(255,255,255,0.85)", borderpad=4)
     sc = [c for c in cty if state is None or c["state"] == state]
     if plant_j is not None:
@@ -996,10 +1009,11 @@ def _render(crop):
     else:
         center = dict(lat=39.0, lon=-98.0) if us_mode else dict(lat=float(np.mean([c["lat"] for c in sc])), lon=float(np.mean([c["lon"] for c in sc])))
         zoom_ = 3.1 if us_mode else (5.4 if state in ("IL", "IN", "OH", "KY") else 5.0)
-    fig.update_layout(map=dict(style="carto-positron", center=center, zoom=zoom_),
-                      height=640, margin=dict(l=0, r=0, t=0, b=0), showlegend=plant_j is None,            # a plant's map has no legend: its title and colour bar say it all
-                      legend=dict(orientation="h", y=1.0, bgcolor="rgba(255,255,255,0.85)", font=dict(size=11)))
-    st.plotly_chart(fig, use_container_width=True, key="draw_map", config=_img_config(f"draw {show_mode}"))
+    fig.update_layout(map=dict(style="carto-positron", center=center, zoom=zoom_, domain=dict(x=[0, 1], y=[frac, 1])),
+                      height=fig_h, margin=dict(l=0, r=0, t=0, b=0), showlegend=show_leg,
+                      legend=dict(orientation="h", x=0, xanchor="left", y=frac, yanchor="top", font=dict(size=10), entrywidth=235, entrywidthmode="pixels",
+                                  itemsizing="constant", bgcolor="rgba(255,255,255,0)", tracegroupgap=0))
+    st.plotly_chart(fig, use_container_width=True, key="draw_map", config=_img_config(f"draw {show_mode}", height=fig_h))
     st.caption("Save this map as a picture with the camera icon at the top right of the map (the title, legend and scenario line are part of the picture).")
     st.caption(f"Fill = where most of a county's crop goes (colour = that {PLN[:-1]} or export hub; grey = a plant outside the list), or, in a hub's draw-area "
                f"view (or a plant's), the share of each county's crop that goes to that hub or plant. Hub circles are sized by the {W} the hub loads a year under the export "
