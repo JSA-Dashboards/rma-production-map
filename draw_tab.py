@@ -44,6 +44,8 @@ RIVER_COLOR = "#9ecae1"
 OTHER_PLANT_COLOR = "#bdbdbd"
 HUB_COLORS = {"Illinois River": "#4292c6", "Upper Mississippi": "#08519c", "Ohio River": "#41b6c4", "Arkansas River": "#a6761d",
               "St. Louis": "#00897b", "Lower Mississippi": "#7fcdbb", "Pacific Northwest": "#d4a017", "Texas Gulf": "#c0392b", "Mexico Rail": "#8e44ad", "Louisiana Rail": "#e67e22", "Mobile": "#16a085", "South Atlantic": "#5d6d7e", "Great Lakes": "#2874a6"}
+PLANT_COLOR = "#7cb342"                      # every plant is this one colour on the top-buyer map; each export hub keeps its own
+CLASS_I = ["UP", "BNSF", "CPKC", "CN", "CSXT", "NS"]
 PALETTE = ["#e41a1c", "#377eb8", "#4daf4a", "#984ea3", "#ff7f00", "#a65628", "#f781bf", "#17becf", "#bcbd22", "#7f7f7f", "#1b9e77", "#d95f02"]
 
 
@@ -757,8 +759,14 @@ def _render(crop):
     show_rivers = o3.checkbox("Rivers", value=True, key="draw_rivers")
     us_mode = state is None
     map_us = us_mode or plant_j is not None                           # a plant's draw map always shows the whole country, centred on the plant
-    rails = st.multiselect("Railroads", list(rm.RAILROADS), default=["UP", "BNSF"] if us_mode else ["UP", "BNSF", "CSXT", "NS", "CN", "TPW", "IAIS"],
-                           format_func=lambda k: rm.RAILROADS[k][0], key="draw_rails_us" if us_mode else "draw_rails")
+    rc1, rc2 = st.columns([1, 1])
+    class_i = rc1.multiselect("Railroads", CLASS_I, default=["UP", "BNSF"] if us_mode else ["UP", "BNSF", "CSXT", "NS", "CN"],
+                              format_func=lambda k: rm.RAILROADS[k][0], key="draw_class1_us" if us_mode else "draw_class1")
+    short_all = [k for k in rm.RAILROADS if k not in CLASS_I]
+    short_sel = rc2.multiselect("Short lines (laid over the map)", short_all, default=[], format_func=lambda k: rm.RAILROADS[k][0], key="draw_short_us" if us_mode else "draw_short",
+                                help="Toledo, Peoria & Western, Iowa Interstate, the Watco lines and the other short lines that serve grain plants and shippers. Pick the ones to draw; "
+                                     "each one picked is drawn over the big railroads and added to the legend.")
+    rails = class_i + short_sel                                             # drawn in this order, so the short lines sit on top
     if corn:
         barge_fed, dest_add, frac_items = {}, 0.0, {}                       # barge-fed crush plants and plant start-ups are soybean features
     else:
@@ -902,7 +910,7 @@ def _render(crop):
             top_name = hubs[th] + " hub" if hub_wins else inp["plants"][tp]["key"]
             top_flow = H[i, th] if hub_wins else P[i, tp]
             fips.append(cty[i]["fips"])
-            colors.append(HUB_COLORS.get(hubs[th], RIVER_COLOR) if hub_wins else color_of.get(inp["plants"][tp]["key"], OTHER_PLANT_COLOR))
+            colors.append(HUB_COLORS.get(hubs[th], RIVER_COLOR) if hub_wins else PLANT_COLOR)
             hover.append(f'{cty[i]["name"]}, {cty[i]["state"]}<br>{cty[i]["supply_bu"] / 1e6:.1f} M bu<br>mostly to: {top_name} ({top_flow / max(tot, 1) * 100:.0f}%)'
                          f'<br>{P[i].sum() / max(tot, 1) * 100:.0f}% to {PLN}, {H[i].sum() / max(tot, 1) * 100:.0f}% to export hubs')
         order = {f: i for i, f in enumerate(fips)}
@@ -910,7 +918,7 @@ def _render(crop):
             geojson={"type": "FeatureCollection", "features": [f for f in geo["features"] if f["id"] in order]}, locations=fips,
             z=[order[f] for f in fips], colorscale=[[0, "#ffffff"], [1, "#ffffff"]], showscale=False, hovertext=hover, hoverinfo="text",
             marker=dict(opacity=0.0, line=dict(width=0.3, color="#888")), name="Counties", showlegend=False))
-        legend = [(k, v) for k, v in color_of.items()] + [(h + " hub", HUB_COLORS.get(h, RIVER_COLOR)) for h in hubs] + [("Other plants", OTHER_PLANT_COLOR)]
+        legend = [(PLN.capitalize(), PLANT_COLOR)] + [(h + " hub", HUB_COLORS.get(h, RIVER_COLOR)) for h in hubs]
         for lab, col in legend:
             sel = [f for f, c_ in zip(fips, colors) if c_ == col]
             if not sel:
@@ -937,7 +945,7 @@ def _render(crop):
     if show_rivers:                                                      # the navigable grain rivers, as on the Rail Map tab
         water = rm._load("waterways.json")
         lon, lat = rm._line_xy(_in_box([p for r in rm.GRAIN_RIVERS for p in water.get(r, [])], box), step=0)
-        fig.add_trace(go.Scattermap(lon=lon, lat=lat, mode="lines", line=dict(width=3.5, color="#4aa3ff"), name="Rivers", hoverinfo="skip"))
+        fig.add_trace(go.Scattermap(lon=lon, lat=lat, mode="lines", line=dict(width=3.5, color="#4aa3ff"), name="Rivers", hoverinfo="skip", showlegend=False))
     lines = rm._load("rail_lines.json")
     for code in rails:
         lab, color, width = rm.RAILROADS[code]
@@ -950,7 +958,7 @@ def _render(crop):
     fig.add_trace(go.Scattermap(
         lon=[p["lon"] for p in pts], lat=[p["lat"] for p in pts], mode="markers" if map_us else "markers+text",
         marker=dict(size=[8 + 14 * (p["need_bu"] / 1e8) ** 0.5 for p in pts], color="#222"),
-        text=[p["city"] for p in pts], textposition="top right", textfont=dict(size=10), name=PLN.capitalize(),
+        text=[p["city"] for p in pts], textposition="top right", textfont=dict(size=10), name=PLN.capitalize() + " (dots)", showlegend=False,
         hovertext=[f'{p["key"]}<br>need {p["need_bu"] / 1e6:,.1f} M bu/yr' for p in pts], hoverinfo="text"))
     if plant_j is not None:                                            # the selected plant: a red ring under a black dot, with its name
         pl = inp["plants"][plant_j]
@@ -960,7 +968,6 @@ def _render(crop):
                                     hoverinfo="text"))
     hm = _hub_markers(inp, res, hubs)
     href = 2.0 * max([m["vol"] for m in hm] + [1.0]) / (46 ** 2)               # the biggest hub is about 46 px across
-    fig.add_trace(go.Scattermap(lon=[None], lat=[None], mode="markers", marker=dict(size=14, color="#777", opacity=0.9), name="Hub circle: area = M bu/yr", hoverinfo="skip"))
     hub_tbl = {t["hub"]: t for t in dm.hub_table(inp, res, state)}
     for m in hm:
         t = hub_tbl.get(m["hub"], {})
@@ -1024,7 +1031,7 @@ def _render(crop):
                                   itemsizing="constant", bgcolor="rgba(255,255,255,0)", tracegroupgap=0))
     st.plotly_chart(fig, use_container_width=True, key="draw_map", config=_img_config(f"draw {show_mode}", height=fig_h))
     st.caption("Save this map as a picture with the camera icon at the top right of the map (the title, legend and scenario line are part of the picture).")
-    st.caption(f"Fill = where most of a county's crop goes (colour = that {PLN[:-1]} or export hub; grey = a plant outside the list), or, in a hub's draw-area "
+    st.caption(f"Fill = where most of a county's crop goes (one colour for every {PLN[:-1]}, a colour of its own for each export hub), or, in a hub's draw-area "
                f"view (or a plant's), the share of each county's crop that goes to that hub or plant. Hub circles are sized by the {W} the hub loads a year under the export "
                "scenario above. The Pacific Northwest draws only from counties on BNSF or UP track; Texas Gulf and Mexico by rail from counties on BNSF, UP or "
                "CPKC track, the Great Lakes from OH, IN, MI and IL by truck and rail, Canada from the states behind each gateway (MI at Detroit, NY at Buffalo, ND at Pembina), Louisiana from UP, CPKC or CN track and Mobile from CSX, NS or CN track and the South Atlantic from CSX or NS track; Mexico's draw by state is held to FGIS rail inspections.")
