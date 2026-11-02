@@ -59,6 +59,9 @@ def _wheat_final(inp):
             f"is the regional capacity logic described above. Road miles: {inp['source']}.")
 
 
+_MEXICO_GAP = ("Uninspected land gap, named: Census puts about $500-550M a year of corn (roughly 85-95M bu) through Progreso TX in 2024-25, a road-only bridge in the Rio Grande Valley (from $76M in 2022), and the other crossings add 25-35M bu of trucks. How that corn reaches Progreso (rail to a Valley transload, or long-haul truck) is not known, so no truck hub is modeled.")
+
+
 def _corn_final(inp):
     return (f"Supply: 5-year average NASS county corn production (plus carry-in stocks and imports as set above). Plants: JSA's ethanol list, running plants with a capacity "
             f"(food mills and wet-mill processors have none on the list, so their corn stays in 'other'). Road miles: {inp['source']}. Ethanol plants nationally compete for the "
@@ -319,10 +322,10 @@ def _export_panel_corn():
         def card(col, label, k, help_):
             col.metric(label, f"{sc[k]:,.0f} M bu", f"{sc[k] / b[k] - 1:+.0%} vs 2021-25" if b[k] else "", delta_color="off", help=help_)
         m = st.columns(5)
-        m[0].metric("Inspected for export", f"{sc['inspected']:,.0f} M bu", help=f"Inspections run about {(1 - b['ratio']) * 100:.1f}% below USDA's export number (2021-25 average): trucks into Mexico and Canada are not inspected.")
+        m[0].metric("Inspected for export", f"{sc['inspected']:,.0f} M bu", help=f"Inspections run about {(1 - b['ratio']) * 100:.1f}% below USDA's export number (2021-25 average): trucks into Mexico and Canada are not inspected. " + _MEXICO_GAP)
         card(m[1], "East Gulf", "east_gulf", f"{sc['east_gulf_share']:.1f}% of inspections. The 2021-25 average is {b['east_gulf']:,.0f}M bu.")
         card(m[2], "West Coast", "west_coast", f"{sc['west_coast_share']:.1f}% of inspections. The 2021-25 average is {b['west_coast']:,.0f}M bu.")
-        card(m[3], "Mexico by rail", "mexico_rail", "FGIS rail inspections for Mexico (part of the interior number). Mexico's ship cargoes load at the East Gulf and are in that number.")
+        card(m[3], "Mexico by rail", "mexico_rail", "FGIS rail inspections for Mexico (part of the interior number). Mexico's ship cargoes load at the East Gulf and are in that number. " + _MEXICO_GAP)
         card(m[4], "Canada (truck, rail)", "canada", "US corn that crosses into Canada by truck or rail, mostly through Pembina ND (Census customs district of exit; FGIS does not inspect it).")
         m2_ = st.columns(5)
         card(m2_[0], "Texas Gulf", "west_gulf", "FGIS corn inspections at Houston/Galveston and Corpus Christi.")
@@ -959,7 +962,7 @@ def _render(crop):
             st.dataframe(chk.style.format("{:,.0f}"), use_container_width=True)
             st.caption(f"USDA's corn for ethanol and by-products is {bal_['ethanol']:,.0f}M bu against {float(res['need'].sum()) / 1e6:,.0f}M for the plants at the run rate above "
                        f"(x{bal_['ethanol'] / max(float(res['need'].sum()) / 1e6, 1) * util:,.2f} of nameplate): the run-rate slider is where to close that gap. The hubs run on "
-                       "inspections, about 8% below USDA's export number (trucks into Mexico and Canada are not inspected). 'What is left' is feed, food mills, seed and "
+                       "inspections, about 8% below USDA's export number (trucks into Mexico and Canada are not inspected; " + _MEXICO_GAP + "). 'What is left' is feed, food mills, seed and "
                        "ending stocks, so it should land near USDA's last line; livestock feed is the big unknown, because the model has no livestock demand by county.")
     elif bal_:
         n_p0 = len(inp["plants"])
