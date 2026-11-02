@@ -1069,9 +1069,103 @@ def _wc_factors(year: int, label: str):
     return {s_: v / 100.0 for s_, v in pct.items()}, 0.0
 
 
+_WC_GROUP_LABEL = {"WINTER": "Winter wheat", "SPRING, (EXCL DURUM)": "Spring wheat (excl. durum)"}
+
+
+@st.cache_data(show_spinner=False)
+def _wc_prior_map() -> dict:
+    """{(county fips, class): weight} from data/wheat/county_class_prior.csv (build_wheat_county_prior.py): where inside a
+    state each market class is more likely grown. Ratios only; the fit below makes the totals match NASS."""
+    try:
+        d = pd.read_csv(Path(__file__).parent / "data" / "wheat" / "county_class_prior.csv", dtype={"fips": str})
+    except Exception:
+        return {}
+    return {(f_, c_): float(w_) for f_, c_, w_ in zip(d["fips"], d["class"], d["weight"])}
+
+
+@st.cache_data(show_spinner=False)
+def _wc_prior_states() -> dict:
+    """{state: {WINTER | SPRING: basis text}} for the states that have a regional prior."""
+    try:
+        d = pd.read_csv(Path(__file__).parent / "data" / "wheat" / "county_class_prior.csv", dtype={"fips": str})
+    except Exception:
+        return {}
+    return {s_: {gr: "; ".join(sorted(set(g2["basis"]))) for gr, g2 in g.groupby("group")} for s_, g in d.groupby("state")}
+
+
+def _wc_ipf(rows: dict, targets: dict, seed: dict, iters: int = 400) -> dict:
+    """Iterative proportional fitting: {row: total} x {class: total} from relative weights {(row, class): w}. Row totals are
+    scaled by sum(targets)/sum(rows) first, so the class totals are met exactly; returns {(row, class): value}."""
+    ids = [i for i, v in rows.items() if v > 0]
+    cls = [c for c, v in targets.items() if v > 0]
+    if not ids or not cls:
+        return {}
+    r = np.array([rows[i] for i in ids], dtype=float)
+    t = np.array([targets[c] for c in cls], dtype=float)
+    r = r * (t.sum() / r.sum())
+    a = np.array([[max(seed.get((i, c), 1.0), 1e-6) for c in cls] for i in ids], dtype=float)
+    x = a / a.sum(axis=1, keepdims=True) * r[:, None]
+    for _ in range(iters):
+        x = x * (t / np.maximum(x.sum(axis=0), 1e-12))[None, :]
+        x = x * (r / np.maximum(x.sum(axis=1), 1e-12))[:, None]
+        if np.abs(x.sum(axis=0) - t).max() <= 1e-9 * t.sum():
+            break
+    x = x * (t / np.maximum(x.sum(axis=0), 1e-12))[None, :]          # land on the class totals exactly
+    return {(i, c): float(x[n, m]) for n, i in enumerate(ids) for m, c in enumerate(cls)}
+
+
+def _wc_split_state(state: str, year: int, label: str, cache_ver, named_w: dict, est_w):
+    """One state's winter (or spring) production split to the market class `label`.
+    named_w {fips: bu} = counties NASS lists; est_w {fips: bu} = estimated counties (None when only the named ones are known,
+    then the unlisted remainder is one pooled row). Returns ({fips: class bu} named, {fips: class bu} estimated). Class totals are
+    the state's NASS winter (spring) production x its class share; the regional prior only decides which counties carry them."""
+    group = _WC_CLASSES[label][0]
+    classes = [l for l, v in _WC_CLASSES.items() if v[0] == group and v[1]]
+    share = {}
+    for c in classes:
+        f, d = _wc_factors(year, c)
+        share[c] = f.get(state, d)
+    sg = _load_nass_state_raw("Wheat", year, "production", _base_ver(cache_ver))
+    S = float(sg.loc[sg["State"] == state, "Value"].sum()) if not sg.empty else 0.0
+    sum_n, sum_e = sum(named_w.values()), (sum(est_w.values()) if est_w else 0.0)
+    if S <= 0:
+        S = sum_n + sum_e
+    prior = _wc_prior_map() if state in _wc_prior_states() else {}
+    if not prior:                                                     # no regional prior: the state's mix in every county
+        k = share[label]
+        return {f_: v * k for f_, v in named_w.items()}, {f_: v * k for f_, v in (est_w or {}).items()}
+    targets = {c: S * share[c] for c in classes}
+    if sum(targets.values()) <= 0:
+        return {f_: 0.0 for f_ in named_w}, {f_: 0.0 for f_ in (est_w or {})}
+    p0 = {}
+    for f_ in list(named_w) + list(est_w or {}):
+        a = {c: prior.get((f_, c), 1.0) for c in classes}
+        tot = sum(a.values())
+        p0[f_] = {c: a[c] / tot for c in classes}
+    rows = dict(named_w)
+    w_u = sum_e if est_w is not None else max(S - sum_n, 0.0)
+    seed = {(f_, c): p0[f_][c] for f_ in named_w for c in classes}
+    if w_u > 0:                                                       # the counties NASS does not list: one pooled row
+        rows["__U__"] = w_u
+        base = named_w if sum_n > 0 else (est_w or {})            # always the named counties' mix, so the named view and the completed view agree
+        bt = sum(base.values()) or 1.0
+        for c in classes:
+            seed[("__U__", c)] = sum(w * p0[f_][c] for f_, w in base.items()) / bt
+    x = _wc_ipf(rows, targets, seed)
+    named_out = {f_: x.get((f_, label), 0.0) for f_ in named_w}
+    est_out: dict = {}
+    if est_w:
+        u = {c: x.get(("__U__", c), 0.0) for c in classes}
+        seed2 = {(f_, c): p0[f_][c] for f_ in est_w for c in classes}
+        x2 = _wc_ipf(dict(est_w), u, seed2)
+        est_out = {f_: x2.get((f_, label), 0.0) for f_ in est_w}
+    return named_out, est_out
+
+
 def _wc_adjust(df, crop: str, year: int, stat_type: str, cols, cache_ver):
-    """Market-class views: the state's class share applied to its winter (or spring) production, so the
-    counties of a state add up to the NASS state class total exactly as the group does."""
+    """Market-class views: the state's class share applied to its winter (or spring) production, so the counties of a
+    state add up to the NASS state class total exactly as the group does. In states with a regional prior the counties
+    NASS lists get their own class mix (see _wc_split_state) instead of the flat state mix."""
     lab = _wc_of(cache_ver)
     if (crop != "Wheat" or not lab or not _WC_CLASSES[lab][1] or stat_type != "production"
             or df is None or df.empty or "State" not in df.columns):
@@ -1082,6 +1176,12 @@ def _wc_adjust(df, crop: str, year: int, stat_type: str, cols, cache_ver):
     for c in cols:
         if c in out.columns:
             out[c] = out[c] * fac
+    vc = next((c for c in cols if c in df.columns), None)
+    if vc and "fips" in df.columns and "County" in df.columns and not df["fips"].duplicated().any():
+        for s_ in sorted(set(df["State"]) & set(_wc_prior_states())):
+            m = (df["State"] == s_) & ~df["County"].str.lower().str.startswith("other", na=False)
+            nv, _ = _wc_split_state(s_, year, lab, cache_ver, dict(zip(df.loc[m, "fips"], df.loc[m, vc].astype(float))), None)
+            out.loc[m, vc] = df.loc[m, "fips"].map(nv)
     return out
 
 
@@ -1637,8 +1737,34 @@ def _build_adj(state_fips: str, cache_ver: str, _geo: dict) -> dict:
     return adj
 
 
-@st.cache_data(show_spinner=False)
+def _wc_completed_class(state: str, year: int, label: str, cache_ver) -> pd.DataFrame:
+    """Completed counties (named + estimated, tied to the state) for a wheat MARKET class: the NASS group's completed
+    counties (winter or spring) split by _wc_split_state, so every view of a class comes from one set of numbers."""
+    group = _WC_CLASSES[label][0]
+    cd = get_completed_county_data("Wheat", state, year, "production", _no_wc(cache_ver) + "|wc:" + _WC_GROUP_LABEL[group])
+    if cd.empty:
+        return cd
+    est_m = cd["is_estimated"].astype(bool)
+    named_w = dict(zip(cd.loc[~est_m, "fips"], cd.loc[~est_m, "Value"].astype(float)))
+    est_w = dict(zip(cd.loc[est_m, "fips"], cd.loc[est_m, "Value"].astype(float))) if est_m.any() else None
+    nv, ev = _wc_split_state(state, year, label, cache_ver, named_w, est_w)
+    out = cd.copy()
+    out["Value"] = [nv.get(f_, ev.get(f_, 0.0)) for f_ in out["fips"]]
+    return out
+
+
 def get_completed_county_data(crop: str, state: str, year: int,
+                              stat_type: str, cache_ver: str) -> pd.DataFrame:
+    """Tier-1 completed counties. A wheat MARKET class is split here, outside the cache, so a NASS lookup that failed for
+    the class shares (a throttle) is not remembered as zeros; the group frames underneath stay cached."""
+    lab = _wc_of(cache_ver)
+    if crop == "Wheat" and lab and _WC_CLASSES[lab][1] and stat_type == "production":
+        return _wc_completed_class(state, year, lab, cache_ver)
+    return _get_completed_county_data(crop, state, year, stat_type, cache_ver)
+
+
+@st.cache_data(show_spinner=False)
+def _get_completed_county_data(crop: str, state: str, year: int,
                                stat_type: str, cache_ver: str) -> pd.DataFrame:
     """
     Generic Tier-1 estimation for any additive stat type:
@@ -4284,9 +4410,10 @@ def main():
                     st.caption(
                         f"{_tls.wc}: NASS publishes this class only as a share of each state's "
                         f"{'winter' if _wc_grp == 'WINTER' else 'spring'} wheat, so the state figure is NASS "
-                        f"{_wc_grp.split(',')[0].lower()} production x that share, and each county gets the "
-                        "state's mix (county class detail is not published). Counties still add up to the "
-                        "state class total."
+                        f"{_wc_grp.split(',')[0].lower()} production x that share. NASS does not publish class by "
+                        "county, so inside a state a regional prior (shown under the state map) decides which "
+                        "counties carry the class where one exists; otherwise every county gets the state's mix. "
+                        "Counties still add up to the state class total."
                     )
                 else:
                     st.caption(
@@ -4385,6 +4512,9 @@ def main():
                         [_load_state_for_stat(nass_crop, y, stat_type, _session_ver()) for y in _sy],
                     )
 
+            if _tls.wc and _WC_ERR:
+                st.warning("NASS did not return the class shares just now (" + next(iter(_WC_ERR.values()))[:90] +
+                           "), so market-class numbers can show zero. Press Refresh to try again.")
             if nass_df.empty and nass_year != FORECAST_YEAR:
                 _why = _NASS_COUNTY_ERR.get((nass_crop, nass_year))
                 if _why:
@@ -4586,6 +4716,38 @@ def main():
                             key="nass_map_view",
                             index=0,
                         )
+
+                    if _tls.wc and _WC_CLASSES[_tls.wc][1] and not _is_forecast_year:
+                        _wc_basis = _wc_prior_states().get(nass_state, {}).get(
+                            "WINTER" if _WC_CLASSES[_tls.wc][0] == "WINTER" else "SPRING")
+                        st.caption(
+                            f"Where {ABBR_TO_NAME.get(nass_state, nass_state)}'s {_tls.wc.lower()} is grown inside the state: "
+                            + (f"regional prior ({_wc_basis}). " if _wc_basis else
+                               "no regional prior for this state, so every county carries the state's mix. ")
+                            + "Counties still add up to the state class total."
+                        )
+                        with st.expander(f"Class mix by county: {_tls.wc}, {ABBR_TO_NAME.get(nass_state, nass_state)}", expanded=False):
+                            _wc_g = _WC_CLASSES[_tls.wc][0]
+                            _wc_grp = get_completed_county_data(
+                                "Wheat", nass_state, nass_year, "production",
+                                _no_wc(_session_ver()) + "|wc:" + _WC_GROUP_LABEL[_wc_g])
+                            _wc_cls = get_completed_county_data("Wheat", nass_state, nass_year, "production", _session_ver())
+                            if _wc_grp.empty or _wc_cls.empty:
+                                st.info("No county data for this class in this state and year.")
+                            else:
+                                _wc_t = _wc_grp[["fips", "County", "Value", "is_estimated"]].rename(columns={"Value": "grp"}).merge(
+                                    _wc_cls[["fips", "Value"]].rename(columns={"Value": "cls"}), on="fips", how="left")
+                                _wc_t["share"] = (_wc_t["cls"] / _wc_t["grp"].replace(0, np.nan) * 100).round(1)
+                                _wc_t = _wc_t.sort_values("cls", ascending=False)
+                                st.dataframe(
+                                    pd.DataFrame({
+                                        "County": _wc_t["County"],
+                                        f"{'Winter' if _wc_g == 'WINTER' else 'Spring'} production (bu)": _wc_t["grp"].map(lambda v: f"{v:,.0f}"),
+                                        f"{_tls.wc} (bu)": _wc_t["cls"].map(lambda v: f"{v:,.0f}"),
+                                        "% of the county's crop": _wc_t["share"].map(lambda v: f"{v:.1f}%" if pd.notna(v) else "—"),
+                                        "Estimated county": _wc_t["is_estimated"].map(lambda v: "est." if v else ""),
+                                    }),
+                                    use_container_width=True, hide_index=True)
 
                     if (state_df.empty or state_df["Production"].sum() == 0) and not _is_forecast_year:
                         st.warning(

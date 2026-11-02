@@ -10,7 +10,7 @@ What it does, from the syntax tree of app.py (not text matching, so it follows t
   * writes a main() made of the dashboard's own set-up (styling, header, boundaries, adjustments), the NASS tab block as it is, and the footer; every other tab is dropped;
   * a one-line shim makes `tab_nass` an always-open tab, so the tab's `if tab_nass.open:` guard still works;
   * a few visible texts are swapped for the mirror (page title, header, the line that compares the NASS and RMA tabs);
-  * copies the three logos, the theme and a slim requirements.txt, and refuses to write (exit 1) if the code no longer has the shape it expects or the result does not compile.
+  * copies the three logos, the theme, the wheat class prior file and a slim requirements.txt, and refuses to write (exit 1) if the code no longer has the shape it expects or the result does not compile.
 It never edits app.py. Secrets the mirror needs: NASS_API_KEY only.
 """
 import ast
@@ -23,6 +23,7 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 APP = os.path.join(HERE, "app.py")
 LOGOS = ["50 Year logo JSA.png", "Transparent Smal logo.png", "logo-full.png"]
+DATA_FILES = ["data/wheat/county_class_prior.csv"]      # build_wheat_county_prior.py writes it
 
 # visible texts changed for the mirror: (old, new). Each must be found exactly once or the sync stops, so a change in app.py is noticed, not silently skipped.
 SWAPS = [
@@ -196,6 +197,12 @@ def main(out_dir, locked):
     for lg in LOGOS:
         shutil.copy2(os.path.join(HERE, "assets", lg), os.path.join(out_dir, "assets", lg))
     shutil.copy2(os.path.join(HERE, ".streamlit", "config.toml"), os.path.join(out_dir, ".streamlit", "config.toml"))
+    for rel in DATA_FILES:                                                  # data the NASS tab reads next to app.py (the wheat class priors)
+        src = os.path.join(HERE, *rel.split("/"))
+        if not os.path.exists(src):
+            fail(f"{rel} is missing (run its builder first)")
+        os.makedirs(os.path.dirname(os.path.join(out_dir, *rel.split("/"))), exist_ok=True)
+        shutil.copy2(src, os.path.join(out_dir, *rel.split("/")))
     imports = {l.split()[1].split(".")[0] if l.startswith("import") else l.split()[1].split(".")[0] for l in code.split("\n") if l.startswith(("import ", "from "))}
     reqs = ["streamlit>=1.35.0", "pandas>=2.0.0", "numpy>=1.24.0", "plotly>=5.24.0"]
     if "geopandas" in imports:
