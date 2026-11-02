@@ -21,6 +21,8 @@ INPUTS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "draw"
 NODES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "draw", "river_nodes.json")
 INPUTS_CORN = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "draw", "draw_inputs_corn.json")        # the corn model: same solver, other inputs
 NODES_CORN = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "draw", "river_nodes_corn.json")
+INPUTS_WHEAT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "draw", "draw_inputs_wheat.json")      # the wheat model: no named plants, class-aware hubs
+NODES_WHEAT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "draw", "river_nodes_wheat.json")
 RAIL_SERVICE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "draw", "county_rail_service.json")
 CENTS_PER_BU_MILE = 0.02            # Kolten's NY note: 3 cents/bu for 152 miles. Superseded by the AMS truck curve below (10-25x higher); kept only as the fallback when no curve is given
 TRUCK_RATES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "draw", "truck_rates_ams.json")
@@ -113,7 +115,7 @@ def run_fraction(start_ym: str, ramp_months: int, my: int) -> float:
 
 def solve(inputs: dict, *, rate=CENTS_PER_BU_MILE, tau=1.0, river_premium=0.0, plant_premium=None, util=1.0, river_share=1.0, iters=400,
           nodes=None, lock_scale=1.0, area_mbu=None, pin_cap_mbu=None, river_scale=1.0, pnw_reach_miles=30.0, rail_scales=None, rail_rates=None, barge_fed=None, rail_tau=None, plant_extra_mbu=None, supply_total_bu=None, plant_run_fraction=None,
-          truck=None, volume_response=0.0, volume_band=0.10):
+          truck=None, volume_response=0.0, volume_band=0.10, other_local=None, other_rest_weight=None):
     """Flows (bu) county x buyer.
 
     rate           freight, cents per bushel-mile: used only when `truck` is None
@@ -123,6 +125,9 @@ def solve(inputs: dict, *, rate=CENTS_PER_BU_MILE, tau=1.0, river_premium=0.0, p
                    per-plant bid adjustments) and, with `river_premium`, the barge-loading targets. Capped at +/- `volume_band`. Without it a bid advantage does nothing: with
                    fixed volumes the solver absorbs any constant added to one buyer's cost. The swing comes out of, or goes into, 'other' (feed, stocks).
     volume_band    the cap on that swing, as a fraction of the volume (0.10 = +/-10%)
+    other_local    per-county share (0-1) of its crop that stays for domestic use IN ITS OWN REGION ('other': milling, feed, seed, stocks). None = domestic use leaves every county pro
+                   rata (corn, soybeans). Wheat passes each county's regional flour-milling share first (wheat_scenario.milling_local); whatever domestic use is left after that
+                   is taken pro rata from what remains, in proportion to `other_rest_weight` (per county, default 1: a region that mostly exports gives up little of the rest).
     tau            crossover softness, cents/bu: smaller = sharper territories, larger = more overlap
     river_premium  cents/bu the river terminals pay over the crush plants (net of their own basis), applied to every terminal
     plant_premium  {plant key: cents/bu} per-plant bid advantage
@@ -249,8 +254,20 @@ def solve(inputs: dict, *, rate=CENTS_PER_BU_MILE, tau=1.0, river_premium=0.0, p
         groups, tscale = None, 1.0
         river_total = residual * river_share
     other_total = residual - river_total
-    if other_total > 0:                                                        # the non-river, non-crush beans leave every county pro rata
-        supply = supply * (1 - other_total / total)
+    if other_total > 0:                                                        # the non-river, non-crush beans leave every county pro rata (or by `other_weight`)
+        if other_local is None:
+            supply = supply * (1 - other_total / total)
+        else:
+            loc = np.clip(np.asarray(other_local, float), 0.0, 1.0) * supply
+            if loc.sum() > other_total:
+                loc = loc * (other_total / loc.sum())
+            supply = supply - loc
+            rest = other_total - loc.sum()
+            if rest > 0:
+                w = np.ones(len(supply)) if other_rest_weight is None else np.maximum(np.asarray(other_rest_weight, float), 0.0)
+                base = (supply * w).sum()
+                if base > 0:
+                    supply = supply - np.minimum(supply, supply * w * min(rest / base, 1e9))
         total = supply.sum()
     caps = np.full(n_p + n_r, np.inf)
     for j, r_ in enumerate(river):

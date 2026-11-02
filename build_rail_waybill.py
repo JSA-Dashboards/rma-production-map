@@ -5,6 +5,8 @@ and waybill_<crop>_monthly.csv. Source: USDA AgTransport xve5-xb56 (a stratified
     python build_rail_waybill.py [corn|soy] [first_year] [last_year]
 
 Commodity codes (STB's STCC5, checked 10-31): 01132 corn, 01144 soybeans, 01137 wheat. (01137 is wheat, not corn.)
+
+    python build_rail_waybill.py wheat 2019 2024      # added 11-02 for the wheat Draw Territory model
 Fields kept per row of the flows file (one row per year x origin x termination x kind of move):
   move     'Type of Move (inferred)': 0 neither import nor export, 1 import, 2 export, 3 import and export
   water    'Type of Move via Water': 0 none, 1 ex-lake, 2 lake cargo, 3 intercoastal, 4 coastwise, 5 inland waterways (rail to or from a barge)
@@ -24,7 +26,7 @@ import urllib.request
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 BASE = "https://agtransport.usda.gov/resource/xve5-xb56.json?"
-STCC = {"corn": "01132", "soy": "01144"}
+STCC = {"corn": "01132", "soy": "01144", "wheat": "01137"}
 
 
 def q(**params):

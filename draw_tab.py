@@ -16,10 +16,12 @@ import draw_model as dm
 import export_scenario as es
 import rail_check
 import rail_map as rm
+import wheat_scenario as ws
 
 FOCUS_STATES = ["IL", "IN", "IA", "MO", "WI", "KY", "OH"]
 FOCUS_CORN = ["IA", "IL", "NE", "MN", "IN", "OH", "SD", "KS", "WI", "MO", "ND", "MI", "KY"]                 # the corn belt is wider than the soybean model's Illinois ring
-PATHS = {"soy": (dm.INPUTS, dm.NODES), "corn": (dm.INPUTS_CORN, dm.NODES_CORN)}
+FOCUS_WHEAT = ["KS", "ND", "MT", "WA", "ID", "OR", "SD", "NE", "OK", "TX", "CO", "MN", "MO", "IL", "OH", "IN", "MI"]
+PATHS = {"soy": (dm.INPUTS, dm.NODES), "corn": (dm.INPUTS_CORN, dm.NODES_CORN), "wheat": (dm.INPUTS_WHEAT, dm.NODES_WHEAT)}
 _CORN_INTRO = ("Where each county's corn goes. Ethanol plants fill to their annual need (capacity in million gallons at 2.9 gallons a bushel, times the run rate below; "
                "JSA's plant list, running plants only). The export hubs take the rest: each hub loads the corn the Corps, USDA and FGIS data say it loads (the river "
                "stretches from barge and lock data, the Pacific Northwest, Texas Gulf, Mexico by rail, the Great Lakes, South Atlantic and the Canadian gateways from FGIS and "
@@ -34,6 +36,27 @@ _CORN_TARGETS = ("Corn hub targets come from the same sources as the soybean one
 _CORN_NODES = ("Upriver nodes: Corps lock tonnage (Food and Farm Products, both directions) scaled to USDA downbound grain at the seven locks USDA measures, corn = USDA's corn "
                "share; each pool = flow at its lower lock less flow at the upper one. Below Lock 27: Corps Waterborne Commerce port tonnage (corn shipped, 2021-24 average). "
                "Whatever the East Gulf inspects beyond these barge loadings is the Louisiana rail and truck hub. See river_segments_corn.json and river_nodes_corn.json.")
+
+
+_WHEAT_INTRO = ("Where each county's wheat goes, by class. The export hubs take what FGIS says they inspect for the class and marketing year chosen below (the river stretches from "
+                "barge and lock data, the Pacific Northwest, Texas Gulf, Mexico by rail, the Great Lakes and South Atlantic from FGIS inspections). County supply is NASS wheat production "
+                "split into the five market classes by the state class totals and a regional prior (which parts of a state grow which class). There are no named flour mills yet: "
+                "domestic use (flour, feed, seed, stocks) is 'other', taken out of each county by the regional milling capacity (NASS) first and pro rata after, and it is not drawn by class. "
+                "First pass: a model to set the structure, not a forecast.")
+_WHEAT_RAIL = ("Borrowed from the soybean fit (USDA AMS rail tariffs and the Rail FOB sheets): the model uses only how freight rises with distance. Wheat rates are a starting point; "
+               "a lower rate widens the area that feeds the hub, a higher one pulls it toward the nearest counties.")
+_WHEAT_TARGETS = ("Wheat hub targets are FGIS inspections by class and port, marketing years (June-May) 2021/22-2025/26 averaged: the Pacific Northwest, Texas Gulf, South Atlantic and the Great Lakes by "
+                  "port; Mexico by rail from the railcar inspections for Mexico (draw by state held to them); the river hubs from Corps lock tonnage, USDA barge data and Corps port tonnage for "
+                  "wheat, with Louisiana rail and truck the residual of the East Gulf's inspections. The Pacific Northwest draw by state is held to the STB waybill's rail origins (MT, ND, WA, ID, "
+                  "SD, MN) plus an ASSUMED 160M bu a year of barge and truck wheat from WA, ID and OR, which the waybill cannot see. Class targets multiply a hub's target by the class's "
+                  "share of what FGIS inspected there.")
+_WHEAT_NODES = ("Upriver nodes: Corps lock tonnage scaled to USDA downbound grain at the seven locks USDA measures, wheat = USDA's wheat share; each pool = flow at its lower lock less "
+                "the upper one. Below Lock 27: Corps Waterborne Commerce port tonnage (wheat shipped, 2021-24 average). See river_segments_wheat.json and river_nodes_wheat.json.")
+
+
+def _wheat_final(inp):
+    return (f"Supply: NASS/RMA county wheat production, 2021-25 average, split by class (wheat_county_class.json). No flour mills are named yet, so milling is not drawn by class: it "
+            f"is the regional capacity logic described above. Road miles: {inp['source']}.")
 
 
 def _corn_final(inp):
@@ -56,9 +79,15 @@ def _in_box(paths, box):
 
 
 @st.cache_data(show_spinner="Solving the draw…")
-def _solve(crop, rate, tau, river_premium, util, lock_scale, area_items, cap_items, plant_premium_items, river_scale=1.0, scale_items=(), rate_items=(), pnw_reach=30.0, barge_items=(), tau_items=(), extra_items=(), supply_total=None, frac_items=(), truck=None, vol_resp=0.0, vol_band=0.10):
+def _solve(crop, rate, tau, river_premium, util, lock_scale, area_items, cap_items, plant_premium_items, river_scale=1.0, scale_items=(), rate_items=(), pnw_reach=30.0, barge_items=(), tau_items=(), extra_items=(), supply_total=None, frac_items=(), truck=None, vol_resp=0.0, vol_band=0.10, wcls=None, wperiod='avg', wyear=None, local_max=0.70):
     inp = dm.load(PATHS[crop][0])
-    res = dm.solve(inp, rate=rate, tau=tau, river_premium=river_premium, util=util, nodes=dm.load_nodes(PATHS[crop][1]), lock_scale=lock_scale,
+    nodes, extra = dm.load_nodes(PATHS[crop][1]), {}
+    if crop == 'wheat':                                           # the class's supply, the class's hub targets, and the regional domestic use
+        sup = ws.county_supply(inp, wcls, wyear)
+        nodes = ws.nodes_for(nodes, wperiod, wcls, inp)
+        extra = dict(other_local=ws.milling_local(inp, local_max), other_rest_weight=ws.rest_weight(inp))
+        inp = dict(inp, counties=[dict(c, supply_bu=float(v)) for c, v in zip(inp['counties'], sup)])
+    res = dm.solve(inp, rate=rate, tau=tau, river_premium=river_premium, util=util, nodes=nodes, lock_scale=lock_scale, **extra,
                    area_mbu=dict(area_items), pin_cap_mbu=dict(cap_items), plant_premium=dict(plant_premium_items),
                    river_scale=river_scale, rail_scales=dict(scale_items), rail_rates=dict(rate_items), pnw_reach_miles=pnw_reach, barge_fed=dict(barge_items),
                    rail_tau=dict(tau_items), plant_extra_mbu=dict(extra_items), supply_total_bu=supply_total,
@@ -338,6 +367,53 @@ def _export_panel_corn():
         return {"river": round(sc["river_scale"], 4), "pnw": round(sc["pnw_scale"], 4), "txg": round(sc["txgulf_scale"], 4), "mex": round(sc["mexico_scale"], 4),
                 "satl": round(sc["satl_scale"], 4), "ctn": 1.0, "lakes": round(sc["lakes_scale"], 4), "canada": round(sc["canada_scale"], 4), "supply": supply_info}, text
     return {"river": 1.0, "pnw": 1.0, "txg": 1.0, "mex": 1.0, "satl": 1.0, "ctn": 1.0, "lakes": 1.0, "canada": 1.0, "supply": supply_info}, "Hub volumes at the 2021-25 average (no export scenario)"
+
+
+def _export_panel_wheat():
+    """The wheat scenario: which class, and which marketing year's FGIS inspections set the hub volumes (and, optionally, that crop year's production by class sets the supply).
+    Nothing here is a USDA export number: wheat's hubs are set by what FGIS inspected, by class, the way 'Match a waybill year' does for corn and soybeans."""
+    mys = ws.marketing_years()
+    with st.expander("Wheat scenario: class and marketing year", expanded=True):
+        c1, c2, c3 = st.columns([1.2, 1.6, 2.2])
+        cls_lab = c1.selectbox("Wheat class", ["All classes"] + [ws.LABELS[k] for k in ws.CLASSES], key="draww_class",
+                               help="The supply is that class's production by county; the hubs load that class's share of what FGIS inspected there; 'White' is soft white (winter and spring) and hard "
+                                    "white with the mixed Pacific cargoes. Domestic use is not drawn by class (no mill list, and no source for class use by region).")
+        cls = None if cls_lab == "All classes" else next(k for k, v in ws.LABELS.items() if v == cls_lab)
+        opts = {"2021/22-2025/26 average": "avg", **{f"{ws.label_my(y)} marketing year": y for y in mys}}
+        per_lab = c2.selectbox("Hubs load what FGIS inspected in", list(opts), key="draww_period",
+                               help="The wheat marketing year runs June to May and starts the June after the crop is cut, so 2024/25 is paired with the 2024 crop.")
+        period = opts[per_lab]
+        use_year = c3.checkbox("Supply = that crop year's production by class (NASS)", value=period != "avg", disabled=period == "avg", key=f"draww_useyear_{period}",
+                               help="Scales every county by its state's class production that year over the 2021-25 average. Off = the 2021-25 average supply.")
+        year = period if (period != "avg" and use_year) else None
+        hubs = ws.hub_mbu(period, cls)
+        avg = ws.hub_mbu("avg", cls)
+        sup_mbu = float(ws.county_supply(dm.load(dm.INPUTS_WHEAT), cls, year).sum()) / 1e6
+        names = [("pnw", "Pacific Northwest"), ("river", "Mississippi River"), ("txgulf", "Texas Gulf"), ("mexico", "Mexico by rail"), ("lakes", "Great Lakes")]
+        m = st.columns(6)
+        m[0].metric("Inspected for export", f"{sum(hubs.values()):,.0f} M bu", f"{sum(hubs.values()) / max(sum(avg.values()), 1e-9) - 1:+.0%} vs 2021-25" if period != "avg" else "", delta_color="off")
+        for col, (k, nm) in zip(m[1:], names):
+            col.metric(nm, f"{hubs.get(k, 0.0):,.0f} M bu", f"{hubs.get(k, 0.0) / avg[k] - 1:+.0%} vs 2021-25" if (period != "avg" and avg.get(k)) else "", delta_color="off")
+        st.metric("Supply the model draws from", f"{sup_mbu:,.0f} M bu", help="County production of the class (all classes when none is chosen), before domestic use.")
+        hist = ws.hub_history(cls)
+        fig = go.Figure()
+        for k, nm, color in (("pnw", "Pacific Northwest", "#d4a017"), ("river", "Mississippi River", "#08519c"), ("txgulf", "Texas Gulf", "#c0392b"), ("mexico", "Mexico by rail", "#8e44ad"),
+                             ("lakes", "Great Lakes", "#2874a6"), ("satl", "South Atlantic", "#5d6d7e")):
+            fig.add_trace(go.Bar(x=[ws.label_my(y) for y in hist], y=[hist[y].get(k, 0.0) for y in hist], name=nm, marker_color=color, hovertemplate=nm + " %{y:.0f} M bu<extra>%{x}</extra>"))
+        fig.update_layout(barmode="stack", height=260, margin=dict(l=10, r=10, t=10, b=30), legend=dict(orientation="h", y=1.18, x=0), paper_bgcolor="white", plot_bgcolor="white",
+                          yaxis=dict(title="M bu inspected for export", gridcolor="#e5e5e5"), xaxis=dict(type="category", tickangle=-45))
+        st.plotly_chart(fig, use_container_width=True, key="draww_chart")
+        tbl = pd.DataFrame(ws.class_hub_table(period)).rename(columns={"cls": "Class", "pnw": "Pacific NW", "txgulf": "Texas Gulf", "mexico": "Mexico rail", "river": "Mississippi River",
+                                                                         "lakes": "Great Lakes", "satl": "South Atlantic", "total": "Total"})
+        tbl["Class"] = tbl["Class"].map(ws.LABELS)
+        st.markdown(f"**Where each class leaves from** (M bu, {per_lab})")
+        st.dataframe(tbl.style.format({c: "{:,.1f}" for c in tbl.columns if c != "Class"}), hide_index=True, use_container_width=True)
+        st.caption("FGIS wheat inspections by class and hub (build_wheat_export_shares.py): soft white leaves through the Pacific Northwest, soft red down the Mississippi, hard red spring "
+                   "through the Pacific Northwest and Texas, hard red winter spread across the Pacific Northwest, Texas Gulf and Mexico by rail, durum through Texas Gulf and Duluth.")
+    text = f"Wheat: {cls_lab}; hubs at FGIS {per_lab}" + (f"; {ws.label_my(period)} production" if year else "; 2021-25 average supply")
+    return {"river": 1.0, "pnw": 1.0, "txg": 1.0, "mex": 1.0, "satl": 1.0, "ctn": 1.0, "lakes": 1.0, "canada": 1.0,
+            "supply": {"total_bu": None, "production": sup_mbu, "carry": 0.0, "imports": 0.0, "bal": None, "my": period if period != "avg" else 2025},
+            "wheat": {"cls": cls, "period": period, "year": year}}, text
 
 
 def _hub_markers(inp, res, hubs):
@@ -620,15 +696,17 @@ def render():
     import draw_auth
     if not draw_auth.require_password():             # a shared password; the portal pre-authenticates its own users
         return
-    pick = st.radio("Crop", ["Soybeans", "Corn"], horizontal=True, key="draw_crop", label_visibility="collapsed")
-    _render("corn" if pick == "Corn" else "soy")
+    pick = st.radio("Crop", ["Soybeans", "Corn", "Wheat"], horizontal=True, key="draw_crop", label_visibility="collapsed")
+    _render({"Corn": "corn", "Wheat": "wheat"}.get(pick, "soy"))
 
 
 def _render(crop):
     corn = crop == "corn"
-    W, Wb = ("corn", "corn") if corn else ("soybeans", "beans")             # the crop's name, and what the text calls a bushel of it
-    PLN = "ethanol plants" if corn else "crush plants"
-    FS = FOCUS_CORN if corn else FOCUS_STATES
+    wheat = crop == "wheat"
+    W, Wb = ("corn", "corn") if corn else ("wheat", "wheat") if wheat else ("soybeans", "beans")             # the crop's name, and what the text calls a bushel of it
+    PLN = "ethanol plants" if corn else "flour mills" if wheat else "crush plants"
+    FS = FOCUS_CORN if corn else FOCUS_WHEAT if wheat else FOCUS_STATES
+    _R = _WHEAT_RAIL if wheat else _CORN_RAIL
     inp = dm.load(PATHS[crop][0])
     ams = dm.load_truck_rates()
     st.markdown(f"### Draw Territory: {W}")
@@ -642,12 +720,19 @@ def _render(crop):
         HUB_COLORS.setdefault(h_, "#b03a2e")
     for i, h_ in enumerate([h for h in hubs_in_order if h.startswith("Container")]):             # the container hubs share a brown family
         HUB_COLORS.setdefault(h_, ["#6d4c41", "#8d6e63", "#a1887f", "#795548", "#5d4037", "#bcaaa4", "#4e342e", "#9e8e83"][i % 8])
-    st.caption(_CORN_INTRO if corn else "Where each county's crop go. Crush plants fill to their annual need (Daily Max × 88% × 350 days, from the Crush Downtime "
+    st.caption(_WHEAT_INTRO if wheat else _CORN_INTRO if corn else "Where each county's crop go. Crush plants fill to their annual need (Daily Max × 88% × 350 days, from the Crush Downtime "
                "Calculator). The export hubs take the rest: each hub (an Illinois River, Upper Mississippi, Ohio River, St. Louis, Lower Mississippi or "
                "Pacific Northwest, Texas Gulf or Mexico-by-rail region) loads the soybeans the Corps, USDA and FGIS data say it loads, and counties draw to the nearest hubs "
                "and plants with limited crossover. The Pacific Northwest is fed by BNSF and UP rail, Texas Gulf and the Mexican border by BNSF, UP and CPKC. Individual terminals are only a check on a hub's volume. "
                "First pass: a model to set the structure, not a forecast.")
-    scales, scenario_text = _export_panel_corn() if corn else _export_panel()
+    scales, scenario_text = _export_panel_wheat() if wheat else _export_panel_corn() if corn else _export_panel()
+    if wheat:                                                                  # this class's supply and hub targets replace the all-wheat averages for everything below
+        wsel = scales["wheat"]
+        base_inp = inp
+        sup_w = ws.county_supply(base_inp, wsel["cls"], wsel["year"])
+        inp = dict(base_inp, counties=[dict(c, supply_bu=float(v)) for c, v in zip(base_inp["counties"], sup_w)])
+        nodes = ws.nodes_for(nodes, wsel["period"], wsel["cls"], base_inp)
+        area_groups = [g for g in nodes["groups"] if g["kind"] in ("area", "pnw", "txgulf", "mexico", "lagulf", "mobile", "satl", "container", "cont_east", "lakes", "canada")]
     river_scale, pnw_scale, txg_scale, mex_scale, satl_scale, ctn_scale, lakes_scale, canada_scale = (
         scales["river"], scales["pnw"], scales["txg"], scales["mex"], scales["satl"], scales["ctn"], scales["lakes"], scales["canada"])
     supply_info = scales["supply"]
@@ -659,9 +744,18 @@ def _render(crop):
                     help="How much territories overlap, in the same real cents a bushel as freight: small = sharp territories (the nearest buyer takes most), large = a lot of "
                          "overlap. It is not taken from bids or basis. The default keeps the territories as they were: about 50 miles of overlap at the AMS truck rate, an average "
                          "plant haul near 110 miles (soybeans). Average plant haul runs about 53 miles at 2.5 cents, 65 at 8, 80 at 12 and 113 at 20.")
-    util = c3.slider("Ethanol plant run rate" if corn else "Plant run rate vs workbook", 0.7, 1.1, 0.95 if corn else 1.0, 0.05, key=f"draw_util_{crop}",
-                     help=("1.0 = full nameplate capacity (million gallons a year at 2.9 gallons a bushel). 0.95 reproduces USDA's 5.65 billion bushels of ethanol corn use."
-                           if corn else "1.0 = the workbook's Daily Max × 0.88 × 350 days."))
+    local_max = 0.70
+    if wheat:
+        util = 1.0
+        local_max = c3.slider("Most of a county's wheat kept in its region (%)", 30, 100, 70, 5, key="draw_wheat_local",
+                              help="Domestic use first comes out of each county by its region's flour milling capacity over what the region grows (NASS capacity table, 76% utilization), "
+                                   "but never more than this share of a county's crop: mills draw from a wide area and the export hubs take wheat from every region (soft red wheat is a "
+                                   "third exports even in Illinois and Ohio). The rest of domestic use (feed, seed, stocks, flour for regions that grow too little) comes pro rata, "
+                                   "lightly from the Pacific Northwest, which ships little east.") / 100.0
+    else:
+        util = c3.slider("Ethanol plant run rate" if corn else "Plant run rate vs workbook", 0.7, 1.1, 0.95 if corn else 1.0, 0.05, key=f"draw_util_{crop}",
+                         help=("1.0 = full nameplate capacity (million gallons a year at 2.9 gallons a bushel). 0.95 reproduces USDA's 5.65 billion bushels of ethanol corn use."
+                               if corn else "1.0 = the workbook's Daily Max × 0.88 × 350 days."))
     lock_scale = c4.slider("Upriver lock calibration", 0.7, 1.3, 1.0, 0.05, key="draw_lock_scale",
                            help=f"Scales the {W} loaded on the Illinois, upper Mississippi and Ohio, as measured by lock tonnage "
                                 "(1.0 = the 2021-25 average). Those figures are scaled estimates, good to about ±10%.")
@@ -672,7 +766,7 @@ def _render(crop):
     rate = dm.CENTS_PER_BU_MILE                                       # only the fallback: freight comes from the AMS curve below
     river_prem = 0.0                                                  # bids and basis are not used for now
     pnw_rate = c7.number_input("Rail freight to the Pacific NW (cents / bu / mile)", 0.001, 0.10, 0.015, 0.001, format="%.3f", key="draw_pnw_rate",
-                               help=_CORN_RAIL if corn else "From USDA AMS rail tariff rates for soybeans to Seattle/Kalama (Oct 2026): BNSF shuttle runs about $6,200-6,350 a car (about 168-172 "
+                               help=_R if (corn or wheat) else "From USDA AMS rail tariff rates for soybeans to Seattle/Kalama (Oct 2026): BNSF shuttle runs about $6,200-6,350 a car (about 168-172 "
                                     "cents a bushel on AMS's 3,700 bu/car) from 1,700 to 2,180 lane miles, so the tariff alone barely rises with distance "
                                     "(0.002 cents per bushel-mile) and the BNSF fuel surcharge ($0.45/mile) adds about 0.012: total about 0.015. UP's surcharge is higher "
                                     "($0.68/mile, about 0.018) on a lower tariff (Cozad NE $5,365 a car). The Rail FOB portal's BN seed gives 0.020. "
@@ -683,28 +777,28 @@ def _render(crop):
                                      "CPKC is left out because it feeds little of the coast).")
     c9, c10, c11, c12, c13, c14 = st.columns(6)
     txg_rate = c9.number_input("Rail freight to Texas Gulf (cents / bu / mile)", 0.001, 0.20, 0.050, 0.005, format="%.3f", key="draw_txg_rate",
-                               help=_CORN_RAIL if corn else "From USDA AMS rail tariffs for soybeans to Houston (Oct 2026): BNSF and UP shuttles run about $0.93 a bushel from Concordia KS (852 miles) "
+                               help=_R if (corn or wheat) else "From USDA AMS rail tariffs for soybeans to Houston (Oct 2026): BNSF and UP shuttles run about $0.93 a bushel from Concordia KS (852 miles) "
                                     "to $1.40 from Argyle MN (1,662 miles). Fitted slope 0.05 cents per bushel-mile (0.057 BNSF, 0.049 all lanes), fuel surcharge included. "
                                     "Texas Gulf draws only from the plains rail belt (TX, OK, KS, NE, MO, IA, MN, SD, ND, CO, NM): nothing records where its soybeans come from, "
                                     "and without the limit the model would take the Delta's beans, which have the river.")
     mex_rate = c10.number_input("Rail freight to the Mexican border (cents / bu / mile)", 0.001, 0.20, 0.045, 0.005, format="%.3f", key="draw_mex_rate",
-                                help=_CORN_RAIL if corn else "From USDA AMS rail tariffs to the border (rzdk-2e87, Oct 2026, soybeans, heavy cars, fuel surcharge included): UP 0.045 cents per "
+                                help=_R if (corn or wheat) else "From USDA AMS rail tariffs to the border (rzdk-2e87, Oct 2026, soybeans, heavy cars, fuel surcharge included): UP 0.045 cents per "
                                      "bushel-mile (about $1.54 a bushel to Laredo or Eagle Pass from 1,200 miles, $1.64 to Brownsville), BNSF 0.053, CPKC/KCS Laredo about $1.43. "
                                      "Within each state the beans come from the nearest rail counties; the state totals are held to FGIS rail inspections for Mexico.")
     la_rate = c11.number_input("Rail freight to Louisiana (cents / bu / mile)", 0.001, 0.20, 0.090, 0.005, format="%.3f", key="draw_la_rate",
-                               help=_CORN_RAIL if corn else "From the Rail FOB portal's CN sheet (rates to the Gulf Exports Group, 105+ car trains, 53 origins from Illinois to Iowa): the tariff rises "
+                               help=_R if (corn or wheat) else "From the Rail FOB portal's CN sheet (rates to the Gulf Exports Group, 105+ car trains, 53 origins from Illinois to Iowa): the tariff rises "
                                     "$2.40-2.65 a car per rail mile (R-squared 0.8), 0.061-0.072 cents per bushel-mile, plus CN's fuel surcharge ($0.825 a car-mile, "
                                     "October 2026, USDA AMS) at 3,700 bu a car = 0.022: about 0.089. USDA AMS's lanes agree on the level (Gibson City IL to Reserve, "
                                     "870 miles, $0.71-0.81 a bushel; Ida Grove IA, 1,376 miles, $0.96-1.08). Louisiana's rail and truck beans are set to 130M bu "
                                     "from the Corps' port receipts. They are drawn only from IL, IA, WI and MN: the Delta has little rail loading (one loader in "
                                     "Mississippi, not much volume).")
     mob_rate = c12.number_input("Rail freight to Mobile (cents / bu / mile)", 0.001, 0.20, 0.115, 0.005, format="%.3f", key="draw_mob_rate",
-                                help=_CORN_RAIL if corn else "From the Rail FOB portal's CSX sheet (express and non-express rates to the Evansville market for AL/TN/KY/LA, 20 origins with "
+                                help=_R if (corn or wheat) else "From the Rail FOB portal's CSX sheet (express and non-express rates to the Evansville market for AL/TN/KY/LA, 20 origins with "
                                      "coordinates): the tariff rises $3.27 a car per rail mile (R-squared 0.7), 0.094 cents per bushel-mile at its 3,500 bu a car, plus "
                                      "CSX's fuel surcharge ($0.87 a car-mile, October 2026, USDA AMS) = 0.025: about 0.118. It reproduces AMS's one Mobile lane (CSX "
                                      "from Casey IL, 779 miles, $1.02-1.08 a bushel). Mobile draws from counties on CSX, NS or CN track, in IL, IN, OH, KY, TN and IA.")
     satl_rate = c14.number_input("Rail freight to South Atlantic (cents / bu / mile)", 0.001, 0.20, 0.064, 0.005, format="%.3f", key="draw_satl_rate",
-                                 help=_CORN_RAIL if corn else "From the Rail FOB portal's NS sheet (spreads from 67 origins to NC/SC/VA against its Fort Wayne bid): the tariff rises 0.042 cents per "
+                                 help=_R if (corn or wheat) else "From the Rail FOB portal's NS sheet (spreads from 67 origins to NC/SC/VA against its Fort Wayne bid): the tariff rises 0.042 cents per "
                                       "bushel-mile of extra distance (R-squared 0.83: Iowa origins run 28 cents over Fort Wayne, Illinois 7, Indiana 3, Ohio 0), plus "
                                       "NS's fuel surcharge ($0.74 a car-mile, October 2026, USDA AMS) at 3,500 bu a car = 0.021: about 0.064. USDA AMS has one soybean "
                                       "lane to Chesapeake (CSX from Marion OH, 760 miles, $0.87-1.02 a bushel). The South Atlantic draws from CSX or NS track in the "
@@ -725,15 +819,16 @@ def _render(crop):
         st.caption("Trucking cost at 25 / 50 / 100 / 200 / 300 road miles, cents a bushel: " + " / ".join(f"{float(dm.truck_cents(m, truck)):.0f}" for m in (25, 50, 100, 200, 300))
                    + f" (AMS {', '.join(ams['quarters'][:1])} to {ams['quarters'][-1]} rates, diesel ${diesel:.2f}). The cost has a fixed part of about "
                    f"{float(dm.truck_cents(0.0, truck)):.0f} cents (loading, unloading, waiting) and rises more slowly with distance beyond 100 miles.")
+    akey = f"_{scales['wheat']['cls']}_{scales['wheat']['period']}" if wheat else ""          # a new class or year starts the target boxes from its own defaults
     with st.expander("Hub targets (M bu/yr): baseline = Corps port tonnage below Lock 27 and FGIS inspections by port (Pacific Northwest, Texas Gulf) and FGIS rail "
                      "inspections for Mexico, 2021-25 average; the export scenario scales them"):
         area_over = {}
         for i in range(0, len(area_groups), 3):
             for c_, g in zip(st.columns(3), area_groups[i:i + 3]):
-                v = c_.number_input(g["name"], 0.0, 1000.0, float(round(g["target_mbu"], 1)), 5.0, key=f"draw_area_{crop}_{g['name']}", help=g.get("note", ""))
+                v = c_.number_input(g["name"], 0.0, 1000.0, float(round(g["target_mbu"], 1)), 5.0, key=f"draw_area_{crop}{akey}_{g['name']}", help=g.get("note", ""))
                 if abs(v - round(g["target_mbu"], 1)) > 1e-9:
                     area_over[g["name"]] = v
-        st.caption(_CORN_TARGETS if corn else "Below Lock 27: Corps Waterborne Commerce of the U.S., shipments (beans loaded out of the area); nothing measures it directly and the Lower "
+        st.caption(_WHEAT_TARGETS if wheat else _CORN_TARGETS if corn else "Below Lock 27: Corps Waterborne Commerce of the U.S., shipments (beans loaded out of the area); nothing measures it directly and the Lower "
                    "Mississippi figure is the whole stretch from Cairo to Baton Rouge. Louisiana rail and truck = 130M bu, the midpoint of the 110-150M the Corps' waterborne receipts imply: 917M bu "
                    "of soybeans received at the four Louisiana river ports against 990M bu shipped (2021-24 average, wcus_louisiana_ports.csv). The East Gulf's "
                    "inspections less the barge loadings the model measures would give about 210M, so those loadings look about 80M bu short. Mobile = FGIS at the other East Gulf ports. "
@@ -767,7 +862,7 @@ def _render(crop):
                                 help="Toledo, Peoria & Western, Iowa Interstate, the Watco lines and the other short lines that serve grain plants and shippers. Pick the ones to draw; "
                                      "each one picked is drawn over the big railroads and added to the legend.")
     rails = class_i + short_sel                                             # drawn in this order, so the short lines sit on top
-    if corn:
+    if corn or wheat:
         barge_fed, dest_add, frac_items = {}, 0.0, {}                       # barge-fed crush plants and plant start-ups are soybean features
     else:
         with st.expander("Barge-fed plants: the share of a plant's soybeans that arrive by barge from upriver"):
@@ -813,7 +908,8 @@ def _render(crop):
                  (("pnw", pnw_rate), ("txgulf", txg_rate), ("mexico", mex_rate), ("lagulf", la_rate), ("mobile", mob_rate), ("satl", satl_rate), ("cont_east", satl_rate)), pnw_reach,
                  tuple(sorted(barge_fed.items())), (),
                  (("Bunge North America Destrehan LA", dest_add),), supply_info["total_bu"],
-                 tuple(sorted(frac_items.items())), truck, 0.0, 0.0)
+                 tuple(sorted(frac_items.items())), truck, 0.0, 0.0,
+                 scales['wheat']['cls'] if wheat else None, scales['wheat']['period'] if wheat else 'avg', scales['wheat']['year'] if wheat else None, local_max)
     plants_t, river_t, cty_t = dm.summarize(inp, res, state)
     for j_, r_ in enumerate(plants_t):                               # how far each plant's beans travel
         fj = res["flow"][:, j_]
@@ -822,7 +918,7 @@ def _render(crop):
         st.caption(f"Export scenario applied: barge-loading and East Gulf rail targets ×{river_scale:.2f}, Pacific Northwest rail ×{pnw_scale:.2f}, "
                    f"Texas Gulf ×{txg_scale:.2f}, Mexico by rail ×{mex_scale:.2f}, South Atlantic ×{satl_scale:.2f}, containers ×{ctn_scale:.2f}, Great Lakes ×{lakes_scale:.2f}, Canada ×{canada_scale:.2f}.")
     if res.get("target_scale", 1.0) < 0.999:
-        st.warning(f"The hub targets add up to more than the {Wb} left after {'ethanol' if corn else 'crush'}, so they were scaled to {res['target_scale']:.0%}. "
+        st.warning(f"The hub targets add up to more than the {Wb} left after {'ethanol' if corn else 'milling' if wheat else 'crush'}, so they were scaled to {res['target_scale']:.0%}. "
                    "Lower the hub targets or raise plant run rates.")
 
     in_state = [c for c in inp["counties"] if state is None or c["state"] == state]
@@ -834,12 +930,20 @@ def _render(crop):
     to_rv = sum(r["from_state_mbu"] for r in river_t)
     other = supply - to_pl - to_rv
     m1, m2, m3, m4, m5 = st.columns(5)
-    m1.metric(f"{label} {'corn' if corn else 'soybean'} supply", f"{supply:,.0f} M bu", help="Production (5-year average NASS county production, or USDA's for the year) plus carry-in "
-                                                                       "stocks and imports, as set in the export scenario box")
-    m2.metric(f"{label} {'ethanol' if corn else 'crush'} need", f"{need_local:,.0f} M bu", help="Plants in the region, at the run rate above")
-    m3.metric(f"{label} {Wb} to {'ethanol' if corn else 'crush'}", f"{to_pl:,.0f} M bu", f"{to_local:,.0f} to {label} plants", delta_color="off")
-    m4.metric(f"{label} {Wb} to export hubs", f"{to_rv:,.0f} M bu")
-    m5.metric("Other (feed, food, seed, stocks)" if corn else "Other (feed, rail export, stocks)", f"{max(other, 0):,.0f} M bu")
+    if wheat:
+        m1.metric(f"{label} wheat supply", f"{supply:,.0f} M bu", help="County production of the class chosen above (all classes when none), before domestic use.")
+        m2.metric(f"{label} domestic use (modeled)", f"{max(other, 0):,.0f} M bu", help="Flour milling, feed, seed and stocks: taken out of each county by its region's milling capacity "
+                                                                                      "first and pro rata after. Not drawn by class and not by named mill.")
+        m3.metric("Share exported", f"{to_rv / max(supply, 1e-9) * 100:.0f}%", help="Wheat going to the export hubs as a share of this region's supply.")
+        m4.metric(f"{label} wheat to export hubs", f"{to_rv:,.0f} M bu")
+        m5.metric("Hub targets, all regions", f"{sum(t['target_mbu'] for t in dm.hub_table(inp, res, None)):,.0f} M bu")
+    else:
+        m1.metric(f"{label} {'corn' if corn else 'soybean'} supply", f"{supply:,.0f} M bu", help="Production (5-year average NASS county production, or USDA's for the year) plus carry-in "
+                                                                           "stocks and imports, as set in the export scenario box")
+        m2.metric(f"{label} {'ethanol' if corn else 'crush'} need", f"{need_local:,.0f} M bu", help="Plants in the region, at the run rate above")
+        m3.metric(f"{label} {Wb} to {'ethanol' if corn else 'crush'}", f"{to_pl:,.0f} M bu", f"{to_local:,.0f} to {label} plants", delta_color="off")
+        m4.metric(f"{label} {Wb} to export hubs", f"{to_rv:,.0f} M bu")
+        m5.metric("Other (feed, food, seed, stocks)" if corn else "Other (feed, rail export, stocks)", f"{max(other, 0):,.0f} M bu")
 
     bal_ = supply_info["bal"]
     if bal_ and corn:
@@ -904,9 +1008,9 @@ def _render(crop):
     elif focus is None:
         fips, colors, hover = [], [], []
         for i in keep:
-            tp, th = int(P[i].argmax()), int(H[i].argmax())
+            tp, th = (int(P[i].argmax()) if n_p else 0), int(H[i].argmax())
             tot = float(P[i].sum() + H[i].sum())
-            hub_wins = H[i, th] > P[i, tp]
+            hub_wins = (not n_p) or H[i, th] > P[i, tp]
             top_name = hubs[th] + " hub" if hub_wins else inp["plants"][tp]["key"]
             top_flow = H[i, th] if hub_wins else P[i, tp]
             fips.append(cty[i]["fips"])
@@ -1012,7 +1116,7 @@ def _render(crop):
         map_title = (f"<b>{inp['plants'][plant_j]['key']}</b>: {pr['drawn_mbu']:,.1f} M bu trucked from counties, average haul {pr['avg_miles']:,.0f} mi, "
                      f"80% within {pr.get('p80_miles', 0):,.0f} mi")
     elif focus is None:
-        map_title = f"Top buyer of each county's {W} ({'ethanol plant' if corn else 'crush plant'} or export hub)"
+        map_title = f"Top buyer of each county's {W} ({'export hub' if wheat else 'ethanol plant or export hub' if corn else 'crush plant or export hub'})"
     else:
         map_title = f"<b>{focus}</b>: where its {W} {'comes' if corn else 'come'} from (share of each county's crop)"
     fig.add_annotation(text=map_title, xref="paper", yref="paper", x=0.01, y=1 - (leg_px + 45) / fig_h, xanchor="left", yanchor="top", showarrow=False,
@@ -1038,11 +1142,11 @@ def _render(crop):
 
     if plant_j is not None:
         _plant_panel(inp, res, plants_t, plant_j, P, H, hubs, sup, cty)
-    if st.toggle("Compare two plants side by side", value=False, key="draw_compare",
-                 help="Two plants' draw areas on the same scale in one picture, their numbers next to each other, and the counties where they compete."):
+    if n_p and st.toggle("Compare two plants side by side", value=False, key="draw_compare",
+                         help="Two plants' draw areas on the same scale in one picture, their numbers next to each other, and the counties where they compete."):
         _compare_plants(inp, res, plants_t, P, sup, cty, geo)
-    if st.toggle("Gallery: the biggest plants' draw areas", value=False, key="draw_gallery",
-                 help="The top plants' draw maps in one grid on one scale and zoom, with a ranking table: how big each territory is and which states feed it."):
+    if n_p and st.toggle("Gallery: the biggest plants' draw areas", value=False, key="draw_gallery",
+                         help="The top plants' draw maps in one grid on one scale and zoom, with a ranking table: how big each territory is and which states feed it."):
         _plant_gallery(inp, res, plants_t, P, sup, cty, geo)
     if st.toggle("Hub gallery: the export hubs' draw areas", value=False, key="draw_hubgallery",
                  help="The biggest export hubs' draw maps in one grid on one scale and one national view, with a ranking table."):
@@ -1058,14 +1162,15 @@ def _render(crop):
     ht = ht.rename(columns={"hub": "Hub", "target_mbu": "Target", "drawn_mbu": "Modeled draw", "from_state_mbu": f"From {label}", "share": f"% of hub from {label}"})
     st.dataframe(ht.style.format({"Target": "{:,.1f}", "Modeled draw": "{:,.1f}", f"From {label}": "{:,.1f}", f"% of hub from {label}": "{:.0f}"}),
                  hide_index=True, use_container_width=True)
-    st.markdown(f"**Plants that draw {label} {Wb}** (annual, M bu)")
-    df = pd.DataFrame(plants_t)
-    df = df[(df["from_state_mbu"] > 0.5) | (df["barge_mbu"] > 0)].sort_values("from_state_mbu", ascending=False)
-    df = df.rename(columns={"plant": "Plant", "state": "St", "need_mbu": "Need (trucked)", "barge_mbu": "By barge", "drawn_mbu": "Total drawn", "from_state_mbu": f"From {label}",
-                            "avg_miles": "Avg haul (mi)", "p80_miles": "80% within (mi)", "river_access": "River/CIF"})
-    st.dataframe(df.style.format({"Need (trucked)": "{:,.1f}", "By barge": "{:,.1f}", "Total drawn": "{:,.1f}", f"From {label}": "{:,.1f}", "Avg haul (mi)": "{:,.0f}",
-                                  "80% within (mi)": "{:,.0f}"}),
-                 hide_index=True, use_container_width=True)
+    if n_p:
+        st.markdown(f"**Plants that draw {label} {Wb}** (annual, M bu)")
+        df = pd.DataFrame(plants_t)
+        df = df[(df["from_state_mbu"] > 0.5) | (df["barge_mbu"] > 0)].sort_values("from_state_mbu", ascending=False)
+        df = df.rename(columns={"plant": "Plant", "state": "St", "need_mbu": "Need (trucked)", "barge_mbu": "By barge", "drawn_mbu": "Total drawn", "from_state_mbu": f"From {label}",
+                                "avg_miles": "Avg haul (mi)", "p80_miles": "80% within (mi)", "river_access": "River/CIF"})
+        st.dataframe(df.style.format({"Need (trucked)": "{:,.1f}", "By barge": "{:,.1f}", "Total drawn": "{:,.1f}", f"From {label}": "{:,.1f}", "Avg haul (mi)": "{:,.0f}",
+                                      "80% within (mi)": "{:,.0f}"}),
+                     hide_index=True, use_container_width=True)
     with st.expander("Terminal and node detail: a check on the hub volumes"):
         st.markdown(f"**Terminals drawing {label} {Wb}** (top 15, annual M bu)")
         rt = pd.DataFrame(river_t)
@@ -1104,10 +1209,10 @@ def _render(crop):
             st.caption("Loaded at: Chicago/Joliet, Columbus, Kansas City, Omaha, Iowa, Fargo and a few smaller Midwest cities, and at the East Coast ports. FGIS records "
                        "the state of each container lot, not the city, so Iowa and the smaller states sit at their main intermodal city (a guess). The model does not "
                        "route containers to a coast: it draws each hub's beans from the counties around it.")
-        st.caption(_CORN_NODES if corn else "Upriver nodes: Corps lock tonnage (Food and Farm Products, both directions) scaled to USDA downbound grain at the seven locks USDA "
+        st.caption(_WHEAT_NODES if wheat else _CORN_NODES if corn else "Upriver nodes: Corps lock tonnage (Food and Farm Products, both directions) scaled to USDA downbound grain at the seven locks USDA "
                    "measures, soybeans = USDA's soy share; each pool = flow at its lower lock less flow at the upper one. Below Lock 27: Corps "
                    "Waterborne Commerce port tonnage (soybeans shipped, 2021-24 average). Whatever the East Gulf inspects beyond these barge loadings "
                    "(about 230M bu) reached the Gulf some other way and sits in 'other'. See river_segments.json and river_nodes.json.")
-    st.caption(_corn_final(inp) if corn else f"Supply: 5-year average NASS county soybean production. Plants: Crush Downtime Calculator (Gilman includes the 2026 expansion; "
+    st.caption(_wheat_final(inp) if wheat else _corn_final(inp) if corn else f"Supply: 5-year average NASS county soybean production. Plants: Crush Downtime Calculator (Gilman includes the 2026 expansion; "
                f"Marquis is left out until it runs). Road miles: {inp['source']}. Crush plants nationally compete for the same beans, so western plants "
                "draw western beans.")

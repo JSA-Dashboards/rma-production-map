@@ -1,0 +1,20 @@
+region,daily_capacity_cwt,states
+California,109600,CA
+Colorado and Oklahoma,55780,CO;OK
+"Florida, Georgia, and South Carolina",62000,FL;GA;SC
+"Idaho, Montana, Oregon, Utah and Washington",119387,ID;MT;OR;UT;WA
+"Illinois, Indiana, and Wisconsin",163252,IL;IN;WI
+Iowa and Nebraska,51125,IA;NE
+Kansas,111800,KS
+Kentucky and Tennessee,59000,KY;TN
+Maryland and Virginia,48500,MD;VA
+Michigan,47700,MI
+Minnesota,80120,MN
+Missouri,92800,MO
+New Jersey and New York,96950,NJ;NY
+North Carolina,67796,NC
+North Dakota,106000,ND
+Ohio,89600,OH
+Pennsylvania,80500,PA
+Texas,86000,TX
+Other States,72907,

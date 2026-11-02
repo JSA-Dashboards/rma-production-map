@@ -1,0 +1,960 @@
+year,state,class,production_bu,basis,share_of_state_wheat_pct
+2015,AL,Soft red winter,14960000,"YEAR; PCT BY TYPE 100% x winter 14,960,000 bu",100.0
+2015,AR,Soft red winter,13440000,"YEAR; PCT BY TYPE 100% x winter 13,440,000 bu",100.0
+2015,AZ,Durum,15150000,"YEAR; SPRING, DURUM production",98.7
+2015,AZ,Hard red winter,203940,"YEAR; PCT BY TYPE 99% x winter 206,000 bu",1.3
+2015,AZ,Hard white winter,2060,"YEAR; PCT BY TYPE 1% x winter 206,000 bu",0.0
+2015,CA,Durum,6695000,"YEAR; SPRING, DURUM production",36.0
+2015,CA,Hard red winter,10591000,"YEAR; PCT BY TYPE 89% x winter 11,900,000 bu",57.0
+2015,CA,Hard white winter,833000,"YEAR; PCT BY TYPE 7% x winter 11,900,000 bu",4.5
+2015,CA,Soft white winter,476000,"YEAR; PCT BY TYPE 4% x winter 11,900,000 bu",2.6
+2015,CO,Hard red spring,409500,"YEAR; spring (excl durum) 455,000 bu less 10% soft white",0.5
+2015,CO,Hard red winter,76978500,"YEAR; PCT BY TYPE 95% x winter 81,030,000 bu",94.5
+2015,CO,Hard white winter,4051500,"YEAR; PCT BY TYPE 5% x winter 81,030,000 bu",5.0
+2015,CO,Soft white spring,45500,YEAR; PCT BY TYPE 10% x spring (excl durum),0.1
+2015,DE,Soft red winter,4225000,"YEAR; PCT BY TYPE 100% x winter 4,225,000 bu",100.0
+2015,FL,Hard red winter,96750,"YEAR; PCT BY TYPE 15% x winter 645,000 bu",15.0
+2015,FL,Hard white winter,12900,"YEAR; PCT BY TYPE 2% x winter 645,000 bu",2.0
+2015,FL,Soft red winter,535350,"YEAR; PCT BY TYPE 83% x winter 645,000 bu",83.0
+2015,GA,Soft red winter,6235000,"YEAR; PCT BY TYPE 100% x winter 6,235,000 bu",100.0
+2015,IA,Hard red winter,436800,"YEAR; PCT BY TYPE 56% x winter 780,000 bu",56.0
+2015,IA,Hard white winter,7800,"YEAR; PCT BY TYPE 1% x winter 780,000 bu",1.0
+2015,IA,Soft red winter,327600,"YEAR; PCT BY TYPE 42% x winter 780,000 bu",42.0
+2015,IA,Soft white winter,7800,"YEAR; PCT BY TYPE 1% x winter 780,000 bu",1.0
+2015,ID,Durum,700000,"YEAR; SPRING, DURUM production",0.8
+2015,ID,Hard red spring,18574500,"YEAR; spring (excl durum) 30,450,000 bu less 39% soft white",20.8
+2015,ID,Hard red winter,14555000,"YEAR; PCT BY TYPE 25% x winter 58,220,000 bu",16.3
+2015,ID,Soft white spring,11875500,YEAR; PCT BY TYPE 39% x spring (excl durum),13.3
+2015,ID,Soft white winter,43665000,"YEAR; PCT BY TYPE 75% x winter 58,220,000 bu",48.9
+2015,IL,Soft red winter,33800000,"YEAR; PCT BY TYPE 100% x winter 33,800,000 bu",100.0
+2015,IN,Soft red winter,17680000,"YEAR; PCT BY TYPE 100% x winter 17,680,000 bu",100.0
+2015,KS,Hard red winter,312243000,"YEAR; PCT BY TYPE 97% x winter 321,900,000 bu",97.0
+2015,KS,Hard white winter,9657000,"YEAR; PCT BY TYPE 3% x winter 321,900,000 bu",3.0
+2015,KY,Soft red winter,32120000,"YEAR; PCT BY TYPE 100% x winter 32,120,000 bu",100.0
+2015,LA,Soft red winter,3552120,"YEAR; PCT BY TYPE 99% x winter 3,588,000 bu",99.0
+2015,LA,Soft white winter,35880,"YEAR; PCT BY TYPE 1% x winter 3,588,000 bu",1.0
+2015,MD,Soft red winter,17280000,"YEAR; PCT BY TYPE 100% x winter 17,280,000 bu",100.0
+2015,MI,Soft red winter,25008750,"YEAR; PCT BY TYPE 65% x winter 38,475,000 bu",65.0
+2015,MI,Soft white winter,13466250,"YEAR; PCT BY TYPE 35% x winter 38,475,000 bu",35.0
+2015,MN,Hard red spring,85800000,"YEAR; spring (excl durum) 85,800,000 bu less 0% soft white",97.2
+2015,MN,Hard red winter,2469060,"YEAR; PCT BY TYPE 99% x winter 2,494,000 bu",2.8
+2015,MN,Hard white winter,24940,"YEAR; PCT BY TYPE 1% x winter 2,494,000 bu",0.0
+2015,MO,Hard red winter,646600,"YEAR; PCT BY TYPE 2% x winter 32,330,000 bu",2.0
+2015,MO,Soft red winter,31683400,"YEAR; PCT BY TYPE 98% x winter 32,330,000 bu",98.0
+2015,MS,Hard red winter,115200,"YEAR; PCT BY TYPE 2% x winter 5,760,000 bu",2.0
+2015,MS,Soft red winter,5644800,"YEAR; PCT BY TYPE 98% x winter 5,760,000 bu",98.0
+2015,MT,Durum,18755000,"YEAR; SPRING, DURUM production",9.9
+2015,MT,Hard red spring,78740000,"YEAR; spring (excl durum) 78,740,000 bu less 0% soft white",41.8
+2015,MT,Hard red winter,91020000,"YEAR; PCT BY TYPE 100% x winter 91,020,000 bu",48.3
+2015,NC,Soft red winter,30210000,"YEAR; PCT BY TYPE 100% x winter 30,210,000 bu",100.0
+2015,ND,Durum,42463000,"YEAR; SPRING, DURUM production",11.5
+2015,ND,Hard red spring,319200000,"YEAR; spring (excl durum) 319,200,000 bu less 0% soft white",86.3
+2015,ND,Hard red winter,8360000,"YEAR; PCT BY TYPE 100% x winter 8,360,000 bu",2.3
+2015,NE,Hard red winter,44600600,"YEAR; PCT BY TYPE 97% x winter 45,980,000 bu",97.0
+2015,NE,Hard white winter,1379400,"YEAR; PCT BY TYPE 3% x winter 45,980,000 bu",3.0
+2015,NJ,Soft red winter,1000000,"YEAR; PCT BY TYPE 100% x winter 1,000,000 bu",100.0
+2015,NM,Hard red winter,4702500,"YEAR; PCT BY TYPE 99% x winter 4,750,000 bu",99.0
+2015,NM,Soft white winter,47500,"YEAR; PCT BY TYPE 1% x winter 4,750,000 bu",1.0
+2015,NV,Hard red winter,383400,"YEAR; PCT BY TYPE 71% x winter 540,000 bu",59.0
+2015,NV,Soft white spring,110000,YEAR; PCT BY TYPE 100% x spring (excl durum),16.9
+2015,NV,Soft white winter,156600,"YEAR; PCT BY TYPE 29% x winter 540,000 bu",24.1
+2015,NY,Hard red winter,207900,"YEAR; PCT BY TYPE 3% x winter 6,930,000 bu",3.0
+2015,NY,Soft red winter,6375600,"YEAR; PCT BY TYPE 92% x winter 6,930,000 bu",92.0
+2015,NY,Soft white winter,346500,"YEAR; PCT BY TYPE 5% x winter 6,930,000 bu",5.0
+2015,OH,Soft red winter,32160000,"YEAR; PCT BY TYPE 100% x winter 32,160,000 bu",100.0
+2015,OK,Hard red winter,97812000,"YEAR; PCT BY TYPE 99% x winter 98,800,000 bu",99.0
+2015,OK,Soft red winter,988000,"YEAR; PCT BY TYPE 1% x winter 98,800,000 bu",1.0
+2015,OR,Hard red spring,1813500,"YEAR; spring (excl durum) 4,650,000 bu less 61% soft white",4.6
+2015,OR,Hard red winter,1727250,"YEAR; PCT BY TYPE 5% x winter 34,545,000 bu",4.4
+2015,OR,Soft white spring,2836500,YEAR; PCT BY TYPE 61% x spring (excl durum),7.2
+2015,OR,Soft white winter,32817750,"YEAR; PCT BY TYPE 95% x winter 34,545,000 bu",83.7
+2015,PA,Hard red winter,113750,"YEAR; PCT BY TYPE 1% x winter 11,375,000 bu",1.0
+2015,PA,Soft red winter,11147500,"YEAR; PCT BY TYPE 98% x winter 11,375,000 bu",98.0
+2015,PA,Soft white winter,113750,"YEAR; PCT BY TYPE 1% x winter 11,375,000 bu",1.0
+2015,SC,Soft red winter,7360000,"YEAR; PCT BY TYPE 100% x winter 7,360,000 bu",100.0
+2015,SD,Durum,246000,"YEAR; SPRING, DURUM production",0.2
+2015,SD,Hard red spring,60480000,"YEAR; spring (excl durum) 60,480,000 bu less 0% soft white",58.5
+2015,SD,Hard red winter,42680000,"YEAR; PCT BY TYPE 100% x winter 42,680,000 bu",41.3
+2015,TN,Soft red winter,26860000,"YEAR; PCT BY TYPE 100% x winter 26,860,000 bu",100.0
+2015,TX,Hard red winter,99045000,"YEAR; PCT BY TYPE 93% x winter 106,500,000 bu",93.0
+2015,TX,Soft red winter,7455000,"YEAR; PCT BY TYPE 7% x winter 106,500,000 bu",7.0
+2015,UT,Hard red spring,267300,"YEAR; spring (excl durum) 495,000 bu less 46% soft white",4.3
+2015,UT,Hard red winter,4284000,"YEAR; PCT BY TYPE 75% x winter 5,712,000 bu",69.0
+2015,UT,Hard white winter,57120,"YEAR; PCT BY TYPE 1% x winter 5,712,000 bu",0.9
+2015,UT,Soft white spring,227700,YEAR; PCT BY TYPE 46% x spring (excl durum),3.7
+2015,UT,Soft white winter,1370880,"YEAR; PCT BY TYPE 24% x winter 5,712,000 bu",22.1
+2015,VA,Soft red winter,13860000,"YEAR; PCT BY TYPE 100% x winter 13,860,000 bu",100.0
+2015,WA,Hard red spring,8001000,"YEAR; spring (excl durum) 22,860,000 bu less 65% soft white",7.2
+2015,WA,Hard red winter,12465600,"YEAR; PCT BY TYPE 14% x winter 89,040,000 bu",11.1
+2015,WA,Soft white spring,14859000,YEAR; PCT BY TYPE 65% x spring (excl durum),13.3
+2015,WA,Soft white winter,76574400,"YEAR; PCT BY TYPE 86% x winter 89,040,000 bu",68.4
+2015,WI,Hard red winter,621600,"YEAR; PCT BY TYPE 4% x winter 15,540,000 bu",4.0
+2015,WI,Soft red winter,14918400,"YEAR; PCT BY TYPE 96% x winter 15,540,000 bu",96.0
+2015,WV,Hard red winter,9600,"YEAR; PCT BY TYPE 4% x winter 240,000 bu",4.0
+2015,WV,Soft red winter,228000,"YEAR; PCT BY TYPE 95% x winter 240,000 bu",95.0
+2015,WV,Soft white winter,2400,"YEAR; PCT BY TYPE 1% x winter 240,000 bu",1.0
+2015,WY,Hard red winter,4076800,"YEAR; PCT BY TYPE 98% x winter 4,160,000 bu",98.0
+2015,WY,Hard white winter,83200,"YEAR; PCT BY TYPE 2% x winter 4,160,000 bu",2.0
+2016,AL,Hard red winter,119000,"YEAR; PCT BY TYPE 1% x winter 11,900,000 bu",1.0
+2016,AL,Soft red winter,11781000,"YEAR; PCT BY TYPE 99% x winter 11,900,000 bu",99.0
+2016,AR,Soft red winter,6210000,"YEAR; PCT BY TYPE 100% x winter 6,210,000 bu",100.0
+2016,AZ,Durum,9408000,"YEAR; SPRING, DURUM production",93.4
+2016,AZ,Hard red winter,651700,"YEAR; PCT BY TYPE 98% x winter 665,000 bu",6.5
+2016,AZ,Hard white winter,13300,"YEAR; PCT BY TYPE 2% x winter 665,000 bu",0.1
+2016,CA,Durum,4042000,"YEAR; SPRING, DURUM production",23.4
+2016,CA,Hard red winter,11801400,"YEAR; PCT BY TYPE 89% x winter 13,260,000 bu",68.2
+2016,CA,Hard white winter,795600,"YEAR; PCT BY TYPE 6% x winter 13,260,000 bu",4.6
+2016,CA,Soft white winter,663000,"YEAR; PCT BY TYPE 5% x winter 13,260,000 bu",3.8
+2016,CO,Hard red spring,756800,"YEAR; spring (excl durum) 880,000 bu less 14% soft white",0.7
+2016,CO,Hard red winter,97761600,"YEAR; PCT BY TYPE 93% x winter 105,120,000 bu",92.2
+2016,CO,Hard white winter,7358400,"YEAR; PCT BY TYPE 7% x winter 105,120,000 bu",6.9
+2016,CO,Soft white spring,123200,YEAR; PCT BY TYPE 14% x spring (excl durum),0.1
+2016,DE,Soft red winter,4355000,"YEAR; PCT BY TYPE 100% x winter 4,355,000 bu",100.0
+2016,FL,Hard red winter,9000,"YEAR; PCT BY TYPE 2% x winter 450,000 bu",2.0
+2016,FL,Hard white winter,4500,"YEAR; PCT BY TYPE 1% x winter 450,000 bu",1.0
+2016,FL,Soft red winter,427500,"YEAR; PCT BY TYPE 95% x winter 450,000 bu",95.0
+2016,FL,Soft white winter,9000,"YEAR; PCT BY TYPE 2% x winter 450,000 bu",2.0
+2016,GA,Soft red winter,5060000,"YEAR; PCT BY TYPE 100% x winter 5,060,000 bu",100.0
+2016,IA,Hard red winter,696150,"YEAR; PCT BY TYPE 65% x winter 1,071,000 bu",65.0
+2016,IA,Soft red winter,364140,"YEAR; PCT BY TYPE 34% x winter 1,071,000 bu",34.0
+2016,IA,Soft white winter,10710,"YEAR; PCT BY TYPE 1% x winter 1,071,000 bu",1.0
+2016,ID,Durum,750000,"YEAR; SPRING, DURUM production",0.7
+2016,ID,Hard red spring,21649950,"YEAR; spring (excl durum) 34,365,000 bu less 37% soft white",21.1
+2016,ID,Hard red winter,14889600,"YEAR; PCT BY TYPE 22% x winter 67,680,000 bu",14.5
+2016,ID,Soft white spring,12715050,YEAR; PCT BY TYPE 37% x spring (excl durum),12.4
+2016,ID,Soft white winter,52790400,"YEAR; PCT BY TYPE 78% x winter 67,680,000 bu",51.4
+2016,IL,Soft red winter,34780000,"YEAR; PCT BY TYPE 100% x winter 34,780,000 bu",100.0
+2016,IN,Soft red winter,22680000,"YEAR; PCT BY TYPE 100% x winter 22,680,000 bu",100.0
+2016,KS,Hard red winter,453378000,"YEAR; PCT BY TYPE 97% x winter 467,400,000 bu",97.0
+2016,KS,Hard white winter,14022000,"YEAR; PCT BY TYPE 3% x winter 467,400,000 bu",3.0
+2016,KY,Soft red winter,32000000,"YEAR; PCT BY TYPE 100% x winter 32,000,000 bu",100.0
+2016,LA,Soft red winter,900000,"YEAR; PCT BY TYPE 100% x winter 900,000 bu",100.0
+2016,MD,Soft red winter,16640000,"YEAR; PCT BY TYPE 100% x winter 16,640,000 bu",100.0
+2016,MI,Soft red winter,30438000,"YEAR; PCT BY TYPE 60% x winter 50,730,000 bu",60.0
+2016,MI,Soft white winter,20292000,"YEAR; PCT BY TYPE 40% x winter 50,730,000 bu",40.0
+2016,MN,Hard red spring,74340000,"YEAR; spring (excl durum) 74,340,000 bu less 0% soft white",99.3
+2016,MN,Hard red winter,488000,"YEAR; PCT BY TYPE 100% x winter 488,000 bu",0.7
+2016,MO,Hard red winter,399000,"YEAR; PCT BY TYPE 1% x winter 39,900,000 bu",1.0
+2016,MO,Soft red winter,39501000,"YEAR; PCT BY TYPE 99% x winter 39,900,000 bu",99.0
+2016,MS,Hard red winter,96000,"YEAR; PCT BY TYPE 4% x winter 2,400,000 bu",4.0
+2016,MS,Soft red winter,2304000,"YEAR; PCT BY TYPE 96% x winter 2,400,000 bu",96.0
+2016,MT,Durum,31365000,"YEAR; SPRING, DURUM production",14.9
+2016,MT,Hard red spring,74160000,"YEAR; spring (excl durum) 74,160,000 bu less 0% soft white",35.2
+2016,MT,Hard red winter,105350000,"YEAR; PCT BY TYPE 100% x winter 105,350,000 bu",50.0
+2016,NC,Soft red winter,14555000,"YEAR; PCT BY TYPE 100% x winter 14,555,000 bu",100.0
+2016,ND,Durum,58118000,"YEAR; SPRING, DURUM production",17.5
+2016,ND,Hard red spring,269100000,"YEAR; spring (excl durum) 269,100,000 bu less 0% soft white",80.8
+2016,ND,Hard red winter,5760000,"YEAR; PCT BY TYPE 100% x winter 5,760,000 bu",1.7
+2016,NE,Hard red winter,67910400,"YEAR; PCT BY TYPE 96% x winter 70,740,000 bu",96.0
+2016,NE,Hard white winter,2829600,"YEAR; PCT BY TYPE 4% x winter 70,740,000 bu",4.0
+2016,NJ,Soft red winter,1344000,"YEAR; PCT BY TYPE 100% x winter 1,344,000 bu",100.0
+2016,NM,Hard red winter,4573800,"YEAR; PCT BY TYPE 99% x winter 4,620,000 bu",99.0
+2016,NM,Hard white winter,46200,"YEAR; PCT BY TYPE 1% x winter 4,620,000 bu",1.0
+2016,NV,Hard red spring,72360,"YEAR; spring (excl durum) 201,000 bu less 64% soft white",11.1
+2016,NV,Hard red winter,162000,"YEAR; PCT BY TYPE 36% x winter 450,000 bu",24.9
+2016,NV,Soft white spring,128640,YEAR; PCT BY TYPE 64% x spring (excl durum),19.8
+2016,NV,Soft white winter,288000,"YEAR; PCT BY TYPE 64% x winter 450,000 bu",44.2
+2016,NY,Hard red winter,255300,"YEAR; PCT BY TYPE 3% x winter 8,510,000 bu",3.0
+2016,NY,Hard white winter,85100,"YEAR; PCT BY TYPE 1% x winter 8,510,000 bu",1.0
+2016,NY,Soft red winter,7829200,"YEAR; PCT BY TYPE 92% x winter 8,510,000 bu",92.0
+2016,NY,Soft white winter,340400,"YEAR; PCT BY TYPE 4% x winter 8,510,000 bu",4.0
+2016,OH,Soft red winter,44800000,"YEAR; PCT BY TYPE 100% x winter 44,800,000 bu",100.0
+2016,OK,Hard red winter,135135000,"YEAR; PCT BY TYPE 99% x winter 136,500,000 bu",99.0
+2016,OK,Soft red winter,1365000,"YEAR; PCT BY TYPE 1% x winter 136,500,000 bu",1.0
+2016,OR,Hard red spring,1819170,"YEAR; spring (excl durum) 4,437,000 bu less 59% soft white",4.6
+2016,OR,Hard red winter,2485000,"YEAR; PCT BY TYPE 7% x winter 35,500,000 bu",6.2
+2016,OR,Soft white spring,2617830,YEAR; PCT BY TYPE 59% x spring (excl durum),6.6
+2016,OR,Soft white winter,33015000,"YEAR; PCT BY TYPE 93% x winter 35,500,000 bu",82.7
+2016,PA,Soft red winter,10098000,"YEAR; PCT BY TYPE 99% x winter 10,200,000 bu",99.0
+2016,PA,Soft white winter,102000,"YEAR; PCT BY TYPE 1% x winter 10,200,000 bu",1.0
+2016,SC,Soft red winter,2128500,"YEAR; PCT BY TYPE 99% x winter 2,150,000 bu",99.0
+2016,SC,Soft white winter,21500,"YEAR; PCT BY TYPE 1% x winter 2,150,000 bu",1.0
+2016,SD,Durum,231000,"YEAR; SPRING, DURUM production",0.2
+2016,SD,Hard red spring,47250000,"YEAR; spring (excl durum) 47,250,000 bu less 0% soft white",42.5
+2016,SD,Hard red winter,63800000,"YEAR; PCT BY TYPE 100% x winter 63,800,000 bu",57.3
+2016,TN,Soft red winter,24455000,"YEAR; PCT BY TYPE 100% x winter 24,455,000 bu",100.0
+2016,TX,Hard red winter,86912000,"YEAR; PCT BY TYPE 97% x winter 89,600,000 bu",97.0
+2016,TX,Soft red winter,2688000,"YEAR; PCT BY TYPE 3% x winter 89,600,000 bu",3.0
+2016,UT,Hard red spring,255200,"YEAR; spring (excl durum) 464,000 bu less 45% soft white",3.6
+2016,UT,Hard red winter,5040000,"YEAR; PCT BY TYPE 75% x winter 6,720,000 bu",70.2
+2016,UT,Hard white winter,67200,"YEAR; PCT BY TYPE 1% x winter 6,720,000 bu",0.9
+2016,UT,Soft white spring,208800,YEAR; PCT BY TYPE 45% x spring (excl durum),2.9
+2016,UT,Soft white winter,1612800,"YEAR; PCT BY TYPE 24% x winter 6,720,000 bu",22.4
+2016,VA,Soft red winter,9275000,"YEAR; PCT BY TYPE 100% x winter 9,275,000 bu",100.0
+2016,WA,Hard red spring,9460500,"YEAR; spring (excl durum) 27,030,000 bu less 65% soft white",6.0
+2016,WA,Hard red winter,19539000,"YEAR; PCT BY TYPE 15% x winter 130,260,000 bu",12.4
+2016,WA,Soft white spring,17569500,YEAR; PCT BY TYPE 65% x spring (excl durum),11.2
+2016,WA,Soft white winter,110721000,"YEAR; PCT BY TYPE 85% x winter 130,260,000 bu",70.4
+2016,WI,Hard red winter,790000,"YEAR; PCT BY TYPE 4% x winter 19,750,000 bu",4.0
+2016,WI,Soft red winter,18960000,"YEAR; PCT BY TYPE 96% x winter 19,750,000 bu",96.0
+2016,WV,Hard red winter,7320,"YEAR; PCT BY TYPE 3% x winter 244,000 bu",3.0
+2016,WV,Soft red winter,234240,"YEAR; PCT BY TYPE 96% x winter 244,000 bu",96.0
+2016,WV,Soft white winter,2440,"YEAR; PCT BY TYPE 1% x winter 244,000 bu",1.0
+2016,WY,Hard red winter,3995000,"YEAR; PCT BY TYPE 94% x winter 4,250,000 bu",94.0
+2016,WY,Hard white winter,255000,"YEAR; PCT BY TYPE 6% x winter 4,250,000 bu",6.0
+2017,AL,Soft red winter,7700000,"YEAR; PCT BY TYPE 100% x winter 7,700,000 bu",100.0
+2017,AR,Soft red winter,6500000,"YEAR; PCT BY TYPE 100% x winter 6,500,000 bu",100.0
+2017,AZ,Durum,8989000,"YEAR; SPRING, DURUM production",84.9
+2017,AZ,Hard red winter,1584000,"YEAR; PCT BY TYPE 99% x winter 1,600,000 bu",15.0
+2017,AZ,Hard white winter,16000,"YEAR; PCT BY TYPE 1% x winter 1,600,000 bu",0.2
+2017,CA,Durum,2484000,"YEAR; SPRING, DURUM production",20.0
+2017,CA,Hard red winter,9027200,"YEAR; PCT BY TYPE 91% x winter 9,920,000 bu",72.8
+2017,CA,Hard white winter,496000,"YEAR; PCT BY TYPE 5% x winter 9,920,000 bu",4.0
+2017,CA,Soft white winter,396800,"YEAR; PCT BY TYPE 4% x winter 9,920,000 bu",3.2
+2017,CO,Hard red spring,435420,"YEAR; spring (excl durum) 738,000 bu less 41% soft white",0.5
+2017,CO,Hard red winter,77305400,"YEAR; PCT BY TYPE 89% x winter 86,860,000 bu",88.3
+2017,CO,Hard white winter,9554600,"YEAR; PCT BY TYPE 11% x winter 86,860,000 bu",10.9
+2017,CO,Soft white spring,302580,YEAR; PCT BY TYPE 41% x spring (excl durum),0.3
+2017,DE,Soft red winter,4380000,"YEAR; PCT BY TYPE 100% x winter 4,380,000 bu",100.0
+2017,FL,Hard red winter,3700,"YEAR; PCT BY TYPE 1% x winter 370,000 bu",1.0
+2017,FL,Soft red winter,318200,"YEAR; PCT BY TYPE 86% x winter 370,000 bu",86.0
+2017,FL,Soft white winter,48100,"YEAR; PCT BY TYPE 13% x winter 370,000 bu",13.0
+2017,GA,Soft red winter,3290000,"YEAR; PCT BY TYPE 100% x winter 3,290,000 bu",100.0
+2017,IA,Hard red winter,282880,"YEAR; PCT BY TYPE 52% x winter 544,000 bu",52.0
+2017,IA,Soft red winter,261120,"YEAR; PCT BY TYPE 48% x winter 544,000 bu",48.0
+2017,ID,Durum,1848000,"YEAR; SPRING, DURUM production",2.0
+2017,ID,Hard red spring,26809000,"YEAR; spring (excl durum) 35,275,000 bu less 24% soft white",29.6
+2017,ID,Hard red winter,10184000,"YEAR; PCT BY TYPE 19% x winter 53,600,000 bu",11.2
+2017,ID,Soft white spring,8466000,YEAR; PCT BY TYPE 24% x spring (excl durum),9.3
+2017,ID,Soft white winter,43416000,"YEAR; PCT BY TYPE 81% x winter 53,600,000 bu",47.9
+2017,IL,Soft red winter,35720000,"YEAR; PCT BY TYPE 100% x winter 35,720,000 bu",100.0
+2017,IN,Soft red winter,17760000,"YEAR; PCT BY TYPE 100% x winter 17,760,000 bu",100.0
+2017,KS,Hard red winter,323592000,"YEAR; PCT BY TYPE 97% x winter 333,600,000 bu",97.0
+2017,KS,Hard white winter,10008000,"YEAR; PCT BY TYPE 3% x winter 333,600,000 bu",3.0
+2017,KY,Soft red winter,23870000,"YEAR; PCT BY TYPE 100% x winter 23,870,000 bu",100.0
+2017,LA,Soft red winter,598000,"YEAR; PCT BY TYPE 100% x winter 598,000 bu",100.0
+2017,MD,Soft red winter,13135000,"YEAR; PCT BY TYPE 100% x winter 13,135,000 bu",100.0
+2017,MI,Soft red winter,18802000,"YEAR; PCT BY TYPE 56% x winter 33,575,000 bu",56.0
+2017,MI,Soft white winter,14773000,"YEAR; PCT BY TYPE 44% x winter 33,575,000 bu",44.0
+2017,MN,Hard red spring,75710000,"YEAR; spring (excl durum) 75,710,000 bu less 0% soft white",99.7
+2017,MN,Hard red winter,222750,"YEAR; PCT BY TYPE 99% x winter 225,000 bu",0.3
+2017,MN,Hard white winter,2250,"YEAR; PCT BY TYPE 1% x winter 225,000 bu",0.0
+2017,MO,Hard red winter,367200,"YEAR; PCT BY TYPE 1% x winter 36,720,000 bu",1.0
+2017,MO,Soft red winter,36352800,"YEAR; PCT BY TYPE 99% x winter 36,720,000 bu",99.0
+2017,MS,Soft red winter,1450000,"YEAR; PCT BY TYPE 100% x winter 1,450,000 bu",100.0
+2017,MT,Durum,12560000,"YEAR; SPRING, DURUM production",9.9
+2017,MT,Hard red spring,48090000,"YEAR; spring (excl durum) 48,090,000 bu less 0% soft white",37.7
+2017,MT,Hard red winter,66780000,"YEAR; PCT BY TYPE 100% x winter 66,780,000 bu",52.4
+2017,NC,Soft red winter,20625000,"YEAR; PCT BY TYPE 100% x winter 20,625,000 bu",100.0
+2017,ND,Durum,28788000,"YEAR; SPRING, DURUM production",12.1
+2017,ND,Hard red spring,207050000,"YEAR; spring (excl durum) 207,050,000 bu less 0% soft white",87.3
+2017,ND,Hard red winter,1282050,"YEAR; PCT BY TYPE 99% x winter 1,295,000 bu",0.5
+2017,ND,Hard white winter,12950,"YEAR; PCT BY TYPE 1% x winter 1,295,000 bu",0.0
+2017,NE,Hard red winter,43635600,"YEAR; PCT BY TYPE 93% x winter 46,920,000 bu",93.0
+2017,NE,Hard white winter,3284400,"YEAR; PCT BY TYPE 7% x winter 46,920,000 bu",7.0
+2017,NJ,Soft red winter,1088000,"YEAR; PCT BY TYPE 100% x winter 1,088,000 bu",100.0
+2017,NM,Hard red winter,4050000,"YEAR; PCT BY TYPE 100% x winter 4,050,000 bu",100.0
+2017,NV,Hard red spring,94500,"YEAR; spring (excl durum) 945,000 bu less 90% soft white",6.4
+2017,NV,Hard red winter,133750,"YEAR; PCT BY TYPE 25% x winter 535,000 bu",9.0
+2017,NV,Soft white spring,850500,YEAR; PCT BY TYPE 90% x spring (excl durum),57.5
+2017,NV,Soft white winter,401250,"YEAR; PCT BY TYPE 75% x winter 535,000 bu",27.1
+2017,NY,Hard red winter,335000,"YEAR; PCT BY TYPE 4% x winter 8,375,000 bu",4.0
+2017,NY,Soft red winter,7705000,"YEAR; PCT BY TYPE 92% x winter 8,375,000 bu",92.0
+2017,NY,Soft white winter,335000,"YEAR; PCT BY TYPE 4% x winter 8,375,000 bu",4.0
+2017,OH,Soft red winter,34040000,"YEAR; PCT BY TYPE 100% x winter 34,040,000 bu",100.0
+2017,OK,Hard red winter,97614000,"YEAR; PCT BY TYPE 99% x winter 98,600,000 bu",99.0
+2017,OK,Soft red winter,986000,"YEAR; PCT BY TYPE 1% x winter 98,600,000 bu",1.0
+2017,OR,Hard red spring,2575440,"YEAR; spring (excl durum) 4,599,000 bu less 44% soft white",5.4
+2017,OR,Hard red winter,3477600,"YEAR; PCT BY TYPE 8% x winter 43,470,000 bu",7.2
+2017,OR,Soft white spring,2023560,YEAR; PCT BY TYPE 44% x spring (excl durum),4.2
+2017,OR,Soft white winter,39992400,"YEAR; PCT BY TYPE 92% x winter 43,470,000 bu",83.2
+2017,PA,Hard red winter,108000,"YEAR; PCT BY TYPE 1% x winter 10,800,000 bu",1.0
+2017,PA,Soft red winter,10584000,"YEAR; PCT BY TYPE 98% x winter 10,800,000 bu",98.0
+2017,PA,Soft white winter,108000,"YEAR; PCT BY TYPE 1% x winter 10,800,000 bu",1.0
+2017,SC,Soft red winter,3675000,"YEAR; PCT BY TYPE 100% x winter 3,675,000 bu",100.0
+2017,SD,Durum,108000,"YEAR; SPRING, DURUM production",0.3
+2017,SD,Hard red spring,20770000,"YEAR; spring (excl durum) 20,770,000 bu less 0% soft white",49.8
+2017,SD,Hard red winter,20800000,"YEAR; PCT BY TYPE 100% x winter 20,800,000 bu",49.9
+2017,TN,Soft red winter,19250000,"YEAR; PCT BY TYPE 100% x winter 19,250,000 bu",100.0
+2017,TX,Hard red winter,64061000,"YEAR; PCT BY TYPE 94% x winter 68,150,000 bu",94.0
+2017,TX,Soft red winter,4089000,"YEAR; PCT BY TYPE 6% x winter 68,150,000 bu",6.0
+2017,UT,Hard red spring,405600,"YEAR; spring (excl durum) 624,000 bu less 35% soft white",6.5
+2017,UT,Hard red winter,4212000,"YEAR; PCT BY TYPE 75% x winter 5,616,000 bu",67.5
+2017,UT,Hard white winter,56160,"YEAR; PCT BY TYPE 1% x winter 5,616,000 bu",0.9
+2017,UT,Soft white spring,218400,YEAR; PCT BY TYPE 35% x spring (excl durum),3.5
+2017,UT,Soft white winter,1347840,"YEAR; PCT BY TYPE 24% x winter 5,616,000 bu",21.6
+2017,VA,Soft red winter,9570000,"YEAR; PCT BY TYPE 100% x winter 9,570,000 bu",100.0
+2017,WA,Hard red spring,11025000,"YEAR; spring (excl durum) 22,050,000 bu less 50% soft white",7.7
+2017,WA,Hard red winter,18067500,"YEAR; PCT BY TYPE 15% x winter 120,450,000 bu",12.7
+2017,WA,Soft white spring,11025000,YEAR; PCT BY TYPE 50% x spring (excl durum),7.7
+2017,WA,Soft white winter,102382500,"YEAR; PCT BY TYPE 85% x winter 120,450,000 bu",71.8
+2017,WI,Hard red winter,346800,"YEAR; PCT BY TYPE 3% x winter 11,560,000 bu",3.0
+2017,WI,Soft red winter,11213200,"YEAR; PCT BY TYPE 97% x winter 11,560,000 bu",97.0
+2017,WV,Hard red winter,13800,"YEAR; PCT BY TYPE 5% x winter 276,000 bu",5.0
+2017,WV,Soft red winter,259440,"YEAR; PCT BY TYPE 94% x winter 276,000 bu",94.0
+2017,WV,Soft white winter,2760,"YEAR; PCT BY TYPE 1% x winter 276,000 bu",1.0
+2017,WY,Hard red winter,2646000,"YEAR; PCT BY TYPE 90% x winter 2,940,000 bu",90.0
+2017,WY,Hard white winter,294000,"YEAR; PCT BY TYPE 10% x winter 2,940,000 bu",10.0
+2018,AL,Hard red winter,158400,"YEAR; PCT BY TYPE 2% x winter 7,920,000 bu",2.0
+2018,AL,Soft red winter,7761600,"YEAR; PCT BY TYPE 98% x winter 7,920,000 bu",98.0
+2018,AR,Hard white winter,52250,"YEAR; PCT BY TYPE 1% x winter 5,225,000 bu",1.0
+2018,AR,Soft red winter,5172750,"YEAR; PCT BY TYPE 99% x winter 5,225,000 bu",99.0
+2018,AZ,Durum,7738000,"YEAR; SPRING, DURUM production",98.0
+2018,AZ,Hard red winter,158400,"YEAR; PCT BY TYPE 99% x winter 160,000 bu",2.0
+2018,AZ,Hard white winter,1600,"YEAR; PCT BY TYPE 1% x winter 160,000 bu",0.0
+2018,CA,Durum,3720000,"YEAR; SPRING, DURUM production",30.5
+2018,CA,Hard red winter,7453600,"YEAR; PCT BY TYPE 88% x winter 8,470,000 bu",61.1
+2018,CA,Hard white winter,592900,"YEAR; PCT BY TYPE 7% x winter 8,470,000 bu",4.9
+2018,CA,Soft white winter,423500,"YEAR; PCT BY TYPE 5% x winter 8,470,000 bu",3.5
+2018,CO,Hard red spring,246240,"YEAR; spring (excl durum) 304,000 bu less 19% soft white",0.3
+2018,CO,Hard red winter,63882000,"YEAR; PCT BY TYPE 91% x winter 70,200,000 bu",90.6
+2018,CO,Hard white winter,6318000,"YEAR; PCT BY TYPE 9% x winter 70,200,000 bu",9.0
+2018,CO,Soft white spring,57760,YEAR; PCT BY TYPE 19% x spring (excl durum),0.1
+2018,DE,Soft red winter,3195000,"YEAR; PCT BY TYPE 100% x winter 3,195,000 bu",100.0
+2018,FL,Soft red winter,331200,"YEAR; PCT BY TYPE 92% x winter 360,000 bu",92.0
+2018,FL,Soft white winter,28800,"YEAR; PCT BY TYPE 8% x winter 360,000 bu",8.0
+2018,GA,Soft red winter,3742200,"YEAR; PCT BY TYPE 99% x winter 3,780,000 bu",99.0
+2018,GA,Soft white winter,37800,"YEAR; PCT BY TYPE 1% x winter 3,780,000 bu",1.0
+2018,IA,Hard red winter,167040,"YEAR; PCT BY TYPE 48% x winter 348,000 bu",48.0
+2018,IA,Soft red winter,180960,"YEAR; PCT BY TYPE 52% x winter 348,000 bu",52.0
+2018,ID,Durum,935000,"YEAR; SPRING, DURUM production",0.9
+2018,ID,Hard red spring,34242750,"YEAR; spring (excl durum) 42,275,000 bu less 19% soft white",32.8
+2018,ID,Hard red winter,12240000,"YEAR; PCT BY TYPE 20% x winter 61,200,000 bu",11.7
+2018,ID,Soft white spring,8032250,YEAR; PCT BY TYPE 19% x spring (excl durum),7.7
+2018,ID,Soft white winter,48960000,"YEAR; PCT BY TYPE 80% x winter 61,200,000 bu",46.9
+2018,IL,Soft red winter,36960000,"YEAR; PCT BY TYPE 100% x winter 36,960,000 bu",100.0
+2018,IN,Soft red winter,18460000,"YEAR; PCT BY TYPE 100% x winter 18,460,000 bu",100.0
+2018,KS,Hard red winter,266304000,"YEAR; PCT BY TYPE 96% x winter 277,400,000 bu",96.0
+2018,KS,Hard white winter,8322000,"YEAR; PCT BY TYPE 3% x winter 277,400,000 bu",3.0
+2018,KS,Soft red winter,2774000,"YEAR; PCT BY TYPE 1% x winter 277,400,000 bu",1.0
+2018,KY,Soft red winter,19800000,"YEAR; PCT BY TYPE 100% x winter 19,800,000 bu",100.0
+2018,LA,Soft red winter,650000,"YEAR; PCT BY TYPE 100% x winter 650,000 bu",100.0
+2018,MD,Soft red winter,12600000,"YEAR; PCT BY TYPE 100% x winter 12,600,000 bu",100.0
+2018,MI,Soft red winter,21074800,"YEAR; PCT BY TYPE 59% x winter 35,720,000 bu",59.0
+2018,MI,Soft white winter,14645200,"YEAR; PCT BY TYPE 41% x winter 35,720,000 bu",41.0
+2018,MN,Hard red spring,92630000,"YEAR; spring (excl durum) 92,630,000 bu less 0% soft white",99.7
+2018,MN,Hard red winter,300000,"YEAR; PCT BY TYPE 100% x winter 300,000 bu",0.3
+2018,MO,Hard red winter,306800,"YEAR; PCT BY TYPE 1% x winter 30,680,000 bu",1.0
+2018,MO,Soft red winter,30373200,"YEAR; PCT BY TYPE 99% x winter 30,680,000 bu",99.0
+2018,MS,Soft red winter,1470000,"YEAR; PCT BY TYPE 100% x winter 1,470,000 bu",100.0
+2018,MT,Durum,23250000,"YEAR; SPRING, DURUM production",11.8
+2018,MT,Hard red spring,95880000,"YEAR; spring (excl durum) 95,880,000 bu less 0% soft white",48.5
+2018,MT,Hard red winter,78500000,"YEAR; PCT BY TYPE 100% x winter 78,500,000 bu",39.7
+2018,NC,Soft red winter,21090000,"YEAR; PCT BY TYPE 100% x winter 21,090,000 bu",100.0
+2018,ND,Durum,42463000,"YEAR; SPRING, DURUM production",11.7
+2018,ND,Hard red spring,318010000,"YEAR; spring (excl durum) 318,010,000 bu less 0% soft white",87.5
+2018,ND,Hard red winter,3010000,"YEAR; PCT BY TYPE 100% x winter 3,010,000 bu",0.8
+2018,NE,Hard red winter,46025700,"YEAR; PCT BY TYPE 93% x winter 49,490,000 bu",93.0
+2018,NE,Hard white winter,3464300,"YEAR; PCT BY TYPE 7% x winter 49,490,000 bu",7.0
+2018,NJ,Soft red winter,920700,"YEAR; PCT BY TYPE 99% x winter 930,000 bu",99.0
+2018,NJ,Soft white winter,9300,"YEAR; PCT BY TYPE 1% x winter 930,000 bu",1.0
+2018,NM,Hard red winter,1575000,"YEAR; PCT BY TYPE 100% x winter 1,575,000 bu",100.0
+2018,NV,Hard red spring,30000,"YEAR; spring (excl durum) 300,000 bu less 90% soft white",3.3
+2018,NV,Hard red winter,216000,"YEAR; PCT BY TYPE 36% x winter 600,000 bu",24.0
+2018,NV,Soft white spring,270000,YEAR; PCT BY TYPE 90% x spring (excl durum),30.0
+2018,NV,Soft white winter,384000,"YEAR; PCT BY TYPE 64% x winter 600,000 bu",42.7
+2018,NY,Hard red winter,196650,"YEAR; PCT BY TYPE 3% x winter 6,555,000 bu",3.0
+2018,NY,Soft red winter,6161700,"YEAR; PCT BY TYPE 94% x winter 6,555,000 bu",94.0
+2018,NY,Soft white winter,196650,"YEAR; PCT BY TYPE 3% x winter 6,555,000 bu",3.0
+2018,OH,Soft red winter,33750000,"YEAR; PCT BY TYPE 100% x winter 33,750,000 bu",100.0
+2018,OK,Hard red winter,69300000,"YEAR; PCT BY TYPE 99% x winter 70,000,000 bu",99.0
+2018,OK,Soft red winter,700000,"YEAR; PCT BY TYPE 1% x winter 70,000,000 bu",1.0
+2018,OR,Hard red spring,3366750,"YEAR; spring (excl durum) 5,025,000 bu less 33% soft white",6.5
+2018,OR,Hard red winter,3725200,"YEAR; PCT BY TYPE 8% x winter 46,565,000 bu",7.2
+2018,OR,Soft white spring,1658250,YEAR; PCT BY TYPE 33% x spring (excl durum),3.2
+2018,OR,Soft white winter,42839800,"YEAR; PCT BY TYPE 92% x winter 46,565,000 bu",83.0
+2018,PA,Hard red winter,94250,"YEAR; PCT BY TYPE 1% x winter 9,425,000 bu",1.0
+2018,PA,Soft red winter,9236500,"YEAR; PCT BY TYPE 98% x winter 9,425,000 bu",98.0
+2018,PA,Soft white winter,94250,"YEAR; PCT BY TYPE 1% x winter 9,425,000 bu",1.0
+2018,SC,Soft red winter,3510000,"YEAR; PCT BY TYPE 100% x winter 3,510,000 bu",100.0
+2018,SD,Durum,84000,"YEAR; SPRING, DURUM production",0.1
+2018,SD,Hard red spring,40530000,"YEAR; spring (excl durum) 40,530,000 bu less 0% soft white",56.1
+2018,SD,Hard red winter,31680000,"YEAR; PCT BY TYPE 100% x winter 31,680,000 bu",43.8
+2018,TN,Soft red winter,18525000,"YEAR; PCT BY TYPE 100% x winter 18,525,000 bu",100.0
+2018,TX,Hard red winter,52080000,"YEAR; PCT BY TYPE 93% x winter 56,000,000 bu",93.0
+2018,TX,Soft red winter,3920000,"YEAR; PCT BY TYPE 7% x winter 56,000,000 bu",7.0
+2018,UT,Hard red spring,285480,"YEAR; spring (excl durum) 468,000 bu less 39% soft white",5.3
+2018,UT,Hard red winter,3519360,"YEAR; PCT BY TYPE 72% x winter 4,888,000 bu",65.7
+2018,UT,Hard white winter,48880,"YEAR; PCT BY TYPE 1% x winter 4,888,000 bu",0.9
+2018,UT,Soft white spring,182520,YEAR; PCT BY TYPE 39% x spring (excl durum),3.4
+2018,UT,Soft white winter,1319760,"YEAR; PCT BY TYPE 27% x winter 4,888,000 bu",24.6
+2018,VA,Soft red winter,9300000,"YEAR; PCT BY TYPE 100% x winter 9,300,000 bu",100.0
+2018,WA,Hard red spring,15295500,"YEAR; spring (excl durum) 27,810,000 bu less 45% soft white",10.0
+2018,WA,Hard red winter,17556000,"YEAR; PCT BY TYPE 14% x winter 125,400,000 bu",11.5
+2018,WA,Soft white spring,12514500,YEAR; PCT BY TYPE 45% x spring (excl durum),8.2
+2018,WA,Soft white winter,107844000,"YEAR; PCT BY TYPE 86% x winter 125,400,000 bu",70.4
+2018,WI,Hard red winter,426000,"YEAR; PCT BY TYPE 3% x winter 14,200,000 bu",3.0
+2018,WI,Soft red winter,13774000,"YEAR; PCT BY TYPE 97% x winter 14,200,000 bu",97.0
+2018,WV,Hard red winter,12420,"YEAR; PCT BY TYPE 9% x winter 138,000 bu",9.0
+2018,WV,Soft red winter,124200,"YEAR; PCT BY TYPE 90% x winter 138,000 bu",90.0
+2018,WV,Soft white winter,1380,"YEAR; PCT BY TYPE 1% x winter 138,000 bu",1.0
+2018,WY,Hard red winter,3362600,"YEAR; PCT BY TYPE 86% x winter 3,910,000 bu",86.0
+2018,WY,Hard white winter,547400,"YEAR; PCT BY TYPE 14% x winter 3,910,000 bu",14.0
+2019,AL,Hard red winter,122400,"YEAR; PCT BY TYPE 2% x winter 6,120,000 bu",2.0
+2019,AL,Soft red winter,5997600,"YEAR; PCT BY TYPE 98% x winter 6,120,000 bu",98.0
+2019,AR,Soft red winter,2600000,"YEAR; PCT BY TYPE 100% x winter 2,600,000 bu",100.0
+2019,AZ,Durum,3640000,"YEAR; SPRING, DURUM production",100.0
+2019,CA,Durum,2244000,"YEAR; SPRING, DURUM production",31.0
+2019,CA,Hard red winter,4400000,"YEAR; PCT BY TYPE 88% x winter 5,000,000 bu",60.7
+2019,CA,Hard white winter,350000,"YEAR; PCT BY TYPE 7% x winter 5,000,000 bu",4.8
+2019,CA,Soft white winter,250000,"YEAR; PCT BY TYPE 5% x winter 5,000,000 bu",3.5
+2019,CO,Hard red winter,92120000,"YEAR; PCT BY TYPE 94% x winter 98,000,000 bu",94.0
+2019,CO,Hard white winter,5880000,"YEAR; PCT BY TYPE 6% x winter 98,000,000 bu",6.0
+2019,DE,Soft red winter,3600000,"YEAR; PCT BY TYPE 100% x winter 3,600,000 bu",100.0
+2019,GA,Soft red winter,2800000,"YEAR; PCT BY TYPE 100% x winter 2,800,000 bu",100.0
+2019,ID,Durum,435000,"YEAR; SPRING, DURUM production",0.4
+2019,ID,Hard red spring,27020400,"YEAR; spring (excl durum) 39,160,000 bu less 31% soft white",27.4
+2019,ID,Hard red winter,11832000,"YEAR; PCT BY TYPE 20% x winter 59,160,000 bu",12.0
+2019,ID,Soft white spring,12139600,YEAR; PCT BY TYPE 31% x spring (excl durum),12.3
+2019,ID,Soft white winter,47328000,"YEAR; PCT BY TYPE 80% x winter 59,160,000 bu",47.9
+2019,IL,Soft red winter,36850000,"YEAR; PCT BY TYPE 100% x winter 36,850,000 bu",100.0
+2019,IN,Soft red winter,16120000,"YEAR; PCT BY TYPE 100% x winter 16,120,000 bu",100.0
+2019,KS,Hard red winter,334464000,"YEAR; PCT BY TYPE 96% x winter 348,400,000 bu",96.0
+2019,KS,Hard white winter,10452000,"YEAR; PCT BY TYPE 3% x winter 348,400,000 bu",3.0
+2019,KS,Soft red winter,3484000,"YEAR; PCT BY TYPE 1% x winter 348,400,000 bu",1.0
+2019,KY,Soft red winter,25080000,"YEAR; PCT BY TYPE 100% x winter 25,080,000 bu",100.0
+2019,MD,Soft red winter,11137500,"YEAR; PCT BY TYPE 90% x winter 12,375,000 bu",90.0
+2019,MD,Soft white winter,1237500,"YEAR; PCT BY TYPE 10% x winter 12,375,000 bu",10.0
+2019,MI,Soft red winter,21221900,"YEAR; PCT BY TYPE 61% x winter 34,790,000 bu",61.0
+2019,MI,Soft white winter,13568100,"YEAR; PCT BY TYPE 39% x winter 34,790,000 bu",39.0
+2019,MN,Hard red spring,79800000,"YEAR; spring (excl durum) 79,800,000 bu less 0% soft white",100.0
+2019,MO,Hard red winter,245700,"YEAR; PCT BY TYPE 1% x winter 24,570,000 bu",1.0
+2019,MO,Soft red winter,24324300,"YEAR; PCT BY TYPE 99% x winter 24,570,000 bu",99.0
+2019,MS,Soft red winter,987000,"YEAR; PCT BY TYPE 100% x winter 987,000 bu",100.0
+2019,MT,Durum,21715000,"YEAR; SPRING, DURUM production",10.0
+2019,MT,Hard red spring,101010000,"YEAR; spring (excl durum) 101,010,000 bu less 0% soft white",46.4
+2019,MT,Hard red winter,95000000,"YEAR; PCT BY TYPE 100% x winter 95,000,000 bu",43.6
+2019,NC,Soft red winter,12600000,"YEAR; PCT BY TYPE 100% x winter 12,600,000 bu",100.0
+2019,ND,Durum,25925000,"YEAR; SPRING, DURUM production",8.1
+2019,ND,Hard red spring,291550000,"YEAR; spring (excl durum) 291,550,000 bu less 0% soft white",90.8
+2019,ND,Hard red winter,3710000,"YEAR; PCT BY TYPE 100% x winter 3,710,000 bu",1.2
+2019,NE,Hard red winter,51972600,"YEAR; PCT BY TYPE 94% x winter 55,290,000 bu",94.0
+2019,NE,Hard white winter,3317400,"YEAR; PCT BY TYPE 6% x winter 55,290,000 bu",6.0
+2019,NJ,Soft red winter,924000,"YEAR; PCT BY TYPE 100% x winter 924,000 bu",100.0
+2019,NM,Hard red winter,3300000,"YEAR; PCT BY TYPE 100% x winter 3,300,000 bu",100.0
+2019,NY,Hard red winter,249480,"YEAR; PCT BY TYPE 6% x winter 4,158,000 bu",6.0
+2019,NY,Soft red winter,3825360,"YEAR; PCT BY TYPE 92% x winter 4,158,000 bu",92.0
+2019,NY,Soft white winter,83160,"YEAR; PCT BY TYPE 2% x winter 4,158,000 bu",2.0
+2019,OH,Soft red winter,21560000,"YEAR; PCT BY TYPE 100% x winter 21,560,000 bu",100.0
+2019,OK,Hard red winter,108900000,"YEAR; PCT BY TYPE 99% x winter 110,000,000 bu",99.0
+2019,OK,Soft red winter,1100000,"YEAR; PCT BY TYPE 1% x winter 110,000,000 bu",1.0
+2019,OR,Hard red winter,3971200,"YEAR; PCT BY TYPE 8% x winter 49,640,000 bu",8.0
+2019,OR,Soft white winter,45668800,"YEAR; PCT BY TYPE 92% x winter 49,640,000 bu",92.0
+2019,PA,Soft red winter,10220000,"YEAR; PCT BY TYPE 100% x winter 10,220,000 bu",100.0
+2019,SC,Soft red winter,2160000,"YEAR; PCT BY TYPE 100% x winter 2,160,000 bu",100.0
+2019,SD,Hard red spring,25370000,"YEAR; spring (excl durum) 25,370,000 bu less 0% soft white",38.8
+2019,SD,Hard red winter,40040000,"YEAR; PCT BY TYPE 100% x winter 40,040,000 bu",61.2
+2019,TN,Soft red winter,14405000,"YEAR; PCT BY TYPE 100% x winter 14,405,000 bu",100.0
+2019,TX,Hard red winter,68544000,"YEAR; PCT BY TYPE 96% x winter 71,400,000 bu",96.0
+2019,TX,Soft red winter,2856000,"YEAR; PCT BY TYPE 4% x winter 71,400,000 bu",4.0
+2019,UT,Hard red winter,4635360,"YEAR; PCT BY TYPE 74% x winter 6,264,000 bu",74.0
+2019,UT,Hard white winter,125280,"YEAR; PCT BY TYPE 2% x winter 6,264,000 bu",2.0
+2019,UT,Soft white winter,1503360,"YEAR; PCT BY TYPE 24% x winter 6,264,000 bu",24.0
+2019,VA,Soft red winter,6510000,"YEAR; PCT BY TYPE 100% x winter 6,510,000 bu",100.0
+2019,WA,Hard red spring,7019450,"YEAR; spring (excl durum) 24,205,000 bu less 71% soft white",4.9
+2019,WA,Hard red winter,16660000,"YEAR; PCT BY TYPE 14% x winter 119,000,000 bu",11.6
+2019,WA,Soft white spring,17185550,YEAR; PCT BY TYPE 71% x spring (excl durum),12.0
+2019,WA,Soft white winter,102340000,"YEAR; PCT BY TYPE 86% x winter 119,000,000 bu",71.5
+2019,WI,Hard red winter,192000,"YEAR; PCT BY TYPE 2% x winter 9,600,000 bu",2.0
+2019,WI,Soft red winter,9408000,"YEAR; PCT BY TYPE 98% x winter 9,600,000 bu",98.0
+2019,WY,Hard red winter,4588100,"YEAR; PCT BY TYPE 97% x winter 4,730,000 bu",97.0
+2019,WY,Hard white winter,141900,"YEAR; PCT BY TYPE 3% x winter 4,730,000 bu",3.0
+2020,AL,Soft red winter,5040000,"YEAR; PCT BY TYPE 100% x winter 5,040,000 bu",100.0
+2020,AR,Soft red winter,4125000,"YEAR; PCT BY TYPE 100% x winter 4,125,000 bu",100.0
+2020,AZ,Durum,4851000,"YEAR; SPRING, DURUM production",100.0
+2020,CA,Durum,1479000,"YEAR; SPRING, DURUM production",20.8
+2020,CA,Hard red winter,5062500,"YEAR; PCT BY TYPE 90% x winter 5,625,000 bu",71.3
+2020,CA,Hard white winter,225000,"YEAR; PCT BY TYPE 4% x winter 5,625,000 bu",3.2
+2020,CA,Soft red winter,56250,"YEAR; PCT BY TYPE 1% x winter 5,625,000 bu",0.8
+2020,CA,Soft white winter,281250,"YEAR; PCT BY TYPE 5% x winter 5,625,000 bu",4.0
+2020,CO,Hard red winter,39285000,"YEAR; PCT BY TYPE 97% x winter 40,500,000 bu",97.0
+2020,CO,Hard white winter,1215000,"YEAR; PCT BY TYPE 3% x winter 40,500,000 bu",3.0
+2020,DE,Soft red winter,4015000,"YEAR; PCT BY TYPE 100% x winter 4,015,000 bu",100.0
+2020,GA,Soft red winter,4581500,"YEAR; PCT BY TYPE 98% x winter 4,675,000 bu",98.0
+2020,GA,Soft white winter,93500,"YEAR; PCT BY TYPE 2% x winter 4,675,000 bu",2.0
+2020,ID,Durum,801000,"YEAR; SPRING, DURUM production",0.7
+2020,ID,Hard red spring,25675650,"YEAR; spring (excl durum) 45,045,000 bu less 43% soft white",23.0
+2020,ID,Hard red winter,11817000,"YEAR; PCT BY TYPE 18% x winter 65,650,000 bu",10.6
+2020,ID,Hard white winter,656500,"YEAR; PCT BY TYPE 1% x winter 65,650,000 bu",0.6
+2020,ID,Soft white spring,19369350,YEAR; PCT BY TYPE 43% x spring (excl durum),17.4
+2020,ID,Soft white winter,53176500,"YEAR; PCT BY TYPE 81% x winter 65,650,000 bu",47.7
+2020,IL,Soft red winter,35360000,"YEAR; PCT BY TYPE 100% x winter 35,360,000 bu",100.0
+2020,IN,Soft red winter,17500000,"YEAR; PCT BY TYPE 100% x winter 17,500,000 bu",100.0
+2020,KS,Hard red winter,270000000,"YEAR; PCT BY TYPE 96% x winter 281,250,000 bu",96.0
+2020,KS,Hard white winter,8437500,"YEAR; PCT BY TYPE 3% x winter 281,250,000 bu",3.0
+2020,KS,Soft red winter,2812500,"YEAR; PCT BY TYPE 1% x winter 281,250,000 bu",1.0
+2020,KY,Soft red winter,21420000,"YEAR; PCT BY TYPE 100% x winter 21,420,000 bu",100.0
+2020,MD,Soft red winter,10950000,"YEAR; PCT BY TYPE 100% x winter 10,950,000 bu",100.0
+2020,MI,Soft red winter,20925000,"YEAR; PCT BY TYPE 62% x winter 33,750,000 bu",62.0
+2020,MI,Soft white winter,12825000,"YEAR; PCT BY TYPE 38% x winter 33,750,000 bu",38.0
+2020,MN,Hard red spring,72080000,"YEAR; spring (excl durum) 72,080,000 bu less 0% soft white",100.0
+2020,MO,Hard red winter,223200,"YEAR; PCT BY TYPE 1% x winter 22,320,000 bu",1.0
+2020,MO,Soft red winter,22096800,"YEAR; PCT BY TYPE 99% x winter 22,320,000 bu",99.0
+2020,MS,Soft red winter,960000,"YEAR; PCT BY TYPE 100% x winter 960,000 bu",100.0
+2020,MT,Durum,26910000,"YEAR; SPRING, DURUM production",11.8
+2020,MT,Hard red spring,125780000,"YEAR; spring (excl durum) 125,780,000 bu less 0% soft white",55.0
+2020,MT,Hard red winter,75990000,"YEAR; PCT BY TYPE 100% x winter 75,990,000 bu",33.2
+2020,NC,Soft red winter,21000000,"YEAR; PCT BY TYPE 100% x winter 21,000,000 bu",100.0
+2020,ND,Durum,35100000,"YEAR; SPRING, DURUM production",11.2
+2020,ND,Hard red spring,275870000,"YEAR; spring (excl durum) 275,870,000 bu less 0% soft white",88.3
+2020,ND,Hard red winter,1600830,"YEAR; PCT BY TYPE 99% x winter 1,617,000 bu",0.5
+2020,ND,Hard white winter,16170,"YEAR; PCT BY TYPE 1% x winter 1,617,000 bu",0.0
+2020,NE,Hard red winter,32668800,"YEAR; PCT BY TYPE 96% x winter 34,030,000 bu",96.0
+2020,NE,Hard white winter,1361200,"YEAR; PCT BY TYPE 4% x winter 34,030,000 bu",4.0
+2020,NJ,Soft red winter,1206000,"YEAR; PCT BY TYPE 100% x winter 1,206,000 bu",100.0
+2020,NM,Hard red winter,3187800,"YEAR; PCT BY TYPE 99% x winter 3,220,000 bu",99.0
+2020,NM,Soft white winter,32200,"YEAR; PCT BY TYPE 1% x winter 3,220,000 bu",1.0
+2020,NY,Hard red winter,435600,"YEAR; PCT BY TYPE 6% x winter 7,260,000 bu",6.0
+2020,NY,Soft red winter,6679200,"YEAR; PCT BY TYPE 92% x winter 7,260,000 bu",92.0
+2020,NY,Soft white winter,145200,"YEAR; PCT BY TYPE 2% x winter 7,260,000 bu",2.0
+2020,OH,Soft red winter,34790000,"YEAR; PCT BY TYPE 100% x winter 34,790,000 bu",100.0
+2020,OK,Hard red winter,100980000,"YEAR; PCT BY TYPE 99% x winter 102,000,000 bu",99.0
+2020,OK,Soft red winter,1020000,"YEAR; PCT BY TYPE 1% x winter 102,000,000 bu",1.0
+2020,OR,Hard red winter,2320000,"YEAR; PCT BY TYPE 5% x winter 46,400,000 bu",5.0
+2020,OR,Soft white winter,44080000,"YEAR; PCT BY TYPE 95% x winter 46,400,000 bu",95.0
+2020,PA,Soft red winter,12780000,"YEAR; PCT BY TYPE 100% x winter 12,780,000 bu",100.0
+2020,SC,Soft red winter,4845000,"YEAR; PCT BY TYPE 100% x winter 4,845,000 bu",100.0
+2020,SD,Hard red spring,35485000,"YEAR; spring (excl durum) 35,485,000 bu less 0% soft white",50.9
+2020,SD,Hard red winter,34220000,"YEAR; PCT BY TYPE 100% x winter 34,220,000 bu",49.1
+2020,TN,Soft red winter,13570000,"YEAR; PCT BY TYPE 100% x winter 13,570,000 bu",100.0
+2020,TX,Hard red winter,57600000,"YEAR; PCT BY TYPE 96% x winter 60,000,000 bu",96.0
+2020,TX,Soft red winter,2400000,"YEAR; PCT BY TYPE 4% x winter 60,000,000 bu",4.0
+2020,UT,Hard red winter,3583860,"YEAR; PCT BY TYPE 69% x winter 5,194,000 bu",69.0
+2020,UT,Hard white winter,155820,"YEAR; PCT BY TYPE 3% x winter 5,194,000 bu",3.0
+2020,UT,Soft white winter,1454320,"YEAR; PCT BY TYPE 28% x winter 5,194,000 bu",28.0
+2020,VA,Hard red winter,78000,"YEAR; PCT BY TYPE 1% x winter 7,800,000 bu",1.0
+2020,VA,Soft red winter,7722000,"YEAR; PCT BY TYPE 99% x winter 7,800,000 bu",99.0
+2020,WA,Hard red spring,6981450,"YEAR; spring (excl durum) 33,245,000 bu less 79% soft white",4.2
+2020,WA,Hard red winter,11970000,"YEAR; PCT BY TYPE 9% x winter 133,000,000 bu",7.2
+2020,WA,Soft white spring,26263550,YEAR; PCT BY TYPE 79% x spring (excl durum),15.8
+2020,WA,Soft white winter,121030000,"YEAR; PCT BY TYPE 91% x winter 133,000,000 bu",72.8
+2020,WI,Hard red winter,258750,"YEAR; PCT BY TYPE 3% x winter 8,625,000 bu",3.0
+2020,WI,Soft red winter,8366250,"YEAR; PCT BY TYPE 97% x winter 8,625,000 bu",97.0
+2020,WY,Hard red winter,2269800,"YEAR; PCT BY TYPE 97% x winter 2,340,000 bu",97.0
+2020,WY,Hard white winter,70200,"YEAR; PCT BY TYPE 3% x winter 2,340,000 bu",3.0
+2021,AL,Soft red winter,9130000,"YEAR; PCT BY TYPE 100% x winter 9,130,000 bu",100.0
+2021,AR,Soft red winter,8410000,"YEAR; PCT BY TYPE 100% x winter 8,410,000 bu",100.0
+2021,AZ,Durum,5310000,"YEAR; SPRING, DURUM production",100.0
+2021,CA,Durum,2200000,"YEAR; SPRING, DURUM production",23.0
+2021,CA,Hard red winter,6789600,"YEAR; PCT BY TYPE 92% x winter 7,380,000 bu",70.9
+2021,CA,Hard white winter,221400,"YEAR; PCT BY TYPE 3% x winter 7,380,000 bu",2.3
+2021,CA,Soft red winter,73800,"YEAR; PCT BY TYPE 1% x winter 7,380,000 bu",0.8
+2021,CA,Soft white winter,295200,"YEAR; PCT BY TYPE 4% x winter 7,380,000 bu",3.1
+2021,CO,Hard red winter,66777600,"YEAR; PCT BY TYPE 96% x winter 69,560,000 bu",96.0
+2021,CO,Hard white winter,2782400,"YEAR; PCT BY TYPE 4% x winter 69,560,000 bu",4.0
+2021,DE,Soft red winter,2450000,"YEAR; PCT BY TYPE 100% x winter 2,450,000 bu",100.0
+2021,GA,Soft red winter,6098400,"YEAR; PCT BY TYPE 99% x winter 6,160,000 bu",99.0
+2021,GA,Soft white winter,61600,"YEAR; PCT BY TYPE 1% x winter 6,160,000 bu",1.0
+2021,ID,Durum,539000,"YEAR; SPRING, DURUM production",0.7
+2021,ID,Hard red spring,15888600,"YEAR; spring (excl durum) 30,555,000 bu less 48% soft white",20.8
+2021,ID,Hard red winter,7724800,"YEAR; PCT BY TYPE 17% x winter 45,440,000 bu",10.1
+2021,ID,Hard white winter,454400,"YEAR; PCT BY TYPE 1% x winter 45,440,000 bu",0.6
+2021,ID,Soft white spring,14666400,YEAR; PCT BY TYPE 48% x spring (excl durum),19.2
+2021,ID,Soft white winter,37260800,"YEAR; PCT BY TYPE 82% x winter 45,440,000 bu",48.7
+2021,IL,Soft red winter,48190000,"YEAR; PCT BY TYPE 100% x winter 48,190,000 bu",100.0
+2021,IN,Soft red winter,22950000,"YEAR; PCT BY TYPE 100% x winter 22,950,000 bu",100.0
+2021,KS,Hard red winter,342160000,"YEAR; PCT BY TYPE 94% x winter 364,000,000 bu",94.0
+2021,KS,Hard white winter,14560000,"YEAR; PCT BY TYPE 4% x winter 364,000,000 bu",4.0
+2021,KS,Soft red winter,7280000,"YEAR; PCT BY TYPE 2% x winter 364,000,000 bu",2.0
+2021,KY,Soft red winter,30450000,"YEAR; PCT BY TYPE 100% x winter 30,450,000 bu",100.0
+2021,MD,Soft red winter,12640000,"YEAR; PCT BY TYPE 100% x winter 12,640,000 bu",100.0
+2021,MI,Soft red winter,29030400,"YEAR; PCT BY TYPE 64% x winter 45,360,000 bu",64.0
+2021,MI,Soft white winter,16329600,"YEAR; PCT BY TYPE 36% x winter 45,360,000 bu",36.0
+2021,MN,Hard red spring,55680000,"YEAR; spring (excl durum) 55,680,000 bu less 0% soft white",100.0
+2021,MO,Hard red winter,318500,"YEAR; PCT BY TYPE 1% x winter 31,850,000 bu",1.0
+2021,MO,Soft red winter,31531500,"YEAR; PCT BY TYPE 99% x winter 31,850,000 bu",99.0
+2021,MS,Soft red winter,4130000,"YEAR; PCT BY TYPE 100% x winter 4,130,000 bu",100.0
+2021,MT,Durum,9920000,"YEAR; SPRING, DURUM production",9.9
+2021,MT,Hard red spring,37060000,"YEAR; spring (excl durum) 37,060,000 bu less 0% soft white",36.8
+2021,MT,Hard red winter,53630000,"YEAR; PCT BY TYPE 100% x winter 53,630,000 bu",53.3
+2021,NC,Soft red winter,19320000,"YEAR; PCT BY TYPE 100% x winter 19,320,000 bu",100.0
+2021,ND,Durum,19680000,"YEAR; SPRING, DURUM production",10.0
+2021,ND,Hard red spring,174535000,"YEAR; spring (excl durum) 174,535,000 bu less 0% soft white",89.0
+2021,ND,Hard red winter,1960200,"YEAR; PCT BY TYPE 99% x winter 1,980,000 bu",1.0
+2021,ND,Hard white winter,19800,"YEAR; PCT BY TYPE 1% x winter 1,980,000 bu",0.0
+2021,NE,Hard red winter,39102000,"YEAR; PCT BY TYPE 95% x winter 41,160,000 bu",95.0
+2021,NE,Hard white winter,2058000,"YEAR; PCT BY TYPE 5% x winter 41,160,000 bu",5.0
+2021,NJ,Soft red winter,1072000,"YEAR; PCT BY TYPE 100% x winter 1,072,000 bu",100.0
+2021,NM,Hard red winter,2851200,"YEAR; PCT BY TYPE 99% x winter 2,880,000 bu",99.0
+2021,NM,Soft white winter,28800,"YEAR; PCT BY TYPE 1% x winter 2,880,000 bu",1.0
+2021,NY,Hard red winter,481250,"YEAR; PCT BY TYPE 5% x winter 9,625,000 bu",5.0
+2021,NY,Soft red winter,9047500,"YEAR; PCT BY TYPE 94% x winter 9,625,000 bu",94.0
+2021,NY,Soft white winter,96250,"YEAR; PCT BY TYPE 1% x winter 9,625,000 bu",1.0
+2021,OH,Soft red winter,43775000,"YEAR; PCT BY TYPE 100% x winter 43,775,000 bu",100.0
+2021,OK,Hard red winter,113899500,"YEAR; PCT BY TYPE 99% x winter 115,050,000 bu",99.0
+2021,OK,Soft red winter,1150500,"YEAR; PCT BY TYPE 1% x winter 115,050,000 bu",1.0
+2021,OR,Hard red winter,2538000,"YEAR; PCT BY TYPE 8% x winter 31,725,000 bu",8.0
+2021,OR,Soft white winter,29187000,"YEAR; PCT BY TYPE 92% x winter 31,725,000 bu",92.0
+2021,PA,Soft red winter,15015000,"YEAR; PCT BY TYPE 100% x winter 15,015,000 bu",100.0
+2021,SC,Soft red winter,5300000,"YEAR; PCT BY TYPE 100% x winter 5,300,000 bu",100.0
+2021,SD,Hard red spring,16820000,"YEAR; spring (excl durum) 16,820,000 bu less 0% soft white",38.4
+2021,SD,Hard red winter,26980000,"YEAR; PCT BY TYPE 100% x winter 26,980,000 bu",61.6
+2021,TN,Soft red winter,23430000,"YEAR; PCT BY TYPE 100% x winter 23,430,000 bu",100.0
+2021,TX,Hard red winter,69560000,"YEAR; PCT BY TYPE 94% x winter 74,000,000 bu",94.0
+2021,TX,Soft red winter,4440000,"YEAR; PCT BY TYPE 6% x winter 74,000,000 bu",6.0
+2021,UT,Hard red winter,3037380,"YEAR; PCT BY TYPE 71% x winter 4,278,000 bu",71.0
+2021,UT,Hard white winter,85560,"YEAR; PCT BY TYPE 2% x winter 4,278,000 bu",2.0
+2021,UT,Soft white winter,1155060,"YEAR; PCT BY TYPE 27% x winter 4,278,000 bu",27.0
+2021,VA,Hard red winter,80400,"YEAR; PCT BY TYPE 1% x winter 8,040,000 bu",1.0
+2021,VA,Soft red winter,7959600,"YEAR; PCT BY TYPE 99% x winter 8,040,000 bu",99.0
+2021,WA,Hard red spring,2754000,"YEAR; spring (excl durum) 16,200,000 bu less 83% soft white",3.2
+2021,WA,Hard red winter,8517600,"YEAR; PCT BY TYPE 12% x winter 70,980,000 bu",9.8
+2021,WA,Soft white spring,13446000,YEAR; PCT BY TYPE 83% x spring (excl durum),15.4
+2021,WA,Soft white winter,62462400,"YEAR; PCT BY TYPE 88% x winter 70,980,000 bu",71.6
+2021,WI,Hard red winter,551250,"YEAR; PCT BY TYPE 3% x winter 18,375,000 bu",3.0
+2021,WI,Soft red winter,17823750,"YEAR; PCT BY TYPE 97% x winter 18,375,000 bu",97.0
+2021,WY,Hard red winter,2918400,"YEAR; PCT BY TYPE 96% x winter 3,040,000 bu",96.0
+2021,WY,Hard white winter,121600,"YEAR; PCT BY TYPE 4% x winter 3,040,000 bu",4.0
+2022,AL,Soft red winter,8640000,"YEAR; PCT BY TYPE 100% x winter 8,640,000 bu",100.0
+2022,AR,Soft red winter,7950000,"YEAR; PCT BY TYPE 100% x winter 7,950,000 bu",100.0
+2022,AZ,Durum,9576000,"YEAR; SPRING, DURUM production",100.0
+2022,CA,Durum,3850000,"YEAR; SPRING, DURUM production",43.0
+2022,CA,Hard red winter,4701200,"YEAR; PCT BY TYPE 92% x winter 5,110,000 bu",52.5
+2022,CA,Hard white winter,204400,"YEAR; PCT BY TYPE 4% x winter 5,110,000 bu",2.3
+2022,CA,Soft white winter,204400,"YEAR; PCT BY TYPE 4% x winter 5,110,000 bu",2.3
+2022,CO,Hard red winter,34320000,"YEAR; PCT BY TYPE 96% x winter 35,750,000 bu",96.0
+2022,CO,Hard white winter,1430000,"YEAR; PCT BY TYPE 4% x winter 35,750,000 bu",4.0
+2022,DE,Soft red winter,4104000,"YEAR; PCT BY TYPE 100% x winter 4,104,000 bu",100.0
+2022,GA,Soft red winter,5800000,"YEAR; PCT BY TYPE 100% x winter 5,800,000 bu",100.0
+2022,ID,Durum,455000,"YEAR; SPRING, DURUM production",0.5
+2022,ID,Hard red spring,17204400,"YEAR; spring (excl durum) 29,160,000 bu less 41% soft white",18.4
+2022,ID,Hard red winter,10863000,"YEAR; PCT BY TYPE 17% x winter 63,900,000 bu",11.6
+2022,ID,Soft white spring,11955600,YEAR; PCT BY TYPE 41% x spring (excl durum),12.8
+2022,ID,Soft white winter,53037000,"YEAR; PCT BY TYPE 83% x winter 63,900,000 bu",56.7
+2022,IL,Soft red winter,44240000,"YEAR; PCT BY TYPE 100% x winter 44,240,000 bu",100.0
+2022,IN,Soft red winter,19440000,"YEAR; PCT BY TYPE 100% x winter 19,440,000 bu",100.0
+2022,KS,Hard red winter,229548000,"YEAR; PCT BY TYPE 94% x winter 244,200,000 bu",94.0
+2022,KS,Hard white winter,7326000,"YEAR; PCT BY TYPE 3% x winter 244,200,000 bu",3.0
+2022,KS,Soft red winter,7326000,"YEAR; PCT BY TYPE 3% x winter 244,200,000 bu",3.0
+2022,KY,Soft red winter,30000000,"YEAR; PCT BY TYPE 100% x winter 30,000,000 bu",100.0
+2022,MD,Soft red winter,13260000,"YEAR; PCT BY TYPE 100% x winter 13,260,000 bu",100.0
+2022,MI,Hard red winter,344450,"YEAR; PCT BY TYPE 1% x winter 34,445,000 bu",1.0
+2022,MI,Soft red winter,21700350,"YEAR; PCT BY TYPE 63% x winter 34,445,000 bu",63.0
+2022,MI,Soft white winter,12400200,"YEAR; PCT BY TYPE 36% x winter 34,445,000 bu",36.0
+2022,MN,Hard red spring,73810000,"YEAR; spring (excl durum) 73,810,000 bu less 0% soft white",100.0
+2022,MO,Hard red winter,246000,"YEAR; PCT BY TYPE 1% x winter 24,600,000 bu",1.0
+2022,MO,Soft red winter,24354000,"YEAR; PCT BY TYPE 99% x winter 24,600,000 bu",99.0
+2022,MS,Soft red winter,3900000,"YEAR; PCT BY TYPE 100% x winter 3,900,000 bu",100.0
+2022,MT,Durum,18900000,"YEAR; SPRING, DURUM production",13.6
+2022,MT,Hard red spring,61000000,"YEAR; spring (excl durum) 61,000,000 bu less 0% soft white",43.8
+2022,MT,Hard red winter,59400000,"YEAR; PCT BY TYPE 100% x winter 59,400,000 bu",42.6
+2022,NC,Soft red winter,24000000,"YEAR; PCT BY TYPE 100% x winter 24,000,000 bu",100.0
+2022,ND,Durum,31200000,"YEAR; SPRING, DURUM production",10.4
+2022,ND,Hard red spring,263000000,"YEAR; spring (excl durum) 263,000,000 bu less 0% soft white",87.7
+2022,ND,Hard red winter,5700000,"YEAR; PCT BY TYPE 100% x winter 5,700,000 bu",1.9
+2022,NE,Hard red winter,24665600,"YEAR; PCT BY TYPE 94% x winter 26,240,000 bu",94.0
+2022,NE,Hard white winter,1574400,"YEAR; PCT BY TYPE 6% x winter 26,240,000 bu",6.0
+2022,NJ,Soft red winter,1540000,"YEAR; PCT BY TYPE 100% x winter 1,540,000 bu",100.0
+2022,NM,Hard red winter,1530000,"YEAR; PCT BY TYPE 100% x winter 1,530,000 bu",100.0
+2022,NY,Hard red winter,360000,"YEAR; PCT BY TYPE 5% x winter 7,200,000 bu",5.0
+2022,NY,Soft red winter,6768000,"YEAR; PCT BY TYPE 94% x winter 7,200,000 bu",94.0
+2022,NY,Soft white winter,72000,"YEAR; PCT BY TYPE 1% x winter 7,200,000 bu",1.0
+2022,OH,Soft red winter,36735000,"YEAR; PCT BY TYPE 100% x winter 36,735,000 bu",100.0
+2022,OK,Hard red winter,67914000,"YEAR; PCT BY TYPE 99% x winter 68,600,000 bu",99.0
+2022,OK,Soft red winter,686000,"YEAR; PCT BY TYPE 1% x winter 68,600,000 bu",1.0
+2022,OR,Hard red winter,2431000,"YEAR; PCT BY TYPE 5% x winter 48,620,000 bu",5.0
+2022,OR,Soft white winter,46189000,"YEAR; PCT BY TYPE 95% x winter 48,620,000 bu",95.0
+2022,PA,Soft red winter,15330000,"YEAR; PCT BY TYPE 100% x winter 15,330,000 bu",100.0
+2022,SC,Soft red winter,5700000,"YEAR; PCT BY TYPE 100% x winter 5,700,000 bu",100.0
+2022,SD,Hard red spring,34080000,"YEAR; spring (excl durum) 34,080,000 bu less 0% soft white",47.3
+2022,SD,Hard red winter,37960000,"YEAR; PCT BY TYPE 100% x winter 37,960,000 bu",52.7
+2022,TN,Soft red winter,24455000,"YEAR; PCT BY TYPE 100% x winter 24,455,000 bu",100.0
+2022,TX,Hard red winter,36660000,"YEAR; PCT BY TYPE 94% x winter 39,000,000 bu",94.0
+2022,TX,Soft red winter,2340000,"YEAR; PCT BY TYPE 6% x winter 39,000,000 bu",6.0
+2022,UT,Hard red winter,2312640,"YEAR; PCT BY TYPE 73% x winter 3,168,000 bu",73.0
+2022,UT,Hard white winter,63360,"YEAR; PCT BY TYPE 2% x winter 3,168,000 bu",2.0
+2022,UT,Soft white winter,792000,"YEAR; PCT BY TYPE 25% x winter 3,168,000 bu",25.0
+2022,VA,Hard red winter,102000,"YEAR; PCT BY TYPE 1% x winter 10,200,000 bu",1.0
+2022,VA,Soft red winter,10098000,"YEAR; PCT BY TYPE 99% x winter 10,200,000 bu",99.0
+2022,WA,Hard red spring,4107800,"YEAR; spring (excl durum) 21,620,000 bu less 81% soft white",2.9
+2022,WA,Hard red winter,9792000,"YEAR; PCT BY TYPE 8% x winter 122,400,000 bu",6.8
+2022,WA,Soft white spring,17512200,YEAR; PCT BY TYPE 81% x spring (excl durum),12.2
+2022,WA,Soft white winter,112608000,"YEAR; PCT BY TYPE 92% x winter 122,400,000 bu",78.2
+2022,WI,Hard red winter,549900,"YEAR; PCT BY TYPE 3% x winter 18,330,000 bu",3.0
+2022,WI,Soft red winter,17780100,"YEAR; PCT BY TYPE 97% x winter 18,330,000 bu",97.0
+2022,WY,Hard red winter,1566550,"YEAR; PCT BY TYPE 97% x winter 1,615,000 bu",97.0
+2022,WY,Hard white winter,48450,"YEAR; PCT BY TYPE 3% x winter 1,615,000 bu",3.0
+2023,AL,Soft red winter,10875000,"YEAR; PCT BY TYPE 100% x winter 10,875,000 bu",100.0
+2023,AR,Soft red winter,9405000,"YEAR; PCT BY TYPE 100% x winter 9,405,000 bu",100.0
+2023,AZ,Durum,3811000,"YEAR; SPRING, DURUM production",100.0
+2023,CA,Durum,1938000,"YEAR; SPRING, DURUM production",23.2
+2023,CA,Hard red winter,5952000,"YEAR; PCT BY TYPE 93% x winter 6,400,000 bu",71.4
+2023,CA,Hard white winter,256000,"YEAR; PCT BY TYPE 4% x winter 6,400,000 bu",3.1
+2023,CA,Soft white winter,192000,"YEAR; PCT BY TYPE 3% x winter 6,400,000 bu",2.3
+2023,CO,Hard red winter,68092800,"YEAR; PCT BY TYPE 96% x winter 70,930,000 bu",96.0
+2023,CO,Hard white winter,2837200,"YEAR; PCT BY TYPE 4% x winter 70,930,000 bu",4.0
+2023,DE,Soft red winter,6348000,"YEAR; PCT BY TYPE 100% x winter 6,348,000 bu",100.0
+2023,GA,Soft red winter,4628250,"YEAR; PCT BY TYPE 99% x winter 4,675,000 bu",99.0
+2023,GA,Soft white winter,46750,"YEAR; PCT BY TYPE 1% x winter 4,675,000 bu",1.0
+2023,ID,Durum,650000,"YEAR; SPRING, DURUM production",0.7
+2023,ID,Hard red spring,19757900,"YEAR; spring (excl durum) 32,390,000 bu less 39% soft white",22.2
+2023,ID,Hard red winter,11214000,"YEAR; PCT BY TYPE 20% x winter 56,070,000 bu",12.6
+2023,ID,Hard white winter,560700,"YEAR; PCT BY TYPE 1% x winter 56,070,000 bu",0.6
+2023,ID,Soft white spring,12632100,YEAR; PCT BY TYPE 39% x spring (excl durum),14.2
+2023,ID,Soft white winter,44295300,"YEAR; PCT BY TYPE 79% x winter 56,070,000 bu",49.7
+2023,IL,Soft red winter,67860000,"YEAR; PCT BY TYPE 100% x winter 67,860,000 bu",100.0
+2023,IN,Soft red winter,30820000,"YEAR; PCT BY TYPE 100% x winter 30,820,000 bu",100.0
+2023,KS,Hard red winter,187162500,"YEAR; PCT BY TYPE 93% x winter 201,250,000 bu",93.0
+2023,KS,Hard white winter,8050000,"YEAR; PCT BY TYPE 4% x winter 201,250,000 bu",4.0
+2023,KS,Soft red winter,6037500,"YEAR; PCT BY TYPE 3% x winter 201,250,000 bu",3.0
+2023,KY,Soft red winter,40480000,"YEAR; PCT BY TYPE 100% x winter 40,480,000 bu",100.0
+2023,MD,Soft red winter,16575000,"YEAR; PCT BY TYPE 100% x winter 16,575,000 bu",100.0
+2023,MI,Hard red winter,464800,"YEAR; PCT BY TYPE 1% x winter 46,480,000 bu",1.0
+2023,MI,Soft red winter,31606400,"YEAR; PCT BY TYPE 68% x winter 46,480,000 bu",68.0
+2023,MI,Soft white winter,14408800,"YEAR; PCT BY TYPE 31% x winter 46,480,000 bu",31.0
+2023,MN,Hard red spring,78120000,"YEAR; spring (excl durum) 78,120,000 bu less 0% soft white",100.0
+2023,MO,Hard red winter,420000,"YEAR; PCT BY TYPE 1% x winter 42,000,000 bu",1.0
+2023,MO,Soft red winter,41580000,"YEAR; PCT BY TYPE 99% x winter 42,000,000 bu",99.0
+2023,MS,Soft red winter,4940000,"YEAR; PCT BY TYPE 100% x winter 4,940,000 bu",100.0
+2023,MT,Durum,20925000,"YEAR; SPRING, DURUM production",11.3
+2023,MT,Hard red spring,78900000,"YEAR; spring (excl durum) 78,900,000 bu less 0% soft white",42.5
+2023,MT,Hard red winter,85680000,"YEAR; PCT BY TYPE 100% x winter 85,680,000 bu",46.2
+2023,NC,Soft red winter,28000000,"YEAR; PCT BY TYPE 100% x winter 28,000,000 bu",100.0
+2023,ND,Durum,32005000,"YEAR; SPRING, DURUM production",10.4
+2023,ND,Hard red spring,266265000,"YEAR; spring (excl durum) 266,265,000 bu less 0% soft white",86.9
+2023,ND,Hard red winter,8120000,"YEAR; PCT BY TYPE 100% x winter 8,120,000 bu",2.7
+2023,NE,Hard red winter,34742400,"YEAR; PCT BY TYPE 94% x winter 36,960,000 bu",94.0
+2023,NE,Hard white winter,2217600,"YEAR; PCT BY TYPE 6% x winter 36,960,000 bu",6.0
+2023,NJ,Soft red winter,2624000,"YEAR; PCT BY TYPE 100% x winter 2,624,000 bu",100.0
+2023,NM,Hard red winter,935000,"YEAR; PCT BY TYPE 100% x winter 935,000 bu",100.0
+2023,NY,Hard red winter,583200,"YEAR; PCT BY TYPE 6% x winter 9,720,000 bu",6.0
+2023,NY,Soft red winter,9039600,"YEAR; PCT BY TYPE 93% x winter 9,720,000 bu",93.0
+2023,NY,Soft white winter,97200,"YEAR; PCT BY TYPE 1% x winter 9,720,000 bu",1.0
+2023,OH,Soft red winter,53100000,"YEAR; PCT BY TYPE 100% x winter 53,100,000 bu",100.0
+2023,OK,Hard red winter,67228000,"YEAR; PCT BY TYPE 98% x winter 68,600,000 bu",98.0
+2023,OK,Soft red winter,1372000,"YEAR; PCT BY TYPE 2% x winter 68,600,000 bu",2.0
+2023,OR,Hard red winter,2419200,"YEAR; PCT BY TYPE 6% x winter 40,320,000 bu",6.0
+2023,OR,Soft white winter,37900800,"YEAR; PCT BY TYPE 94% x winter 40,320,000 bu",94.0
+2023,PA,Hard red winter,174800,"YEAR; PCT BY TYPE 1% x winter 17,480,000 bu",1.0
+2023,PA,Soft red winter,17305200,"YEAR; PCT BY TYPE 99% x winter 17,480,000 bu",99.0
+2023,SC,Soft red winter,5510000,"YEAR; PCT BY TYPE 100% x winter 5,510,000 bu",100.0
+2023,SD,Hard red spring,27950000,"YEAR; spring (excl durum) 27,950,000 bu less 0% soft white",47.0
+2023,SD,Hard red winter,31490000,"YEAR; PCT BY TYPE 100% x winter 31,490,000 bu",53.0
+2023,TN,Soft red winter,31200000,"YEAR; PCT BY TYPE 100% x winter 31,200,000 bu",100.0
+2023,TX,Hard red winter,75369000,"YEAR; PCT BY TYPE 97% x winter 77,700,000 bu",97.0
+2023,TX,Soft red winter,2331000,"YEAR; PCT BY TYPE 3% x winter 77,700,000 bu",3.0
+2023,UT,Hard red winter,3273810,"YEAR; PCT BY TYPE 71% x winter 4,611,000 bu",71.0
+2023,UT,Hard white winter,46110,"YEAR; PCT BY TYPE 1% x winter 4,611,000 bu",1.0
+2023,UT,Soft white winter,1291080,"YEAR; PCT BY TYPE 28% x winter 4,611,000 bu",28.0
+2023,VA,Hard red winter,105300,"YEAR; PCT BY TYPE 1% x winter 10,530,000 bu",1.0
+2023,VA,Soft red winter,10424700,"YEAR; PCT BY TYPE 99% x winter 10,530,000 bu",99.0
+2023,WA,Hard red spring,3165400,"YEAR; spring (excl durum) 18,620,000 bu less 83% soft white",2.8
+2023,WA,Hard red winter,9450000,"YEAR; PCT BY TYPE 10% x winter 94,500,000 bu",8.4
+2023,WA,Soft white spring,15454600,YEAR; PCT BY TYPE 83% x spring (excl durum),13.7
+2023,WA,Soft white winter,85050000,"YEAR; PCT BY TYPE 90% x winter 94,500,000 bu",75.2
+2023,WI,Hard red winter,524400,"YEAR; PCT BY TYPE 3% x winter 17,480,000 bu",3.0
+2023,WI,Soft red winter,16955600,"YEAR; PCT BY TYPE 97% x winter 17,480,000 bu",97.0
+2023,WY,Hard red winter,2646000,"YEAR; PCT BY TYPE 98% x winter 2,700,000 bu",98.0
+2023,WY,Hard white winter,27000,"YEAR; PCT BY TYPE 1% x winter 2,700,000 bu",1.0
+2023,WY,Soft white winter,27000,"YEAR; PCT BY TYPE 1% x winter 2,700,000 bu",1.0
+2024,AL,Soft red winter,4260000,"YEAR; PCT BY TYPE 100% x winter 4,260,000 bu",100.0
+2024,AR,Soft red winter,4760000,"YEAR; PCT BY TYPE 100% x winter 4,760,000 bu",100.0
+2024,AZ,Durum,6322000,"YEAR; SPRING, DURUM production",100.0
+2024,CA,Durum,2484000,"YEAR; SPRING, DURUM production",27.3
+2024,CA,Hard red winter,6165900,"YEAR; PCT BY TYPE 93% x winter 6,630,000 bu",67.7
+2024,CA,Hard white winter,198900,"YEAR; PCT BY TYPE 3% x winter 6,630,000 bu",2.2
+2024,CA,Soft white winter,265200,"YEAR; PCT BY TYPE 4% x winter 6,630,000 bu",2.9
+2024,CO,Hard red winter,61824000,"YEAR; PCT BY TYPE 96% x winter 64,400,000 bu",96.0
+2024,CO,Hard white winter,2576000,"YEAR; PCT BY TYPE 4% x winter 64,400,000 bu",4.0
+2024,DE,Hard red winter,37440,"YEAR; PCT BY TYPE 1% x winter 3,744,000 bu",1.0
+2024,DE,Soft red winter,3706560,"YEAR; PCT BY TYPE 99% x winter 3,744,000 bu",99.0
+2024,GA,Hard red winter,35400,"YEAR; PCT BY TYPE 1% x winter 3,540,000 bu",1.0
+2024,GA,Soft red winter,3504600,"YEAR; PCT BY TYPE 99% x winter 3,540,000 bu",99.0
+2024,ID,Hard red spring,24777600,"YEAR; spring (excl durum) 38,715,000 bu less 36% soft white",24.5
+2024,ID,Hard red winter,14329000,"YEAR; PCT BY TYPE 23% x winter 62,300,000 bu",14.2
+2024,ID,Hard white winter,623000,"YEAR; PCT BY TYPE 1% x winter 62,300,000 bu",0.6
+2024,ID,Soft white spring,13937400,YEAR; PCT BY TYPE 36% x spring (excl durum),13.8
+2024,ID,Soft white winter,47348000,"YEAR; PCT BY TYPE 76% x winter 62,300,000 bu",46.9
+2024,IL,Hard red winter,602000,"YEAR; PCT BY TYPE 1% x winter 60,200,000 bu",1.0
+2024,IL,Soft red winter,59598000,"YEAR; PCT BY TYPE 99% x winter 60,200,000 bu",99.0
+2024,IN,Soft red winter,21360000,"YEAR; PCT BY TYPE 100% x winter 21,360,000 bu",100.0
+2024,KS,Hard red winter,289003000,"YEAR; PCT BY TYPE 94% x winter 307,450,000 bu",94.0
+2024,KS,Hard white winter,12298000,"YEAR; PCT BY TYPE 4% x winter 307,450,000 bu",4.0
+2024,KS,Soft red winter,6149000,"YEAR; PCT BY TYPE 2% x winter 307,450,000 bu",2.0
+2024,KY,Soft red winter,29250000,"YEAR; PCT BY TYPE 100% x winter 29,250,000 bu",100.0
+2024,MD,Hard red winter,135000,"YEAR; PCT BY TYPE 1% x winter 13,500,000 bu",1.0
+2024,MD,Soft red winter,13365000,"YEAR; PCT BY TYPE 99% x winter 13,500,000 bu",99.0
+2024,MI,Hard red winter,326250,"YEAR; PCT BY TYPE 1% x winter 32,625,000 bu",1.0
+2024,MI,Soft red winter,21206250,"YEAR; PCT BY TYPE 65% x winter 32,625,000 bu",65.0
+2024,MI,Soft white winter,11092500,"YEAR; PCT BY TYPE 34% x winter 32,625,000 bu",34.0
+2024,MN,Hard red spring,80830000,"YEAR; spring (excl durum) 80,830,000 bu less 0% soft white",100.0
+2024,MO,Hard red winter,363750,"YEAR; PCT BY TYPE 1% x winter 36,375,000 bu",1.0
+2024,MO,Soft red winter,36011250,"YEAR; PCT BY TYPE 99% x winter 36,375,000 bu",99.0
+2024,MS,Hard red winter,17500,"YEAR; PCT BY TYPE 1% x winter 1,750,000 bu",1.0
+2024,MS,Soft red winter,1732500,"YEAR; PCT BY TYPE 99% x winter 1,750,000 bu",99.0
+2024,MT,Durum,19780000,"YEAR; SPRING, DURUM production",11.4
+2024,MT,Hard red spring,62140000,"YEAR; spring (excl durum) 62,140,000 bu less 0% soft white",35.8
+2024,MT,Hard red winter,90585000,"YEAR; PCT BY TYPE 99% x winter 91,500,000 bu",52.2
+2024,MT,Hard white winter,915000,"YEAR; PCT BY TYPE 1% x winter 91,500,000 bu",0.5
+2024,NC,Soft red winter,18810000,"YEAR; PCT BY TYPE 100% x winter 18,810,000 bu",100.0
+2024,ND,Durum,51465000,"YEAR; SPRING, DURUM production",14.0
+2024,ND,Hard red spring,310340000,"YEAR; spring (excl durum) 310,340,000 bu less 0% soft white",84.3
+2024,ND,Hard red winter,6480000,"YEAR; PCT BY TYPE 100% x winter 6,480,000 bu",1.8
+2024,NE,Hard red winter,44969600,"YEAR; PCT BY TYPE 94% x winter 47,840,000 bu",94.0
+2024,NE,Hard white winter,2870400,"YEAR; PCT BY TYPE 6% x winter 47,840,000 bu",6.0
+2024,NM,Hard red winter,1782000,"YEAR; PCT BY TYPE 99% x winter 1,800,000 bu",99.0
+2024,NM,Soft white winter,18000,"YEAR; PCT BY TYPE 1% x winter 1,800,000 bu",1.0
+2024,NY,Hard red winter,540000,"YEAR; PCT BY TYPE 6% x winter 9,000,000 bu",6.0
+2024,NY,Soft red winter,8370000,"YEAR; PCT BY TYPE 93% x winter 9,000,000 bu",93.0
+2024,NY,Soft white winter,90000,"YEAR; PCT BY TYPE 1% x winter 9,000,000 bu",1.0
+2024,OH,Soft red winter,40375000,"YEAR; PCT BY TYPE 100% x winter 40,375,000 bu",100.0
+2024,OK,Hard red winter,107996000,"YEAR; PCT BY TYPE 98% x winter 110,200,000 bu",98.0
+2024,OK,Soft red winter,2204000,"YEAR; PCT BY TYPE 2% x winter 110,200,000 bu",2.0
+2024,OR,Hard red winter,4599000,"YEAR; PCT BY TYPE 9% x winter 51,100,000 bu",9.0
+2024,OR,Soft white winter,46501000,"YEAR; PCT BY TYPE 91% x winter 51,100,000 bu",91.0
+2024,PA,Hard red winter,150000,"YEAR; PCT BY TYPE 1% x winter 15,000,000 bu",1.0
+2024,PA,Soft red winter,14850000,"YEAR; PCT BY TYPE 99% x winter 15,000,000 bu",99.0
+2024,SC,Hard red winter,35100,"YEAR; PCT BY TYPE 1% x winter 3,510,000 bu",1.0
+2024,SC,Soft red winter,3474900,"YEAR; PCT BY TYPE 99% x winter 3,510,000 bu",99.0
+2024,SD,Hard red spring,31115000,"YEAR; spring (excl durum) 31,115,000 bu less 0% soft white",39.4
+2024,SD,Hard red winter,47880000,"YEAR; PCT BY TYPE 100% x winter 47,880,000 bu",60.6
+2024,TN,Soft red winter,24375000,"YEAR; PCT BY TYPE 100% x winter 24,375,000 bu",100.0
+2024,TX,Hard red winter,76570000,"YEAR; PCT BY TYPE 95% x winter 80,600,000 bu",95.0
+2024,TX,Soft red winter,4030000,"YEAR; PCT BY TYPE 5% x winter 80,600,000 bu",5.0
+2024,UT,Hard red winter,3395700,"YEAR; PCT BY TYPE 70% x winter 4,851,000 bu",70.0
+2024,UT,Hard white winter,48510,"YEAR; PCT BY TYPE 1% x winter 4,851,000 bu",1.0
+2024,UT,Soft white winter,1406790,"YEAR; PCT BY TYPE 29% x winter 4,851,000 bu",29.0
+2024,VA,Hard red winter,56100,"YEAR; PCT BY TYPE 1% x winter 5,610,000 bu",1.0
+2024,VA,Soft red winter,5553900,"YEAR; PCT BY TYPE 99% x winter 5,610,000 bu",99.0
+2024,WA,Hard red spring,5056800,"YEAR; spring (excl durum) 21,070,000 bu less 76% soft white",3.5
+2024,WA,Hard red winter,12250000,"YEAR; PCT BY TYPE 10% x winter 122,500,000 bu",8.5
+2024,WA,Soft white spring,16013200,YEAR; PCT BY TYPE 76% x spring (excl durum),11.2
+2024,WA,Soft white winter,110250000,"YEAR; PCT BY TYPE 90% x winter 122,500,000 bu",76.8
+2024,WI,Hard red winter,541200,"YEAR; PCT BY TYPE 3% x winter 18,040,000 bu",3.0
+2024,WI,Soft red winter,17498800,"YEAR; PCT BY TYPE 97% x winter 18,040,000 bu",97.0
+2024,WY,Hard red winter,2764580,"YEAR; PCT BY TYPE 98% x winter 2,821,000 bu",98.0
+2024,WY,Hard white winter,56420,"YEAR; PCT BY TYPE 2% x winter 2,821,000 bu",2.0
+2025,AL,Hard red winter,85200,"YEAR; PCT BY TYPE 2% x winter 4,260,000 bu",2.0
+2025,AL,Soft red winter,4174800,"YEAR; PCT BY TYPE 98% x winter 4,260,000 bu",98.0
+2025,AR,Soft red winter,3990000,"YEAR; PCT BY TYPE 100% x winter 3,990,000 bu",100.0
+2025,AZ,Durum,5733000,"YEAR; SPRING, DURUM production",100.0
+2025,CA,Durum,1750000,"YEAR; SPRING, DURUM production",15.6
+2025,CA,Hard red winter,8797800,"YEAR; PCT BY TYPE 93% x winter 9,460,000 bu",78.5
+2025,CA,Hard white winter,189200,"YEAR; PCT BY TYPE 2% x winter 9,460,000 bu",1.7
+2025,CA,Soft white winter,473000,"YEAR; PCT BY TYPE 5% x winter 9,460,000 bu",4.2
+2025,CO,Hard red winter,69312000,"YEAR; PCT BY TYPE 95% x winter 72,960,000 bu",95.0
+2025,CO,Hard white winter,3648000,"YEAR; PCT BY TYPE 5% x winter 72,960,000 bu",5.0
+2025,DE,Soft red winter,3526000,"YEAR; PCT BY TYPE 100% x winter 3,526,000 bu",100.0
+2025,GA,Hard red winter,42900,"YEAR; PCT BY TYPE 1% x winter 4,290,000 bu",1.0
+2025,GA,Soft red winter,4247100,"YEAR; PCT BY TYPE 99% x winter 4,290,000 bu",99.0
+2025,ID,Hard red spring,22226400,"YEAR; spring (excl durum) 35,280,000 bu less 37% soft white",20.7
+2025,ID,Hard red winter,14454000,"YEAR; PCT BY TYPE 20% x winter 72,270,000 bu",13.4
+2025,ID,Hard white winter,722700,"YEAR; PCT BY TYPE 1% x winter 72,270,000 bu",0.7
+2025,ID,Soft white spring,13053600,YEAR; PCT BY TYPE 37% x spring (excl durum),12.1
+2025,ID,Soft white winter,57093300,"YEAR; PCT BY TYPE 79% x winter 72,270,000 bu",53.1
+2025,IL,Soft red winter,61600000,"YEAR; PCT BY TYPE 100% x winter 61,600,000 bu",100.0
+2025,IN,Soft red winter,21360000,"YEAR; PCT BY TYPE 100% x winter 21,360,000 bu",100.0
+2025,KS,Hard red winter,329460000,"YEAR; PCT BY TYPE 95% x winter 346,800,000 bu",95.0
+2025,KS,Hard white winter,6936000,"YEAR; PCT BY TYPE 2% x winter 346,800,000 bu",2.0
+2025,KS,Soft red winter,10404000,"YEAR; PCT BY TYPE 3% x winter 346,800,000 bu",3.0
+2025,KY,Soft red winter,26730000,"YEAR; PCT BY TYPE 100% x winter 26,730,000 bu",100.0
+2025,MD,Hard red winter,126400,"YEAR; PCT BY TYPE 1% x winter 12,640,000 bu",1.0
+2025,MD,Soft red winter,12513600,"YEAR; PCT BY TYPE 99% x winter 12,640,000 bu",99.0
+2025,MI,Soft red winter,30870000,"YEAR; PCT BY TYPE 70% x winter 44,100,000 bu",70.0
+2025,MI,Soft white winter,13230000,"YEAR; PCT BY TYPE 30% x winter 44,100,000 bu",30.0
+2025,MN,Hard red spring,75900000,"YEAR; spring (excl durum) 75,900,000 bu less 0% soft white",100.0
+2025,MO,Hard red winter,368000,"YEAR; PCT BY TYPE 1% x winter 36,800,000 bu",1.0
+2025,MO,Soft red winter,36432000,"YEAR; PCT BY TYPE 99% x winter 36,800,000 bu",99.0
+2025,MS,Soft red winter,2700000,"YEAR; PCT BY TYPE 100% x winter 2,700,000 bu",100.0
+2025,MT,Durum,25050000,"YEAR; SPRING, DURUM production",13.7
+2025,MT,Hard red spring,58000000,"YEAR; spring (excl durum) 58,000,000 bu less 0% soft white",31.8
+2025,MT,Hard red winter,99170000,"YEAR; PCT BY TYPE 100% x winter 99,170,000 bu",54.4
+2025,NC,Soft red winter,16200000,"YEAR; PCT BY TYPE 100% x winter 16,200,000 bu",100.0
+2025,ND,Durum,53240000,"YEAR; SPRING, DURUM production",15.9
+2025,ND,Hard red spring,276650000,"YEAR; spring (excl durum) 276,650,000 bu less 0% soft white",82.8
+2025,ND,Hard red winter,4165000,"YEAR; PCT BY TYPE 100% x winter 4,165,000 bu",1.2
+2025,NE,Hard red winter,35186550,"YEAR; PCT BY TYPE 93% x winter 37,835,000 bu",93.0
+2025,NE,Hard white winter,2648450,"YEAR; PCT BY TYPE 7% x winter 37,835,000 bu",7.0
+2025,NM,Hard red winter,4756950,"YEAR; PCT BY TYPE 99% x winter 4,805,000 bu",99.0
+2025,NM,Soft white winter,48050,"YEAR; PCT BY TYPE 1% x winter 4,805,000 bu",1.0
+2025,NY,Hard red winter,546700,"YEAR; PCT BY TYPE 7% x winter 7,810,000 bu",7.0
+2025,NY,Soft red winter,7185200,"YEAR; PCT BY TYPE 92% x winter 7,810,000 bu",92.0
+2025,NY,Soft white winter,78100,"YEAR; PCT BY TYPE 1% x winter 7,810,000 bu",1.0
+2025,OH,Soft red winter,45580000,"YEAR; PCT BY TYPE 100% x winter 45,580,000 bu",100.0
+2025,OK,Hard red winter,104272000,"YEAR; PCT BY TYPE 98% x winter 106,400,000 bu",98.0
+2025,OK,Soft red winter,2128000,"YEAR; PCT BY TYPE 2% x winter 106,400,000 bu",2.0
+2025,OR,Hard red winter,3727500,"YEAR; PCT BY TYPE 7% x winter 53,250,000 bu",7.0
+2025,OR,Soft white winter,49522500,"YEAR; PCT BY TYPE 93% x winter 53,250,000 bu",93.0
+2025,PA,Hard red winter,136800,"YEAR; PCT BY TYPE 1% x winter 13,680,000 bu",1.0
+2025,PA,Soft red winter,13543200,"YEAR; PCT BY TYPE 99% x winter 13,680,000 bu",99.0
+2025,SC,Soft red winter,3600000,"YEAR; PCT BY TYPE 100% x winter 3,600,000 bu",100.0
+2025,SD,Hard red spring,32640000,"YEAR; spring (excl durum) 32,640,000 bu less 0% soft white",50.9
+2025,SD,Hard red winter,31500000,"YEAR; PCT BY TYPE 100% x winter 31,500,000 bu",49.1
+2025,TN,Soft red winter,19610000,"YEAR; PCT BY TYPE 100% x winter 19,610,000 bu",100.0
+2025,TX,Hard red winter,80845000,"YEAR; PCT BY TYPE 95% x winter 85,100,000 bu",95.0
+2025,TX,Soft red winter,4255000,"YEAR; PCT BY TYPE 5% x winter 85,100,000 bu",5.0
+2025,UT,Hard red winter,3641400,"YEAR; PCT BY TYPE 70% x winter 5,202,000 bu",70.0
+2025,UT,Hard white winter,52020,"YEAR; PCT BY TYPE 1% x winter 5,202,000 bu",1.0
+2025,UT,Soft white winter,1508580,"YEAR; PCT BY TYPE 29% x winter 5,202,000 bu",29.0
+2025,VA,Hard red winter,46200,"YEAR; PCT BY TYPE 1% x winter 4,620,000 bu",1.0
+2025,VA,Soft red winter,4573800,"YEAR; PCT BY TYPE 99% x winter 4,620,000 bu",99.0
+2025,WA,Hard red spring,3906000,"YEAR; spring (excl durum) 19,530,000 bu less 80% soft white",2.8
+2025,WA,Hard red winter,12172000,"YEAR; PCT BY TYPE 10% x winter 121,720,000 bu",8.6
+2025,WA,Soft white spring,15624000,YEAR; PCT BY TYPE 80% x spring (excl durum),11.1
+2025,WA,Soft white winter,109548000,"YEAR; PCT BY TYPE 90% x winter 121,720,000 bu",77.6
+2025,WI,Hard red winter,950000,"YEAR; PCT BY TYPE 5% x winter 19,000,000 bu",5.0
+2025,WI,Soft red winter,18050000,"YEAR; PCT BY TYPE 95% x winter 19,000,000 bu",95.0
+2025,WY,Hard red winter,2563200,"YEAR; PCT BY TYPE 96% x winter 2,670,000 bu",96.0
+2025,WY,Hard white winter,106800,"YEAR; PCT BY TYPE 4% x winter 2,670,000 bu",4.0
+2026,AL,Hard red winter,31600,"YEAR; PCT BY TYPE 1% x winter 3,160,000 bu",1.0
+2026,AL,Soft red winter,3128400,"YEAR; PCT BY TYPE 99% x winter 3,160,000 bu",99.0
+2026,AR,Soft red winter,2240000,"YEAR; PCT BY TYPE 100% x winter 2,240,000 bu",100.0
+2026,AZ,Durum,4950000,"YEAR; SPRING, DURUM production",100.0
+2026,CA,Durum,1624000,"YEAR; SPRING, DURUM production",16.4
+2026,CA,Hard red winter,7548450,"YEAR; PCT BY TYPE 91% x winter 8,295,000 bu",76.1
+2026,CA,Hard white winter,165900,"YEAR; PCT BY TYPE 2% x winter 8,295,000 bu",1.7
+2026,CA,Soft white winter,580650,"YEAR; PCT BY TYPE 7% x winter 8,295,000 bu",5.9
+2026,CO,Hard red winter,19380000,"YEAR; PCT BY TYPE 95% x winter 20,400,000 bu",95.0
+2026,CO,Hard white winter,1020000,"YEAR; PCT BY TYPE 5% x winter 20,400,000 bu",5.0
+2026,DE,Soft red winter,3000000,"YEAR; PCT BY TYPE 100% x winter 3,000,000 bu",100.0
+2026,GA,Hard red winter,74400,"YEAR; PCT BY TYPE 2% x winter 3,720,000 bu",2.0
+2026,GA,Soft red winter,3608400,"YEAR; PCT BY TYPE 97% x winter 3,720,000 bu",97.0
+2026,GA,Soft white winter,37200,"YEAR; PCT BY TYPE 1% x winter 3,720,000 bu",1.0
+2026,ID,Hard red spring,18249000,"YEAR; spring (excl durum) 27,650,000 bu less 34% soft white",20.5
+2026,ID,Hard red winter,9849600,"YEAR; PCT BY TYPE 16% x winter 61,560,000 bu",11.0
+2026,ID,Hard white winter,615600,"YEAR; PCT BY TYPE 1% x winter 61,560,000 bu",0.7
+2026,ID,Soft white spring,9401000,YEAR; PCT BY TYPE 34% x spring (excl durum),10.5
+2026,ID,Soft white winter,51094800,"YEAR; PCT BY TYPE 83% x winter 61,560,000 bu",57.3
+2026,IL,Soft red winter,56550000,"YEAR; PCT BY TYPE 100% x winter 56,550,000 bu",100.0
+2026,IN,Soft red winter,19550000,"YEAR; PCT BY TYPE 100% x winter 19,550,000 bu",100.0
+2026,KS,Hard red winter,192576000,"YEAR; PCT BY TYPE 96% x winter 200,600,000 bu",96.0
+2026,KS,Hard white winter,2006000,"YEAR; PCT BY TYPE 1% x winter 200,600,000 bu",1.0
+2026,KS,Soft red winter,6018000,"YEAR; PCT BY TYPE 3% x winter 200,600,000 bu",3.0
+2026,KY,Soft red winter,21320000,"YEAR; PCT BY TYPE 100% x winter 21,320,000 bu",100.0
+2026,MD,Soft red winter,11850000,"YEAR; PCT BY TYPE 100% x winter 11,850,000 bu",100.0
+2026,MI,Soft red winter,26713350,"YEAR; PCT BY TYPE 69% x winter 38,715,000 bu",69.0
+2026,MI,Soft white winter,12001650,"YEAR; PCT BY TYPE 31% x winter 38,715,000 bu",31.0
+2026,MN,Hard red spring,63000000,"YEAR; spring (excl durum) 63,000,000 bu less 0% soft white",100.0
+2026,MO,Hard red winter,284700,"YEAR; PCT BY TYPE 1% x winter 28,470,000 bu",1.0
+2026,MO,Soft red winter,28185300,"YEAR; PCT BY TYPE 99% x winter 28,470,000 bu",99.0
+2026,MS,Hard red winter,11000,"YEAR; PCT BY TYPE 1% x winter 1,100,000 bu",1.0
+2026,MS,Soft red winter,1089000,"YEAR; PCT BY TYPE 99% x winter 1,100,000 bu",99.0
+2026,MT,Durum,24500000,"YEAR; SPRING, DURUM production",13.5
+2026,MT,Hard red spring,85000000,"YEAR; spring (excl durum) 85,000,000 bu less 0% soft white",46.9
+2026,MT,Hard red winter,71810000,"YEAR; PCT BY TYPE 100% x winter 71,810,000 bu",39.6
+2026,NC,Soft red winter,12455000,"YEAR; PCT BY TYPE 100% x winter 12,455,000 bu",100.0
+2026,ND,Durum,33735000,"YEAR; SPRING, DURUM production",12.7
+2026,ND,Hard red spring,228480000,"YEAR; spring (excl durum) 228,480,000 bu less 0% soft white",86.3
+2026,ND,Hard red winter,2450000,"YEAR; PCT BY TYPE 100% x winter 2,450,000 bu",0.9
+2026,NE,Hard red winter,15787200,"YEAR; PCT BY TYPE 92% x winter 17,160,000 bu",92.0
+2026,NE,Hard white winter,1372800,"YEAR; PCT BY TYPE 8% x winter 17,160,000 bu",8.0
+2026,NM,Hard red winter,1386000,"YEAR; PCT BY TYPE 99% x winter 1,400,000 bu",99.0
+2026,NM,Soft white winter,14000,"YEAR; PCT BY TYPE 1% x winter 1,400,000 bu",1.0
+2026,NY,Hard red winter,690000,"YEAR; PCT BY TYPE 8% x winter 8,625,000 bu",8.0
+2026,NY,Hard white winter,86250,"YEAR; PCT BY TYPE 1% x winter 8,625,000 bu",1.0
+2026,NY,Soft red winter,7762500,"YEAR; PCT BY TYPE 90% x winter 8,625,000 bu",90.0
+2026,NY,Soft white winter,86250,"YEAR; PCT BY TYPE 1% x winter 8,625,000 bu",1.0
+2026,OH,Soft red winter,39010000,"YEAR; PCT BY TYPE 100% x winter 39,010,000 bu",100.0
+2026,OK,Hard red winter,54880000,"YEAR; PCT BY TYPE 98% x winter 56,000,000 bu",98.0
+2026,OK,Soft red winter,1120000,"YEAR; PCT BY TYPE 2% x winter 56,000,000 bu",2.0
+2026,OR,Hard red winter,1641600,"YEAR; PCT BY TYPE 3% x winter 54,720,000 bu",3.0
+2026,OR,Soft white winter,53078400,"YEAR; PCT BY TYPE 97% x winter 54,720,000 bu",97.0
+2026,PA,Hard red winter,136900,"YEAR; PCT BY TYPE 1% x winter 13,690,000 bu",1.0
+2026,PA,Soft red winter,13553100,"YEAR; PCT BY TYPE 99% x winter 13,690,000 bu",99.0
+2026,SC,Soft red winter,2850000,"YEAR; PCT BY TYPE 100% x winter 2,850,000 bu",100.0
+2026,SD,Hard red spring,26100000,"YEAR; spring (excl durum) 26,100,000 bu less 0% soft white",50.1
+2026,SD,Hard red winter,25970000,"YEAR; PCT BY TYPE 100% x winter 25,970,000 bu",49.9
+2026,TN,Soft red winter,13475000,"YEAR; PCT BY TYPE 100% x winter 13,475,000 bu",100.0
+2026,TX,Hard red winter,47616000,"YEAR; PCT BY TYPE 96% x winter 49,600,000 bu",96.0
+2026,TX,Soft red winter,1984000,"YEAR; PCT BY TYPE 4% x winter 49,600,000 bu",4.0
+2026,UT,Hard red winter,2698000,"YEAR; PCT BY TYPE 71% x winter 3,800,000 bu",71.0
+2026,UT,Soft white winter,1102000,"YEAR; PCT BY TYPE 29% x winter 3,800,000 bu",29.0
+2026,VA,Soft red winter,2750000,"YEAR; PCT BY TYPE 100% x winter 2,750,000 bu",100.0
+2026,WA,Hard red spring,3284400,"YEAR; spring (excl durum) 19,320,000 bu less 83% soft white",2.0
+2026,WA,Hard red winter,10230500,"YEAR; PCT BY TYPE 7% x winter 146,150,000 bu",6.2
+2026,WA,Soft white spring,16035600,YEAR; PCT BY TYPE 83% x spring (excl durum),9.7
+2026,WA,Soft white winter,135919500,"YEAR; PCT BY TYPE 93% x winter 146,150,000 bu",82.1
+2026,WI,Hard red winter,647400,"YEAR; PCT BY TYPE 4% x winter 16,185,000 bu",4.0
+2026,WI,Soft red winter,15537600,"YEAR; PCT BY TYPE 96% x winter 16,185,000 bu",96.0
+2026,WY,Hard red winter,735000,"YEAR; PCT BY TYPE 98% x winter 750,000 bu",98.0
+2026,WY,Hard white winter,15000,"YEAR; PCT BY TYPE 2% x winter 750,000 bu",2.0
