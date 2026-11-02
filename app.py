@@ -5,6 +5,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import json
+import time
 import urllib.error
 import urllib.request
 import urllib.parse
@@ -943,6 +944,53 @@ def _ts_on() -> bool:
     return bool(getattr(_tls, "ts", False))
 
 
+# ── Wheat class view (NASS tab) ───────────────────────────────────────────────────────
+# NASS publishes county wheat in three classes (WINTER, SPRING (EXCL DURUM), SPRING DURUM). Each has an
+# OTHER COUNTIES bucket, so named counties + OTHER add up to the state's class total and the corn/soybean
+# tier-1 completion runs per class unchanged. The market classes (hard red winter ...) are NOT published
+# below the state: a state's winter (or spring) crop is split by NASS's state 'PCT BY TYPE' shares and every
+# county in that state gets the state's mix. label -> (NASS class group, share series or None, complement).
+_WC_CLASSES = {
+    "Winter wheat":               ("WINTER", None, False),
+    "Spring wheat (excl. durum)": ("SPRING, (EXCL DURUM)", None, False),
+    "Durum":                      ("SPRING, DURUM", None, False),
+    "Hard red winter":            ("WINTER", "WINTER, RED, HARD", False),
+    "Soft red winter":            ("WINTER", "WINTER, RED, SOFT", False),
+    "Soft white winter":          ("WINTER", "WINTER, WHITE, SOFT", False),
+    "Hard white winter":          ("WINTER", "WINTER, WHITE, HARD", False),
+    "Hard red spring":            ("SPRING, (EXCL DURUM)", "SPRING, WHITE, SOFT", True),
+    "Soft white spring":          ("SPRING, (EXCL DURUM)", "SPRING, WHITE, SOFT", False),
+}
+_WC_PRI = {"YEAR": 100, "YEAR - AUG FORECAST": 70, "YEAR - JUL FORECAST": 60, "YEAR - JUN FORECAST": 50,
+           "YEAR - JUN ACREAGE": 45, "YEAR - MAY FORECAST": 30}
+_WC_ERR: dict = {}
+
+
+def _wc_label():
+    v = getattr(_tls, "wc", None)
+    return v if v in _WC_CLASSES else None
+
+
+def _wc_of(v):
+    """The wheat class a cache version string carries (set by _session_ver), or None."""
+    for p in str(v).split("|")[1:]:
+        if p.startswith("wc:") and p[3:] in _WC_CLASSES:
+            return p[3:]
+    return None
+
+
+def _wg(v):
+    """The NASS class group a raw-cache key carries (set by _base_ver), or None."""
+    for p in str(v).split("|")[1:]:
+        if p.startswith("wg:"):
+            return p[3:]
+    return None
+
+
+def _no_wc(v) -> str:
+    return "|".join(p for p in str(v).split("|") if not p.startswith("wc:"))
+
+
 def _session_ver() -> str:
     parts = [_BASE_CACHE_VERSION]
     ho = _ho_share()
@@ -950,11 +998,91 @@ def _session_ver() -> str:
         parts.append(f"ho{ho * 100:g}")
     if _ts_on():
         parts.append("ts")
+    wc = _wc_label()
+    if wc:
+        parts.append(f"wc:{wc}")
     return "|".join(parts)
 
 
 def _base_ver(v) -> str:
-    return str(v).split("|")[0]
+    """Key for the raw NASS loaders: the base version plus the NASS class GROUP, so hard red winter and
+    soft red winter share the one cached WINTER pull. Read from the version string, never from thread state."""
+    lab = _wc_of(v)
+    return str(v).split("|")[0] + (f"|wg:{_WC_CLASSES[lab][0]}" if lab else "")
+
+
+def _wc_class_param(params: dict, crop: str, cache_ver, county: bool) -> None:
+    """Point a raw NASS query at one wheat class group when the key carries one. County queries
+    otherwise drop class_desc (NASS has no ALL CLASSES row at county level)."""
+    if crop != "Wheat":
+        return
+    g = _wg(cache_ver)
+    if g:
+        params["class_desc"] = g
+    elif county:
+        params.pop("class_desc", None)
+
+
+@st.cache_data(show_spinner=False)
+def _wc_state_pct_raw(year: int, series: str, cache_ver: str) -> dict:
+    """{state: percent} of one wheat sub-class from NASS 'PCT BY TYPE' (best reference period per state).
+    Raises on a failed call so the failure is not cached; NASS answers 400 when the series does not exist."""
+    if not NASS_API_KEY:
+        raise RuntimeError("NASS_API_KEY is not set")
+    params = {
+        "key": NASS_API_KEY, "source_desc": "SURVEY", "sector_desc": "CROPS", "agg_level_desc": "STATE",
+        "year": str(year), "format": "JSON", "commodity_desc": "WHEAT", "class_desc": series,
+        "statisticcat_desc": "PRODUCTION", "unit_desc": "PCT BY TYPE",
+    }
+    try:
+        recs = _nass_json(NASS_BASE_URL + "?" + urllib.parse.urlencode(params)).get("data", [])
+    except urllib.error.HTTPError as e:
+        if e.code != 400:
+            raise
+        recs = []
+    best: dict = {}
+    for rec in recs:
+        s_ = str(rec.get("state_alpha", "")).strip()
+        try:
+            v = float(str(rec.get("Value", "")).replace(",", ""))
+        except ValueError:
+            continue
+        p = _WC_PRI.get(str(rec.get("reference_period_desc", "")).strip().upper(), 0)
+        if s_ in STATE_FIPS_ALL and (s_ not in best or p > best[s_][0]):
+            best[s_] = (p, v)
+    return {s_: v for s_, (_, v) in best.items()}
+
+
+def _wc_factors(year: int, label: str):
+    """({state: share of the state's winter/spring crop in this class}, default for states NASS gives no share)."""
+    group, series, comp = _WC_CLASSES[label]
+    if not series:
+        return {}, 1.0
+    try:
+        pct = _wc_state_pct_raw(year, series, _BASE_CACHE_VERSION)
+        _WC_ERR.pop((year, label), None)
+    except Exception as e:
+        _WC_ERR[(year, label)] = f"{type(e).__name__}: {e}"
+        return {}, 0.0
+    if comp:                      # hard red spring = spring (excl durum) less the soft white share; no row = all hard red
+        return {s_: max(100.0 - v, 0.0) / 100.0 for s_, v in pct.items()}, 1.0
+    return {s_: v / 100.0 for s_, v in pct.items()}, 0.0
+
+
+def _wc_adjust(df, crop: str, year: int, stat_type: str, cols, cache_ver):
+    """Market-class views: the state's class share applied to its winter (or spring) production, so the
+    counties of a state add up to the NASS state class total exactly as the group does."""
+    lab = _wc_of(cache_ver)
+    if (crop != "Wheat" or not lab or not _WC_CLASSES[lab][1] or stat_type != "production"
+            or df is None or df.empty or "State" not in df.columns):
+        return df
+    f, default = _wc_factors(year, lab)
+    out = df.copy()
+    fac = out["State"].map(f).fillna(default)
+    for c in cols:
+        if c in out.columns:
+            out[c] = out[c] * fac
+    return out
 
 
 def _ho_adjust(df, crop: str, stat_type: str, cols):
@@ -1015,6 +1143,22 @@ def _ts_adjust(df, crop: str, year: int, stat_type: str, cols):
     return out
 
 
+def _nass_json(url: str, timeout: int = 45) -> dict:
+    """One NASS call that rides out a short throttle (403/429/5xx) with a few waits before giving up.
+    A 400 (NASS's answer when a series has no rows) and every other failure is raised for the caller."""
+    for i in range(4):
+        try:
+            with urllib.request.urlopen(url, timeout=timeout) as r:
+                return json.load(r)
+        except urllib.error.HTTPError as e:
+            if e.code not in (403, 429, 500, 502, 503, 504) or i == 3:
+                raise
+        except (urllib.error.URLError, TimeoutError):
+            if i == 3:
+                raise
+        time.sleep(2 * (i + 1))
+
+
 # ── NASS Data ─────────────────────────────────────────────────────────────────
 @st.cache_data
 def _load_nass_stat_raw(crop: str, year: int, stat_type: str,
@@ -1034,12 +1178,10 @@ def _load_nass_stat_raw(crop: str, year: int, stat_type: str,
     params.update(NASS_STAT_BASE[stat_type])
     params.update(NASS_CROP_STAT_PARAMS[crop][stat_type])
     # NASS doesn't publish class_desc=ALL CLASSES at county level for wheat
-    if crop == "Wheat":
-        params.pop("class_desc", None)
+    _wc_class_param(params, crop, cache_ver, county=True)
     url = NASS_BASE_URL + "?" + urllib.parse.urlencode(params)
     try:
-        with urllib.request.urlopen(url, timeout=45) as r:
-            raw = json.load(r)
+        raw = _nass_json(url)
     except Exception as e:
         return pd.DataFrame(columns=["State", "County", "fips", "Value"])
         return pd.DataFrame(columns=["State", "County", "fips", "Value"])
@@ -1095,7 +1237,8 @@ def _load_nass_stat_raw(crop: str, year: int, stat_type: str,
 
 def load_nass_stat(crop: str, year: int, stat_type: str,
                    cache_ver: str = _CACHE_VERSION) -> pd.DataFrame:
-    return _ts_adjust(_ho_adjust(_load_nass_stat_raw(crop, year, stat_type, _base_ver(cache_ver)),
+    return _ts_adjust(_ho_adjust(_wc_adjust(_load_nass_stat_raw(crop, year, stat_type, _base_ver(cache_ver)),
+                                            crop, year, stat_type, ["Value"], cache_ver),
                                  crop, stat_type, ["Value"]), crop, year, stat_type, ["Value"])
 
 @st.cache_data
@@ -1121,10 +1264,10 @@ def _load_nass_state_raw(crop: str, year: int, stat_type: str,
     }
     params.update(NASS_STAT_BASE[stat_type])
     params.update(NASS_CROP_STAT_PARAMS[crop][stat_type])
+    _wc_class_param(params, crop, cache_ver, county=False)
     url = NASS_BASE_URL + "?" + urllib.parse.urlencode(params)
     try:
-        with urllib.request.urlopen(url, timeout=45) as r:
-            raw = json.load(r)
+        raw = _nass_json(url)
     except Exception as e:
         return pd.DataFrame(columns=["State", "Value"])
         return pd.DataFrame(columns=["State", "Value"])
@@ -1174,7 +1317,8 @@ def _load_nass_state_raw(crop: str, year: int, stat_type: str,
 
 def load_nass_state(crop: str, year: int, stat_type: str,
                     cache_ver: str = _CACHE_VERSION) -> pd.DataFrame:
-    return _ts_adjust(_ho_adjust(_load_nass_state_raw(crop, year, stat_type, _base_ver(cache_ver)),
+    return _ts_adjust(_ho_adjust(_wc_adjust(_load_nass_state_raw(crop, year, stat_type, _base_ver(cache_ver)),
+                                            crop, year, stat_type, ["Value"], cache_ver),
                                  crop, stat_type, ["Value"]), crop, year, stat_type, ["Value"])
 
 @st.cache_data(show_spinner=False)
@@ -1271,7 +1415,8 @@ def load_nass_county(crop: str, year: int = 2025,
     try:
         df = _load_nass_county_cached(crop, year, _base_ver(cache_ver))
         _NASS_COUNTY_ERR.pop((crop, year), None)
-        return _ts_adjust(_ho_adjust(df, crop, "production", ["Production"]),
+        return _ts_adjust(_ho_adjust(_wc_adjust(df, crop, year, "production", ["Production"], cache_ver),
+                                     crop, "production", ["Production"]),
                           crop, year, "production", ["Production"])
     except Exception as e:
         _NASS_COUNTY_ERR[(crop, year)] = f"{type(e).__name__}: {e}"
@@ -1299,12 +1444,10 @@ def _load_nass_county_cached(crop: str, year: int = 2025,
         "format":            "JSON",
     }
     params.update(NASS_CROP_PARAMS[crop])
-    if crop == "Wheat":
-        params.pop("class_desc", None)
+    _wc_class_param(params, crop, cache_ver, county=True)
     url = NASS_BASE_URL + "?" + urllib.parse.urlencode(params)
     try:
-        with urllib.request.urlopen(url, timeout=45) as r:
-            raw = json.load(r)
+        raw = _nass_json(url)
     except urllib.error.HTTPError as e:
         if e.code != 400:          # NASS 400 = zero rows (not published); anything else is a failure
             raise
@@ -1369,12 +1512,10 @@ def _load_county_raw_for_est_raw(crop: str, state: str, year: int,
     }
     params.update(NASS_STAT_BASE[stat_type])
     params.update(NASS_CROP_STAT_PARAMS[crop][stat_type])
-    if crop == "Wheat":
-        params.pop("class_desc", None)
+    _wc_class_param(params, crop, cache_ver, county=True)
     try:
         url = NASS_BASE_URL + "?" + urllib.parse.urlencode(params)
-        with urllib.request.urlopen(url, timeout=45) as r:
-            raw = json.load(r)
+        raw = _nass_json(url)
     except Exception:
         return pd.DataFrame()
     records = raw.get("data", [])
@@ -1413,7 +1554,8 @@ def _load_county_raw_for_est_raw(crop: str, state: str, year: int,
 
 def _load_county_raw_for_est(crop: str, state: str, year: int,
                               stat_type: str, cache_ver: str) -> pd.DataFrame:
-    return _ts_adjust(_ho_adjust(_load_county_raw_for_est_raw(crop, state, year, stat_type, _base_ver(cache_ver)),
+    return _ts_adjust(_ho_adjust(_wc_adjust(_load_county_raw_for_est_raw(crop, state, year, stat_type, _base_ver(cache_ver)),
+                                            crop, year, stat_type, ["Value_num"], cache_ver),
                                  crop, stat_type, ["Value_num"]), crop, year, stat_type, ["Value_num"])
 
 @st.cache_data(show_spinner=False)
@@ -1567,8 +1709,15 @@ def get_completed_county_data(crop: str, state: str, year: int,
 
     if not is_yield:
         # Scale estimates to sum exactly to OTHER COUNTIES
+        target = other_tot
+        if crop == "Wheat":
+            # NASS's wheat county rows plus OTHER COUNTIES run a little off the published state figure in some
+            # states (WA, OR, MT), so tie to the state total: what the named counties leave of it.
+            gap = state_total - float(named["Value_num"].sum())
+            if gap > 0:
+                target = gap
         raw_sum = missing["raw_est"].sum()
-        scale   = (other_tot / raw_sum) if raw_sum > 0 else 1.0
+        scale   = (target / raw_sum) if raw_sum > 0 else 1.0
         missing["Value"] = missing["raw_est"] * scale
     else:
         # Yield: no reconciliation — use raw estimate directly
@@ -1616,8 +1765,7 @@ def load_grain_stocks(crop: str, year: int, reference_period: str,
     params.update(STOCKS_CROP_PARAMS.get(crop, {"commodity_desc": crop.upper()}))
     try:
         url = NASS_BASE_URL + "?" + urllib.parse.urlencode(params)
-        with urllib.request.urlopen(url, timeout=45) as r:
-            raw = json.load(r)
+        raw = _nass_json(url)
     except Exception:
         return pd.DataFrame()
 
@@ -3929,6 +4077,7 @@ def _chart(fig, **kw) -> None:
 def main():
     _tls.ho_scope = False
     _tls.ts = False
+    _tls.wc = None
     st.markdown(
         f"""
         <style>
@@ -4118,6 +4267,33 @@ def main():
                     "exist only for ND and, in some years, MT; other states show at state level."
                 )
 
+            # Wheat class — NASS's three county classes, or a market class split from the state's mix
+            nass_wc = "All classes"
+            if nass_crop == "Wheat":
+                _wc_col, _ = st.columns([1.3, 3])
+                with _wc_col:
+                    nass_wc = st.selectbox("Wheat class", ["All classes"] + list(_WC_CLASSES), key="nass_wheat_class")
+                if nass_wc != "All classes" and nass_year == FORECAST_YEAR:
+                    st.info(f"{FORECAST_YEAR} is a forecast year with no class detail; showing all classes.")
+                    nass_wc = "All classes"
+            _tls.wc = None if nass_wc == "All classes" else nass_wc
+            nass_lbl = f"{nass_crop} ({_tls.wc})" if _tls.wc else nass_crop       # titles and captions only; the loaders take nass_crop
+            if _tls.wc:
+                _wc_grp, _wc_ser, _ = _WC_CLASSES[_tls.wc]
+                if _wc_ser:
+                    st.caption(
+                        f"{_tls.wc}: NASS publishes this class only as a share of each state's "
+                        f"{'winter' if _wc_grp == 'WINTER' else 'spring'} wheat, so the state figure is NASS "
+                        f"{_wc_grp.split(',')[0].lower()} production x that share, and each county gets the "
+                        "state's mix (county class detail is not published). Counties still add up to the "
+                        "state class total."
+                    )
+                else:
+                    st.caption(
+                        f"{_tls.wc}: NASS's own class series, published by state and county. Counties NASS "
+                        "does not list are estimated from historical shares and scaled to the state class total."
+                    )
+
             # Row 2 — Metric selector
             st.markdown(
                 f"<p style='color:{MUTED};font-size:0.78rem;margin:4px 0 2px 0;'>Metric</p>",
@@ -4129,6 +4305,13 @@ def main():
             )
             if nass_metric == "Total Supply (bu)" and nass_crop not in STOCKS_CROPS:
                 st.info(f"Total supply needs NASS grain stocks, which are not published for {nass_crop}; "
+                        "showing production instead.")
+                nass_metric = "Production (bu)"
+            if _tls.wc and nass_metric == "Total Supply (bu)":
+                st.info("Stocks are not published by wheat class; showing production instead.")
+                nass_metric = "Production (bu)"
+            if _tls.wc and _WC_CLASSES[_tls.wc][1] and nass_metric != "Production (bu)":
+                st.info(f"NASS publishes {_tls.wc.lower()} as production only (no acres or yield); "
                         "showing production instead.")
                 nass_metric = "Production (bu)"
             _tls.ts = nass_metric == "Total Supply (bu)"
@@ -4312,7 +4495,7 @@ def main():
                         )
                     else:
                         nass_fig = build_nass_state_fig(
-                            state_vdf, nass_crop, nass_year, nass_metric, nass_change, logo_50yr
+                            state_vdf, nass_lbl, nass_year, nass_metric, nass_change, logo_50yr
                         )
                         nass_fig.update_layout(
                             dragmode=False,
@@ -4499,7 +4682,7 @@ def main():
                                         f"<p style='color:{MUTED};font-size:0.78rem;"
                                         f"margin:0 0 4px 0;'>"
                                         f"{ABBR_TO_NAME.get(nass_state,nass_state)} "
-                                        f"{nass_year} {nass_crop}</p>",
+                                        f"{nass_year} {nass_lbl}</p>",
                                         unsafe_allow_html=True,
                                     )
                                     st.dataframe(
@@ -4611,7 +4794,7 @@ def main():
                                     )
                                     nass_dist_fig = build_nass_district_fig(
                                         _dvdf, _drdf, _dgdf,
-                                        nass_state, nass_crop, nass_year,
+                                        nass_state, nass_lbl, nass_year,
                                         nass_metric, nass_change, logo_50yr, geo,
                                         estimated_districts=_est_dists,
                                     )
@@ -4641,7 +4824,7 @@ def main():
                                         _cty_est_stat, _session_ver()
                                     )
                                     nass_county_fig = build_nass_county_fig_with_est(
-                                        _comp_cty, geo, nass_state, nass_crop,
+                                        _comp_cty, geo, nass_state, nass_lbl,
                                         nass_year, nass_metric, logo_50yr, centroids,
                                     )
                                     _cty_n_est = int(_comp_cty["is_estimated"].sum()) \
@@ -4769,7 +4952,7 @@ def main():
                         _nc_fig = build_history_bar(
                             {nass_metric: [v / _nc_unit if v else 0 for v in _nc_vals]},
                             _nc_yrs,
-                            title=f"{_scope_label} — {nass_crop} {nass_metric}",
+                            title=f"{_scope_label} — {nass_lbl} {nass_metric}",
                             y_label=_nc_y_lbl,
                         )
                         _chart(_nc_fig, use_container_width=True,
@@ -4987,7 +5170,7 @@ def main():
                                         _nt_us_tot[_ny] = float(
                                             _ntdf["Value"].mean() if _nt_ratio else _ntdf["Value"].sum()
                                         )
-                            _nt_tbl_title = (f"{nass_crop} — {nass_metric} ({_nt_unit}) | "
+                            _nt_tbl_title = (f"{nass_lbl} — {nass_metric} ({_nt_unit}) | "
                                              f"{min(_HIST_YEARS)}–{max(_HIST_YEARS)}")
                             _nt_fig = build_heatmap_table(
                                 _nt_state_yr, _HIST_YEARS, title=_nt_tbl_title,
@@ -5044,7 +5227,7 @@ def main():
                                 }
                                 for dist in _nd_yr
                             }
-                            _nt_tbl_title = (f"{nass_state} {nass_crop} — {nass_metric} "
+                            _nt_tbl_title = (f"{nass_state} {nass_lbl} — {nass_metric} "
                                              f"by ASD District ({_nt_unit}) | "
                                              f"{min(_HIST_YEARS)}–{max(_HIST_YEARS)}")
                             _nt_fig = build_heatmap_table(
@@ -5069,7 +5252,7 @@ def main():
                                             if _cn:
                                                 if _cn not in _nco_yr: _nco_yr[_cn] = {}
                                                 _nco_yr[_cn][_ny] = float(_cr["Value"]) if pd.notna(_cr["Value"]) else None
-                            _nt_tbl_title = (f"{nass_state} {nass_crop} — {nass_metric} "
+                            _nt_tbl_title = (f"{nass_state} {nass_lbl} — {nass_metric} "
                                              f"by County ({_nt_unit}) | "
                                              f"{min(_HIST_YEARS)}–{max(_HIST_YEARS)}")
                             _nt_fig = build_heatmap_table(
@@ -5211,12 +5394,12 @@ def main():
                             if nass_map_view == "ASD District":
                                 ranking_nass = build_nass_asd_ranking_chart(
                                     state_county_v, _fips_map, fips_lk,
-                                    nass_state, nass_crop, nass_year,
+                                    nass_state, nass_lbl, nass_year,
                                     nass_metric, nass_change,
                                 )
                             else:
                                 ranking_nass = build_nass_ranking_chart(
-                                    state_county_v, nass_state, nass_crop, nass_year,
+                                    state_county_v, nass_state, nass_lbl, nass_year,
                                     nass_metric, nass_change,
                                 )
                             _chart(ranking_nass, use_container_width=True,
