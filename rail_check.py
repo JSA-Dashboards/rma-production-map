@@ -22,7 +22,7 @@ import streamlit as st
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.join(HERE, "data", "draw")
-BU_PER_TON = {"corn": 2000.0 / 56.0, "soy": 2000.0 / 60.0}
+BU_PER_TON = {"corn": 2000.0 / 56.0, "soy": 2000.0 / 60.0, "wheat": 2000.0 / 60.0}
 CROSS_BORDER = 173                           # STB's railroad-added codes: 173-183 Canadian provinces, 184 Puerto Rico, 185 Mexico
 
 # model hub -> the termination areas that stand for it. 'any' counts every carload ending there, 'exp' only the ones flagged as export (San Antonio and El Paso are also
@@ -49,6 +49,8 @@ LABELS = {
              "023": "Carolinas poultry", "024": "Carolinas poultry", "077": "Mississippi poultry", "078": "Alabama poultry", "149": "Idaho dairy", "064": "Chicago area processing",
              "068": "Decatur area processing", "122": "Kansas feedyards and mills", "158": "Arizona dairy and feed", "090": "Arkansas poultry", "127": "Dallas-Fort Worth mills and feed"},
     "soy": {"096": "St. Louis crush and river", "099": "Kansas City crush", "107": "Minneapolis crush", "067": "Indiana crush", "010": "New York area"},
+    "wheat": {"064": "Chicago area flour mills", "096": "St. Louis flour mills", "099": "Kansas City flour mills", "107": "Minneapolis flour mills", "109": "Duluth-Superior: lake port",
+              "010": "New York area flour and baking", "160": "Los Angeles area flour mills", "127": "Dallas-Fort Worth flour mills"},
 }
 PORT_AREAS = {"083", "131", "020", "026", "028"}
 EXPORT_AREAS = {"167": "Pacific NW port: export (FGIS inspections match)", "170": "Pacific NW port: export (FGIS inspections match)",
@@ -115,6 +117,22 @@ def _by_state(rows: pd.DataFrame, split: dict, years: int, bu_per_ton: float) ->
     return pd.Series(out, dtype=float)
 
 
+def _bucket(t: str, exp: bool, crop: str) -> str:
+    """Map a BEA termination code to a display bucket for the state × destination matrix."""
+    for hub, spec in HUBS.items():
+        if t in spec["codes"]:
+            return hub
+    if t == "000":
+        return "Hidden export" if exp else "Hidden domestic"
+    label = LABELS.get(crop, {}).get(t, "")
+    for kw, grp in (("feedyard", "Feed/Livestock"), ("poultry", "Feed/Livestock"), ("hog", "Feed/Livestock"),
+                    ("dairy", "Dairy"), ("ethanol", "Ethanol/Processing"), ("processing", "Ethanol/Processing"),
+                    ("mill", "Ethanol/Processing"), ("crush", "Ethanol/Processing"), ("export", "Other export")):
+        if kw in label.lower():
+            return grp
+    return "Other export" if exp else "Other domestic"
+
+
 def render(crop: str, inp: dict, res: dict, hub_flow: dict, hub_rows: list, img_config, match_year: int | None = None) -> None:
     """hub_flow: {hub: bushels per county}; hub_rows: dm.hub_table(...) rows (hub, target_mbu, drawn_mbu). match_year: the scenario above was set to FGIS's actual volumes for
     this calendar year ("Match a waybill year"), so the waybill years default to it and the model and the waybill describe the same year."""
@@ -124,7 +142,7 @@ def render(crop: str, inp: dict, res: dict, hub_flow: dict, hub_rows: list, img_
         return
     key = _key()
     bpt = BU_PER_TON[crop]
-    W = "corn" if crop == "corn" else "soybeans"
+    W = {"corn": "corn", "wheat": "wheat"}.get(crop, "soybeans")
     cty = inp["counties"]
     ca = key["county_area"]
     sup: dict[str, dict[str, float]] = {}
@@ -262,7 +280,7 @@ def render(crop: str, inp: dict, res: dict, hub_flow: dict, hub_rows: list, img_
                  hide_index=True, use_container_width=True)
     noplant = out[out["Model plants there"] < 0.5]
     st.caption(f"Carloads that are not export-flagged, not a lake or river transfer and not cross-border, to the areas STB reports (the withheld {hidden_mbu:,.0f} M bu is left out). "
-               f"{noplant['M bu/yr by rail'].sum():,.0f} M bu of it goes to areas where the model has no {'ethanol' if crop == 'corn' else 'crush'} plant: that is feed, flour and "
+               f"{noplant['M bu/yr by rail'].sum():,.0f} M bu of it goes to areas where the model has no {'ethanol' if crop == 'corn' else 'flour mill' if crop == 'wheat' else 'crush'} plant: that is feed, flour and "
                f"food mills and other users the model does not draw by name, and a calibration target for a feed layer. 'Model plants there' puts each plant in the BEA area of its "
                f"nearest county. 'My reading' is my label for the area, not something in the data.")
 
@@ -292,3 +310,141 @@ def render(crop: str, inp: dict, res: dict, hub_flow: dict, hub_rows: list, img_
             "- **Years.** The latest year in the public file lags (2024 now), and the model's hub targets may be built on other years.\n"
             "- **What it is good for.** A hub's rail volume and origin mix where the area is reported (Pacific Northwest, Mexico, New Orleans, Houston), and a map of the "
             "non-export users that rail reaches, which is where feed demand shows up.")
+
+    # ── crop selector for destination + seasonal sections ────────────────────
+    st.markdown("---")
+    crop_wb = st.radio("Waybill crop view for sections 4-6",
+                       ["corn", "soy", "wheat"],
+                       index={"corn": 0, "soy": 1}.get(crop, 0),
+                       horizontal=True, key=f"rc_crop_wb_{crop}")
+    f_wb = _load(crop_wb)
+    if f_wb is None:
+        st.info(f"The {crop_wb} waybill file is not built yet — run build_rail_waybill.py {crop_wb}.")
+        return
+    bpt_wb = BU_PER_TON[crop_wb]
+    W_wb = {"corn": "corn", "wheat": "wheat"}.get(crop_wb, "soybeans")
+    f_wb_yr = f_wb[(f_wb.year >= y0) & (f_wb.year <= y1)]
+    total_wb = f_wb_yr.tons.sum() / ny * bpt_wb / 1e6
+
+    # ── 4. Domestic destination breakdown ────────────────────────────────────
+    st.markdown(f"**4. Domestic destination breakdown — {W_wb}** (waybill {y0}-{y1} average)")
+    all_states = sorted({s for a in split for s in split[a]})
+    sel_states = st.multiselect("Filter to origin states (empty = all)", all_states,
+                                default=[], key=f"rc_s4_states_{crop}")
+    if sel_states:
+        keep_o = {a for a, d in split.items() if any(s in d for s in sel_states)}
+        f_dom2 = f_wb_yr[f_wb_yr.o.isin(keep_o) & ~f_wb_yr.exp & ~f_wb_yr.water &
+                         (f_wb_yr.t.astype(int) < CROSS_BORDER) & (f_wb_yr.t != "000")]
+    else:
+        f_dom2 = f_wb_yr[~f_wb_yr.exp & ~f_wb_yr.water &
+                         (f_wb_yr.t.astype(int) < CROSS_BORDER) & (f_wb_yr.t != "000")]
+    dom_mbu2 = f_dom2.tons.sum() / ny * bpt_wb / 1e6
+    hidden_dom2 = f_wb_yr[(f_wb_yr.t == "000") & ~f_wb_yr.exp].tons.sum() / ny * bpt_wb / 1e6
+    k1, k2, k3 = st.columns(3)
+    k1.metric(f"Domestic {W_wb} by rail", f"{dom_mbu2:,.0f} M bu/yr")
+    k2.metric("% of total rail", f"{dom_mbu2 / max(total_wb, 1e-9) * 100:.0f}%")
+    nd2_tons = f_dom2.groupby("t").tons.sum()
+    if not nd2_tons.empty:
+        top_t = nd2_tons.idxmax()
+        top_lbl = LABELS.get(crop_wb, {}).get(top_t) or _name(top_t, key)
+        k3.metric("Top destination", top_lbl[:32])
+    GROUP_COLORS = {"Feed/Livestock": "#d97706", "Dairy": "#7c3aed", "Ethanol/Processing": "#0693e3", "Other domestic": "#6b7280"}
+    HUB_NAMES = set(HUBS.keys())
+    nd2_df = (nd2_tons / ny * bpt_wb / 1e6).reset_index()
+    nd2_df.columns = ["t", "mbu"]
+    nd2_df["label"] = nd2_df.t.map(lambda x: LABELS.get(crop_wb, {}).get(x) or _name(x, key))
+    nd2_df["group"] = nd2_df.t.map(lambda x: _bucket(x, False, crop_wb))
+    nd2_df = nd2_df[~nd2_df.group.isin(HUB_NAMES | {"Hidden export", "Hidden domestic"})].nlargest(20, "mbu")
+    if not nd2_df.empty:
+        nd2_df = nd2_df.sort_values("mbu")
+        colors = [GROUP_COLORS.get(g, "#32373c") for g in nd2_df.group]
+        fig4 = go.Figure(go.Bar(x=nd2_df.mbu, y=nd2_df.label, orientation="h",
+                                marker_color=colors, text=nd2_df.mbu.map("{:,.1f}".format), textposition="outside"))
+        fig4.update_layout(height=max(300, len(nd2_df) * 26 + 80), margin=dict(l=10, r=80, t=46, b=10),
+                           xaxis_title="M bu/yr",
+                           title=dict(text=f"<b>Domestic {W_wb} by rail</b> — top 20 destinations", font=dict(size=13)))
+        st.plotly_chart(fig4, use_container_width=True, key=f"rc_s4_bar_{crop}", config=img_config(f"domestic dest {crop_wb}"))
+    nd2_n = f_dom2.groupby("t").n.sum()
+    nd2_out = pd.DataFrame({
+        "BEA": nd2_tons.index,
+        "Label": [LABELS.get(crop_wb, {}).get(t) or _name(t, key) for t in nd2_tons.index],
+        "Group": [_bucket(t, False, crop_wb) for t in nd2_tons.index],
+        "M bu/yr": nd2_tons / ny * bpt_wb / 1e6,
+        "Carloads/yr": nd2_n.reindex(nd2_tons.index, fill_value=0) / ny,
+        "% of domestic": nd2_tons / nd2_tons.sum() * 100,
+    }).sort_values("M bu/yr", ascending=False)
+    st.dataframe(nd2_out.style.format({"M bu/yr": "{:,.1f}", "Carloads/yr": "{:,.0f}", "% of domestic": "{:.0f}%"}),
+                 hide_index=True, use_container_width=True)
+    st.caption(f"Not export-flagged, not cross-border, not via water. Withheld ({hidden_dom2:,.0f} M bu/yr to BEA 000) excluded. "
+               "Feed/Livestock = feedyards + poultry + hogs; Dairy; Ethanol/Processing = ethanol + crush + mills.")
+
+    # ── 5. Origin State × Destination Bucket Matrix ──────────────────────────
+    st.markdown(f"**5. Origin State × Destination Bucket** (M bu/yr, {y0}-{y1} average)")
+    BUCKET_ORDER = ["Pacific Northwest", "Texas Gulf", "Mexico Rail", "Louisiana Rail", "South Atlantic", "Mobile",
+                    "Feed/Livestock", "Dairy", "Ethanol/Processing", "Other domestic", "Other export", "Hidden export", "Hidden domestic"]
+    bkts = [_bucket(t, e, crop_wb) for t, e in zip(f_wb_yr["t"], f_wb_yr["exp"])]
+    grp5 = f_wb_yr.assign(bucket=bkts).groupby(["o", "bucket"]).tons.sum().reset_index()
+    grp5["mbu"] = grp5.tons / ny * bpt_wb / 1e6
+    state_bucket: dict[str, dict[str, float]] = {}
+    for _, r5 in grp5.iterrows():
+        o5, bkt5, mbu5 = r5.o, r5.bucket, r5.mbu
+        if o5 in split:
+            for s, w in split[o5].items():
+                if s not in state_bucket:
+                    state_bucket[s] = {}
+                state_bucket[s][bkt5] = state_bucket[s].get(bkt5, 0.0) + mbu5 * w
+        else:
+            wk = "(origin withheld)"
+            if wk not in state_bucket:
+                state_bucket[wk] = {}
+            state_bucket[wk][bkt5] = state_bucket[wk].get(bkt5, 0.0) + mbu5
+    if state_bucket:
+        mtx = pd.DataFrame(state_bucket).T.fillna(0.0)
+        cols_ok = [c for c in BUCKET_ORDER if c in mtx.columns] + [c for c in mtx.columns if c not in BUCKET_ORDER]
+        mtx = mtx[cols_ok].loc[mtx.sum(axis=1).sort_values(ascending=False).index]
+        pct_toggle = st.checkbox("Show as % of state total rail", key=f"rc_s5_pct_{crop}")
+        display_mtx = mtx.div(mtx.sum(axis=1), axis=0) * 100 if pct_toggle else mtx
+        fmt_str = "{:.0f}" if pct_toggle else "{:,.1f}"
+        st.dataframe(display_mtx.style.format(fmt_str, na_rep="-").background_gradient(cmap="YlOrRd", axis=None),
+                     use_container_width=True)
+        st.caption("M bu/yr (or % of state total) from each origin state to each destination bucket. Mixed BEA areas "
+                   "(e.g. Kansas City = MO + KS) are apportioned by the model's county supply — treat those state rows as estimates. Sorted by total.")
+
+    # ── 6. Seasonal rail pattern (MY-aligned) ───────────────────────────────
+    m_wb2 = _load_monthly(crop_wb)
+    if m_wb2 is not None:
+        m_sub = m_wb2[(m_wb2.year >= y0) & (m_wb2.year <= y1)].copy()
+        m_sub["my_month"] = ((m_sub.month - 9) % 12) + 1
+        m_sub["my_year"] = m_sub.year.where(m_sub.month >= 9, m_sub.year - 1)
+        m_sub["my_label"] = m_sub.my_year.astype(str) + "/" + (m_sub.my_year + 1).astype(str).str[-2:]
+        flow_filter = st.radio("Traffic to chart", ["All traffic", "Export flagged", "Domestic only"],
+                               horizontal=True, key=f"rc_s6_filter_{crop}")
+        if flow_filter == "Export flagged":
+            m_filt = m_sub[m_sub.exp]
+        elif flow_filter == "Domestic only":
+            m_filt = m_sub[~m_sub.exp]
+        else:
+            m_filt = m_sub
+        mm_my = m_filt.groupby(["my_label", "my_month"]).tons.sum().reset_index()
+        mm_my["mbu"] = mm_my.tons * bpt_wb / 1e6
+        my_labels = sorted(mm_my.my_label.unique())
+        PALETTE = ["#16a34a", "#0693e3", "#d97706", "#7c3aed", "#dc2626", "#0891b2", "#6b7280"]
+        MO_TICKS = {1: "Sep", 2: "Oct", 3: "Nov", 4: "Dec", 5: "Jan", 6: "Feb", 7: "Mar",
+                    8: "Apr", 9: "May", 10: "Jun", 11: "Jul", 12: "Aug"}
+        fig6 = go.Figure()
+        for i, lbl in enumerate(my_labels):
+            sub6 = mm_my[mm_my.my_label == lbl].sort_values("my_month")
+            is_last = lbl == my_labels[-1]
+            fig6.add_scatter(x=sub6.my_month, y=sub6.mbu, name=lbl, mode="lines+markers",
+                             line=dict(color=PALETTE[i % len(PALETTE)], width=2.5 if is_last else 1.5),
+                             marker=dict(size=5 if is_last else 3))
+        fig6.update_layout(height=360, margin=dict(l=10, r=10, t=46, b=10), yaxis_title="M bu",
+                           legend=dict(orientation="h", y=1.14, font=dict(size=11)),
+                           xaxis=dict(tickmode="array", tickvals=list(range(1, 13)),
+                                      ticktext=[MO_TICKS[i] for i in range(1, 13)],
+                                      title="Marketing year month (Sep = 1)"),
+                           title=dict(text=f"<b>Seasonal {W_wb} rail pattern by marketing year</b>", font=dict(size=13)))
+        st.markdown(f"**6. Seasonal rail pattern — {W_wb}** (MY-aligned)")
+        st.plotly_chart(fig6, use_container_width=True, key=f"rc_s6_line_{crop}", config=img_config(f"seasonal rail {crop_wb}"))
+        st.caption(f"Sep = marketing year month 1, Aug = 12. The harvest surge (months 1–3) and spring window (months 5–8) are the main shipping periods. "
+                   "Most recent marketing year shown with a thicker line. Export vs domestic toggle separates the two legs of rail movement.")
