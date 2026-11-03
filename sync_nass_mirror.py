@@ -4,6 +4,8 @@ app.py stays the one place the NASS tab is edited; run this again after changing
 
     python sync_nass_mirror.py [output_dir]        # default: ../nass-production
     python sync_nass_mirror.py --locked            # keep the shared-password gate (default: the mirror is open)
+    python sync_nass_mirror.py --module <dir>      # instead of an app, write <dir>/asd_county_tab.py: the NASS tab as a render() another dashboard calls inside one of its own
+                                                   # tabs (no page config, no page-wide CSS, no header, no password gate); also copies the wheat class priors under <dir>/data/wheat
 
 What it does, from the syntax tree of app.py (not text matching, so it follows the code as it changes):
   * keeps only the module-level code the NASS tab reaches (functions, constants, imports), in the original order, as the original text;
@@ -31,7 +33,10 @@ SWAPS = [
     ("<b>JSA Agricultural Intelligence Dashboard</b>", "<b>JSA NASS Production</b>"),
     ("Production, supply &amp; demand &middot; John Stewart &amp; Associates", "USDA NASS production by state, ASD district and county &middot; John Stewart &amp; Associates"),
 ]
-ASOF_OLD_START = '<div class="asof"><b>NASS tab</b>'
+# the module's own swaps: the Adjustments box names the tabs it applies to
+MODULE_SWAPS = [("on the NASS Production and ASD Supply & Demand tabs", "on the ASD & County Level tab"),
+                ("Applies to NASS Production and ASD S&D only.", "Applies to the ASD & County Level tab only.")]
+ASOF_OLD_START ='<div class="asof"><b>NASS tab</b>'
 ASOF_NEW = ('<div class="asof"><b>NASS production</b>: USDA survey-based final production figures (post-harvest, all acres), by state, ASD district and county.</div>"""')
 
 
@@ -71,7 +76,7 @@ def text(lines, n):
     return "".join(lines[first_line(n) - 1:n.end_lineno])
 
 
-def main(out_dir, locked):
+def main(out_dir, locked, module=False):
     src = open(APP, encoding="utf-8").read()
     tree = ast.parse(src)
     lines = src.replace("\r\n", "\n").splitlines(keepends=True)
@@ -97,6 +102,13 @@ def main(out_dir, locked):
     foot = list(range(last_tab + 1, len(body)))
     gate = [i for i in pre if "draw_auth" in ast.unparse(body[i])]
     keep_pre = [i for i in pre if (locked or i not in gate)]
+    if module:
+        keep_pre = []                                                 # the module keeps only the thread-local resets, the base-resource load and the adjustments box
+        for i in pre:
+            st_ = body[i]
+            head = ast.unparse(st_).split(chr(10), 1)[0]
+            if (isinstance(st_, ast.Assign) and head.startswith("_tls.")) or (isinstance(st_, ast.With) and (head.startswith("with st.spinner") or "Adjustments" in head)):
+                keep_pre.append(i)
 
     # ---- reachability from what the mirror's main() uses (the RMA workbook is loaded for the RMA tab only, so that call does not count)
     def without_rma_load(s_):
@@ -105,6 +117,17 @@ def main(out_dir, locked):
         c = copy.deepcopy(s_)
         c.body = [b_ for b_ in c.body if not (isinstance(b_, ast.Assign) and isinstance(b_.value, ast.Call) and ast.unparse(b_.value.func) == "load_data")] or [ast.Pass()]
         return c
+    spinner_src = {}                                                  # module mode: the spinner's loads, cut down to what the NASS block uses (no RMA workbook, no logos)
+    if module:
+        nass_used = used(body[nw])
+        for i in keep_pre:
+            if isinstance(body[i], ast.With) and ast.unparse(body[i]).startswith("with st.spinner"):
+                c = copy.deepcopy(body[i])
+                c.body = [b_ for b_ in c.body if isinstance(b_, ast.Assign) and any(isinstance(t_, ast.Name) and t_.id in nass_used for t_ in b_.targets)] or [ast.Pass()]
+                spinner_src[i] = "".join("    " + ln + chr(10) for ln in ast.unparse(c).split(chr(10)))
+                body = list(body)
+                body[i] = c
+        foot = []
     roots = [without_rma_load(body[i]) for i in keep_pre] + [body[nw]] + [body[i] for i in foot]
     need = set()
     for r in roots:
@@ -120,10 +143,10 @@ def main(out_dir, locked):
             continue
         if isinstance(n, ast.If) and "__name__" in ast.unparse(n.test):
             keep.add(i)
-        elif isinstance(n, ast.Expr):                                 # page config, styling, badge: always
+        elif isinstance(n, ast.Expr) and not module:                  # page config, styling, badge: always (a module has none of them)
             keep.add(i)
             need |= used(n)
-        elif isinstance(n, ast.Try) and not bound(n):                 # a try block that only does something (the badge)
+        elif isinstance(n, ast.Try) and not bound(n) and not module:  # a try block that only does something (the badge)
             keep.add(i)
             need |= used(n)
     seen, queue = set(), list(need)
@@ -138,8 +161,9 @@ def main(out_dir, locked):
                 queue.extend(u for u in used(top[i]) if u not in seen)
     missing = {n for n in need if n not in modbind and n not in dir(__builtins__) and n not in bound_in_main(body, keep_pre + after_tabs + [nw] + foot) and n != "tab_nass"}
     # ---- write the source
-    out = ['"""\nGENERATED by sync_nass_mirror.py from app.py of the RMA dashboard (JSA-Dashboards/rma-production-map): its NASS Production tab as its own app.\n'
-           'Do not edit here; change app.py there and run the sync again.\n"""\n']
+    out = ['"""\nGENERATED by sync_nass_mirror.py from app.py of the RMA dashboard (JSA-Dashboards/rma-production-map): its NASS Production tab as '
+           + ('a module with one entry point, render(), that another dashboard calls inside one of its own tabs.\n' if module else 'its own app.\n')
+           + 'Do not edit here; change app.py there and run the sync again.\n"""\n']
     tail = ""
     for i in sorted(keep):
         n = top[i]
@@ -152,9 +176,9 @@ def main(out_dir, locked):
         out.append(t)
         if isinstance(n, (ast.FunctionDef, ast.ClassDef)):
             out.append("\n")
-    main_src = [text(lines, mn).split("\n", 1)[0] + "\n"]              # `def main():`
+    main_src = [("def render():" if module else text(lines, mn).split("\n", 1)[0]) + "\n"]   # `def main():`
     for i in keep_pre:
-        main_src.append(text(lines, body[i]))
+        main_src.append(spinner_src.get(i) or text(lines, body[i]))
     main_src.append(
         "    # The mirror has one page, not tabs: the NASS block runs as if its tab were open.\n"
         "    class _Always:\n"
@@ -168,9 +192,37 @@ def main(out_dir, locked):
     main_src.append(text(lines, body[nw]))
     for i in foot:
         main_src.append(text(lines, body[i]))
+    if module:
+        main_src.append("\n    _tls.ho_scope = False                                    # the carve-out applies only while this tab renders\n")
     body_txt = "".join(main_src)
-    out.append("\n" + body_txt + "\n\n" + tail)
+    out.append("\n" + body_txt + ("\n" if module else "\n\n" + tail))
     code = "".join(out)
+
+    if module:
+        for old, new in MODULE_SWAPS:
+            if code.count(old) != 1:
+                fail(f"expected exactly one {old!r} in the generated module, found {code.count(old)}")
+            code = code.replace(old, new)
+        if "load_data(" in code.replace("def load_data(", "") or "draw_auth" in code or "set_page_config(" in code:
+            fail("the module still reaches the RMA workbook, the password gate or the page config")
+        try:
+            compile(code, "asd_county_tab.py", "exec")
+        except SyntaxError as e:
+            fail(f"the generated module does not compile: {e}")
+        os.makedirs(out_dir, exist_ok=True)
+        with open(os.path.join(out_dir, "asd_county_tab.py"), "w", encoding="utf-8", newline="\n") as fh:
+            fh.write(code)
+        for rel in DATA_FILES + ["assets/" + lg for lg in LOGOS[:1]]:           # the wheat class priors, and the watermark the charts carry
+            src = os.path.join(HERE, *rel.split("/"))
+            if not os.path.exists(src):
+                fail(f"{rel} is missing (run its builder first)")
+            os.makedirs(os.path.dirname(os.path.join(out_dir, *rel.split("/"))), exist_ok=True)
+            shutil.copy2(src, os.path.join(out_dir, *rel.split("/")))
+        imports = sorted({l.split()[1].split(".")[0] for l in code.split("\n") if l.startswith(("import ", "from "))})
+        print(f"wrote {os.path.join(out_dir, 'asd_county_tab.py')}: {code.count(chr(10))} lines; imports: {', '.join(imports)}")
+        if missing:
+            print("  names used but not defined (check):", sorted(missing))
+        return
 
     for old, new in SWAPS:
         if code.count(old) != 1:
@@ -236,5 +288,12 @@ def bound_in_main(body, idxs):
 
 
 if __name__ == "__main__":
-    args = [a for a in sys.argv[1:] if not a.startswith("--")]
-    main(os.path.abspath(args[0]) if args else os.path.abspath(os.path.join(HERE, "..", "nass-production")), "--locked" in sys.argv)
+    argv = sys.argv[1:]
+    if "--module" in argv:
+        k = argv.index("--module")
+        if k + 1 >= len(argv):
+            fail("--module needs the output folder")
+        main(os.path.abspath(argv[k + 1]), False, module=True)
+    else:
+        args = [a for a in argv if not a.startswith("--")]
+        main(os.path.abspath(args[0]) if args else os.path.abspath(os.path.join(HERE, "..", "nass-production")), "--locked" in argv)
