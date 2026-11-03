@@ -219,7 +219,7 @@
     10.762599124452565,
     27.004255251170107
    ],
-   "hub": "Upper Mississippi"
+   "hub": "Mid Mississippi"
   },
   {
    "name": "MS-3 Muscatine / Burlington (L&D 15 to 19)",
@@ -240,7 +240,7 @@
     29.83472833077043,
     41.86684215981485
    ],
-   "hub": "Upper Mississippi"
+   "hub": "Mid Mississippi"
   },
   {
    "name": "MS-4 Keokuk / Quincy / Hannibal (L&D 19 to 25)",
@@ -257,7 +257,7 @@
     22.9696125598102,
     33.65672450685181
    ],
-   "hub": "Upper Mississippi"
+   "hub": "Mid Mississippi"
   },
   {
    "name": "MS-5 Alton / Grafton / IL River below La Grange (Pool 26)",
@@ -271,7 +271,7 @@
     -7.546666666666667,
     11.653333333333318
    ],
-   "hub": "Upper Mississippi"
+   "hub": "Mid Mississippi"
   },
   {
    "name": "OH-1 Cincinnati to Cannelton (above Cannelton)",

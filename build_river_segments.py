@@ -194,7 +194,7 @@ def fgis_soy_exports():
         return {**FGIS_FALLBACK, "source": f"fallback constants ({type(e).__name__})"}
 
 
-HUBS = [("Illinois River", "IL-"), ("Upper Mississippi", "MS-"), ("Ohio River", "OH-"), ("Arkansas River", "AK"), ("St. Louis", "St. Louis City"),
+HUBS = [("Illinois River", "IL-"), ("Upper Mississippi", "MS-1"), ("Mid Mississippi", "MS-"), ("Ohio River", "OH-"), ("Arkansas River", "AK"), ("St. Louis", "St. Louis City"),
         ("St. Louis", "East St. Louis"), ("Lower Mississippi", "Cape Girardeau"), ("Lower Mississippi", "Lower Mississippi"), ("Pacific Northwest", "Pacific Northwest"),
         ("Texas Gulf", "Texas Gulf"), ("Mexico Rail", "Mexico by rail"), ("Louisiana Rail", "Louisiana rail"), ("Mobile", "Mobile"),
         ("South Atlantic", "South Atlantic"), ("Great Lakes", "Great Lakes")]

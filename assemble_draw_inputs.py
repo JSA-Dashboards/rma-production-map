@@ -26,6 +26,7 @@ PNW = {"key": "PNW export (rail)", "state": "OR", "lat": 45.6, "lon": -122.7}
 
 # Terminals the tracker has no bids for but that load barges in the St. Louis area (owners checked 2026-10-29; see the draw-territory memory note).
 # `site` keeps pins that share a geocode apart: pins with the same site, or with no site and the same coordinates, count once in the model.
+COORD_FIX = {"CHS Quincy Elevator": (39.936, -91.410)}                                  # same fix as build_river_segments.FIX
 SITE_OVERRIDES = {"CGB - Cahokia": "cgb-cahokia", "CHS Cahokia": "cofco-chs-cahokia"}     # CHS operates COFCO's Cahokia terminal (lease, Jan 2026)
 EXTRA_RIVER_PINS = [
     # PROVISIONAL cap until Richardson's barge soybean volume is verified: its elevator holds ~4 M bu (one full turn as a ceiling), and it sits beside a
@@ -112,6 +113,8 @@ def main():
     for r in river:                                       # the tracker geocodes several different Cahokia terminals to the same point
         if r["key"] in SITE_OVERRIDES:
             r["site"] = SITE_OVERRIDES[r["key"]]
+        if r["key"] in COORD_FIX:                         # the tracker has CHS Quincy Elevator in Washington, DC; its OSRM / straight-line miles then need rebuilding too
+            r["lat"], r["lon"] = COORD_FIX[r["key"]]
     river += [dict(p) for p in EXTRA_RIVER_PINS]
     buyers = plants + river + [PNW]
 

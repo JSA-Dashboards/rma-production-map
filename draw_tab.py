@@ -68,10 +68,12 @@ def _corn_final(inp):
             "same corn, so western plants draw western corn.")
 RIVER_COLOR = "#9ecae1"
 OTHER_PLANT_COLOR = "#bdbdbd"
-HUB_COLORS = {"Illinois River": "#4292c6", "Upper Mississippi": "#08519c", "Ohio River": "#41b6c4", "Arkansas River": "#a6761d",
+HUB_COLORS = {"Illinois River": "#4292c6", "Upper Mississippi": "#08519c", "Mid Mississippi": "#2b8cbe", "Ohio River": "#41b6c4", "Arkansas River": "#a6761d",
               "St. Louis": "#00897b", "Lower Mississippi": "#7fcdbb", "Pacific Northwest": "#d4a017", "Texas Gulf": "#c0392b", "Mexico Rail": "#8e44ad", "Louisiana Rail": "#e67e22", "Mobile": "#16a085", "South Atlantic": "#5d6d7e", "Great Lakes": "#2874a6"}
 RIVER_FILL = "#4292c6"                       # the territory fill shared by every river hub on the top-buyer map
 PLANT_COLOR = "#7cb342"                    # the shade of a plant the colour list has no entry for
+# Where a river hub's circle sits when its terminals string out along the river (the flow-weighted centre would land off the river or on the wrong end of the stretch)
+HUB_MARKER_AT = {"Upper Mississippi": (44.95, -93.09), "Mid Mississippi": (41.52, -90.58)}       # St. Paul / the Twin Cities; Davenport IA
 LEGEND_PLANTS = 14                          # the legend names this many of the biggest plants; the rest keep their shade and show on hover
 PLANT_COLORS = ["#2e7d32", "#7cb342", "#c0ca33", "#f9a825", "#ef6c00", "#d84315", "#ec407a", "#ad1457", "#8e24aa", "#5e35b1", "#9ccc65", "#00897b",
                 "#827717", "#ff8a65", "#f48fb1", "#ba68c8", "#aed581", "#ffd54f", "#6a1b9a", "#e65100", "#558b2f", "#ff5252", "#cddc39", "#880e4f"]
@@ -457,7 +459,8 @@ def _hub_markers(inp, res, hubs):
                 f = float(res["flow"][:, c].sum()) if not g.get("anchor") else float(res["flow"][:, g["cols"]].sum())
                 lat, lon, w = lat + f * r["lat"], lon + f * r["lon"], w + f
         if w > 0:
-            out.append({"hub": h, "lat": lat / w, "lon": lon / w, "vol": w / 1e6})
+            la, lo = HUB_MARKER_AT.get(h, (lat / w, lon / w))
+            out.append({"hub": h, "lat": la, "lon": lo, "vol": w / 1e6})
     return out
 
 
@@ -746,7 +749,7 @@ def _render(crop):
     for i, h_ in enumerate([h for h in hubs_in_order if h.startswith("Container")]):             # the container hubs share a brown family
         HUB_COLORS.setdefault(h_, ["#6d4c41", "#8d6e63", "#a1887f", "#795548", "#5d4037", "#bcaaa4", "#4e342e", "#9e8e83"][i % 8])
     st.caption(_WHEAT_INTRO if wheat else _CORN_INTRO if corn else "Where each county's crop go. Crush plants fill to their annual need (Daily Max × 88% × 350 days, from the Crush Downtime "
-               "Calculator). The export hubs take the rest: each hub (an Illinois River, Upper Mississippi, Ohio River, St. Louis, Lower Mississippi or "
+               "Calculator). The export hubs take the rest: each hub (an Illinois River, Upper Mississippi, Mid Mississippi, Ohio River, St. Louis, Lower Mississippi or "
                "Pacific Northwest, Texas Gulf or Mexico-by-rail region) loads the soybeans the Corps, USDA and FGIS data say it loads, and counties draw to the nearest hubs "
                "and plants with limited crossover. The Pacific Northwest is fed by BNSF and UP rail, Texas Gulf and the Mexican border by BNSF, UP and CPKC. Individual terminals are only a check on a hub's volume. "
                "First pass: a model to set the structure, not a forecast.")
