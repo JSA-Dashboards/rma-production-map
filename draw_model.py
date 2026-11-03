@@ -41,7 +41,7 @@ def truck_curve(rates: dict, region: str = "National", diesel: float | None = No
     """Truck freight as a cost curve in cents per bushel by one-way road miles, from AMS's survey: a truckload costs rate x miles at 25, 100 and 200 miles (the rate per mile falls
     with distance, so the cost is concave and has a fixed element of about $90 a load: loading, unloading and waiting). Between the anchors it is linear, below 25 it runs back along the
     25-100 mile slope, beyond 200 it keeps the 100-200 slope. `diesel` adds the fuel the survey does not yet show: (diesel - the AMS quarters' diesel) / mpg, dollars per loaded mile.
-    `bu_per_load` is about 900 for corn (56 lb) and 830 for soybeans (60 lb); `mult` scales the whole curve (a region or a carrier you know is dearer)."""
+    `bu_per_load` is the standard load: 950 for corn, 900 for wheat and 850 for soybeans (the tab's defaults); `mult` scales the whole curve (a region or a carrier you know is dearer)."""
     r = rates["regions"][region]
     t25, t100, t200 = float(r["25"]) * 25, float(r["100"]) * 100, float(r["200"]) * 200
     s_short = (t100 - t25) / 75.0

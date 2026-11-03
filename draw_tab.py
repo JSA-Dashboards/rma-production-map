@@ -837,8 +837,8 @@ def _render(crop):
         regions_ = list(ams["regions"])
         t_region = t1.selectbox("AMS truck region", regions_, index=regions_.index("North Central") if "North Central" in regions_ else 0, key="draw_truck_region",
                                 help="AMS's survey regions. North Central is the corn and soybean belt; South Central and the Rocky Mountains run lower at short hauls.")
-        t_bu = t2.number_input("Bushels per truckload", 600.0, 1200.0, 900.0 if corn else 830.0, 10.0, key=f"draw_truck_bu_{crop}",
-                               help="About 49,000 lb of grain: 900 bushels of corn (56 lb) or 830 of soybeans (60 lb).")
+        t_bu = t2.number_input("Bushels per truckload", 600.0, 1200.0, 950.0 if corn else 900.0 if wheat else 850.0, 10.0, key=f"draw_truck_bu_{crop}",
+                               help="The standard load: 950 bushels of corn, 900 of wheat, 850 of soybeans.")
         t_mult = t3.number_input("Truck rate vs AMS (x)", 0.5, 2.0, 1.0, 0.05, key="draw_truck_mult", help="1.0 = the AMS rate, plus the fuel adjustment for the diesel price above.")
         truck = dm.truck_curve(ams, t_region, diesel, t_bu, t_mult)
         st.caption("Trucking cost at 25 / 50 / 100 / 200 / 300 road miles, cents a bushel: " + " / ".join(f"{float(dm.truck_cents(m, truck)):.0f}" for m in (25, 50, 100, 200, 300))
@@ -1034,14 +1034,15 @@ def _render(crop):
         for i in keep:
             tp, th = (int(P[i].argmax()) if n_p else 0), int(H[i].argmax())
             tot = float(P[i].sum() + H[i].sum())
-            hub_wins = (not n_p) or H[i, th] > P[i, tp]
+            hub_wins = (not n_p) or H[i].sum() >= P[i].sum()                 # plants against hubs as groups: one hub is a single buyer, plants split a county's crop between many
             top_name = hubs[th] + " hub" if hub_wins else inp["plants"][tp]["key"]
             top_flow = H[i, th] if hub_wins else P[i, tp]
             fips.append(cty[i]["fips"])
             owner.append(None if (hub_wins or tot <= 0) else inp["plants"][tp]["key"])
             colors.append(None if tot <= 0 else (RIVER_FILL if hubs[th] in river_hubs else HUB_COLORS.get(hubs[th], RIVER_COLOR)) if hub_wins
                           else color_of.get(inp["plants"][tp]["key"], PLANT_COLOR))
-            hover.append(f'{cty[i]["name"]}, {cty[i]["state"]}<br>{cty[i]["supply_bu"] / 1e6:.1f} M bu<br>mostly to: {top_name} ({top_flow / max(tot, 1) * 100:.0f}%)'
+            hover.append(f'{cty[i]["name"]}, {cty[i]["state"]}<br>{cty[i]["supply_bu"] / 1e6:.1f} M bu<br>'
+                         f'mostly to {"export hubs" if hub_wins else PLN}; the biggest single buyer: {top_name} ({top_flow / max(tot, 1) * 100:.0f}%)'
                          f'<br>{P[i].sum() / max(tot, 1) * 100:.0f}% to {PLN}, {H[i].sum() / max(tot, 1) * 100:.0f}% to export hubs')
         order = {f: i for i, f in enumerate(fips)}
         fig.add_trace(go.Choroplethmap(
