@@ -70,7 +70,8 @@ RIVER_COLOR = "#9ecae1"
 OTHER_PLANT_COLOR = "#bdbdbd"
 HUB_COLORS = {"Illinois River": "#4292c6", "Upper Mississippi": "#08519c", "Ohio River": "#41b6c4", "Arkansas River": "#a6761d",
               "St. Louis": "#00897b", "Lower Mississippi": "#7fcdbb", "Pacific Northwest": "#d4a017", "Texas Gulf": "#c0392b", "Mexico Rail": "#8e44ad", "Louisiana Rail": "#e67e22", "Mobile": "#16a085", "South Atlantic": "#5d6d7e", "Great Lakes": "#2874a6"}
-PLANT_COLOR = "#7cb342"                      # the shade of a plant the colour list has no entry for
+RIVER_FILL = "#4292c6"                       # the territory fill shared by every river hub on the top-buyer map
+PLANT_COLOR = "#7cb342"                    # the shade of a plant the colour list has no entry for
 LEGEND_PLANTS = 14                          # the legend names this many of the biggest plants; the rest keep their shade and show on hover
 PLANT_COLORS = ["#2e7d32", "#7cb342", "#c0ca33", "#f9a825", "#ef6c00", "#d84315", "#ec407a", "#ad1457", "#8e24aa", "#5e35b1", "#9ccc65", "#00897b",
                 "#827717", "#ff8a65", "#f48fb1", "#ba68c8", "#aed581", "#ffd54f", "#6a1b9a", "#e65100", "#558b2f", "#ff5252", "#cddc39", "#880e4f"]
@@ -1007,6 +1008,7 @@ def _render(crop):
     cty = inp["counties"]
     hub_flow = dm.county_hub_flows(inp, res)
     hubs = [h for h in hubs_in_order if h in hub_flow]
+    river_hubs = {g["hub"] for g in nodes["groups"] if g["kind"] in ("lock", "area")}      # the barge-loaded hubs: one fill colour between them, each still marked with its own circle
     H = np.column_stack([hub_flow[h] for h in hubs])
     P = res["flow"][:, :n_p]
     sup = np.array([c["supply_bu"] for c in cty], float) * res.get("supply_scale", 1.0)
@@ -1037,7 +1039,8 @@ def _render(crop):
             top_flow = H[i, th] if hub_wins else P[i, tp]
             fips.append(cty[i]["fips"])
             owner.append(None if (hub_wins or tot <= 0) else inp["plants"][tp]["key"])
-            colors.append(None if tot <= 0 else HUB_COLORS.get(hubs[th], RIVER_COLOR) if hub_wins else color_of.get(inp["plants"][tp]["key"], PLANT_COLOR))
+            colors.append(None if tot <= 0 else (RIVER_FILL if hubs[th] in river_hubs else HUB_COLORS.get(hubs[th], RIVER_COLOR)) if hub_wins
+                          else color_of.get(inp["plants"][tp]["key"], PLANT_COLOR))
             hover.append(f'{cty[i]["name"]}, {cty[i]["state"]}<br>{cty[i]["supply_bu"] / 1e6:.1f} M bu<br>mostly to: {top_name} ({top_flow / max(tot, 1) * 100:.0f}%)'
                          f'<br>{P[i].sum() / max(tot, 1) * 100:.0f}% to {PLN}, {H[i].sum() / max(tot, 1) * 100:.0f}% to export hubs')
         order = {f: i for i, f in enumerate(fips)}
@@ -1053,7 +1056,8 @@ def _render(crop):
         pdrawn = {p["key"]: float(P[:, j].sum()) for j, p in enumerate(inp["plants"])}
         in_legend = set(sorted(n_by, key=lambda k: -pdrawn.get(k, 0.0))[:LEGEND_PLANTS])
         legend = [(k, color_of.get(k, PLANT_COLOR), k, k in in_legend) for k in sorted(n_by, key=lambda k: -pdrawn.get(k, 0.0))]
-        legend += [(h + " hub", HUB_COLORS.get(h, RIVER_COLOR), None, True) for h in hubs]
+        legend += [("River hubs (one colour)", RIVER_FILL, None, True)] if any(h in river_hubs for h in hubs) else []
+        legend += [(h + " hub", HUB_COLORS.get(h, RIVER_COLOR), None, True) for h in hubs if h not in river_hubs]
         for lab, col, own, shown in legend:
             idx = [j for j, (o_, c_) in enumerate(zip(owner, colors)) if (o_ == own if own is not None else (o_ is None and c_ == col))]
             if not idx:
@@ -1111,6 +1115,9 @@ def _render(crop):
     hub_tbl = {t["hub"]: t for t in dm.hub_table(inp, res, state)}
     for m in hm:
         t = hub_tbl.get(m["hub"], {})
+        if focus is None and plant_j is None and m["hub"] in river_hubs:             # a white ring, so a river hub's own circle stands out against the shared river fill
+            fig.add_trace(go.Scattermap(lon=[m["lon"]], lat=[m["lat"]], mode="markers", showlegend=False, hoverinfo="skip", name=f'{m["hub"]} ring',
+                                        marker=dict(size=[m["vol"] * 1.45], sizemode="area", sizeref=href, sizemin=14, color="#ffffff", opacity=0.95)))
         fig.add_trace(go.Scattermap(
             lon=[m["lon"]], lat=[m["lat"]], mode="markers+text", name=f'{m["hub"]} hub (area = M bu/yr)', showlegend=False, text=[f'{m["hub"]}  {m["vol"]:,.0f}'], textposition="top right",
             textfont=dict(size=12, color="#111"), marker=dict(size=[m["vol"]], sizemode="area", sizeref=href, sizemin=9, color=HUB_COLORS.get(m["hub"], "#2b6cb0"), opacity=0.9),
@@ -1172,7 +1179,8 @@ def _render(crop):
     st.plotly_chart(fig, use_container_width=True, key="draw_map", config=_img_config(f"draw {show_mode}", height=fig_h))
     st.caption("Save this map as a picture with the camera icon at the top right of the map (the title, legend and scenario line are part of the picture).")
     st.caption(f"Fill = where most of a county's crop goes (each {PLN[:-1]} in a shade of its own, so neighbouring territories differ and a colour repeats only between "
-               f"{PLN} far apart; the legend names the {LEGEND_PLANTS} biggest, hover for the rest; a colour of its own for each export hub), or, in a hub's draw-area "
+               f"{PLN} far apart; the legend names the {LEGEND_PLANTS} biggest, hover for the rest; one blue for every river hub, each still marked by its own circle, and a colour of "
+               "its own for each other export hub), or, in a hub's draw-area "
                f"view (or a plant's), the share of each county's crop that goes to that hub or plant. Hub circles are sized by the {W} the hub loads a year under the export "
                "scenario above. The Pacific Northwest draws only from counties on BNSF or UP track; Texas Gulf and Mexico by rail from counties on BNSF, UP or "
                "CPKC track, the Great Lakes from OH, IN, MI and IL by truck and rail, Canada from the states behind each gateway (MI at Detroit, NY at Buffalo, ND at Pembina), Louisiana from UP, CPKC or CN track and Mobile from CSX, NS or CN track and the South Atlantic from CSX or NS track; Mexico's draw by state is held to FGIS rail inspections.")
