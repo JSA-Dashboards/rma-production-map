@@ -70,9 +70,30 @@ RIVER_COLOR = "#9ecae1"
 OTHER_PLANT_COLOR = "#bdbdbd"
 HUB_COLORS = {"Illinois River": "#4292c6", "Upper Mississippi": "#08519c", "Ohio River": "#41b6c4", "Arkansas River": "#a6761d",
               "St. Louis": "#00897b", "Lower Mississippi": "#7fcdbb", "Pacific Northwest": "#d4a017", "Texas Gulf": "#c0392b", "Mexico Rail": "#8e44ad", "Louisiana Rail": "#e67e22", "Mobile": "#16a085", "South Atlantic": "#5d6d7e", "Great Lakes": "#2874a6"}
-PLANT_COLOR = "#7cb342"                      # every plant is this one colour on the top-buyer map; each export hub keeps its own
+PLANT_COLOR = "#7cb342"                      # the shade of a plant the colour list has no entry for
+LEGEND_PLANTS = 14                          # the legend names this many of the biggest plants; the rest keep their shade and show on hover
+PLANT_COLORS = ["#2e7d32", "#7cb342", "#c0ca33", "#f9a825", "#ef6c00", "#d84315", "#ec407a", "#ad1457", "#8e24aa", "#5e35b1", "#9ccc65", "#00897b",
+                "#827717", "#ff8a65", "#f48fb1", "#ba68c8", "#aed581", "#ffd54f", "#6a1b9a", "#e65100", "#558b2f", "#ff5252", "#cddc39", "#880e4f"]
 CLASS_I = ["UP", "BNSF", "CPKC", "CN", "CSXT", "NS"]
 PALETTE = ["#e41a1c", "#377eb8", "#4daf4a", "#984ea3", "#ff7f00", "#a65628", "#f781bf", "#17becf", "#bcbd22", "#7f7f7f", "#1b9e77", "#d95f02"]
+
+
+def _plant_colors(plants, drawn) -> dict:
+    """{plant key: colour}: each plant its own shade, assigned so that plants close together never share one. The biggest plants (by what they draw) pick first; each takes the
+    colour whose nearest holder is farthest away, so neighbouring territories always differ (colours repeat only between plants far apart)."""
+    order = sorted(range(len(plants)), key=lambda i: -float(drawn[i]))
+    holders = {c: [] for c in PLANT_COLORS}
+    out: dict = {}
+    for i in order:
+        p = plants[i]
+        cos = float(np.cos(np.radians(p["lat"])))
+
+        def nearest(c):
+            return min(((((p["lon"] - q["lon"]) * cos) ** 2 + (p["lat"] - q["lat"]) ** 2) ** 0.5 for q in holders[c]), default=1e9)
+        best = max(PLANT_COLORS, key=nearest)
+        holders[best].append(p)
+        out[p["key"]] = best
+    return out
 
 
 def _in_box(paths, box):
@@ -989,9 +1010,7 @@ def _render(crop):
     H = np.column_stack([hub_flow[h] for h in hubs])
     P = res["flow"][:, :n_p]
     sup = np.array([c["supply_bu"] for c in cty], float) * res.get("supply_scale", 1.0)
-    top_load = {r["plant"]: r["from_state_mbu"] for r in plants_t}
-    ranked = [k for k, _ in sorted(top_load.items(), key=lambda kv: -kv[1]) if top_load[k] > 0][:len(PALETTE)]
-    color_of = {k: PALETTE[i] for i, k in enumerate(ranked)}
+    color_of = _plant_colors(inp["plants"], P.sum(axis=0)) if n_p else {}
     keep = [i for i, c in enumerate(cty) if map_us or c["state"] in FS]
     geo = rm._load("county_geo.json")
     fig = go.Figure()
@@ -1009,7 +1028,7 @@ def _render(crop):
             hoverinfo="text", colorbar=dict(title=dict(text=f"% of county beans<br>to {pl['city']}", font=dict(size=11)), thickness=12, len=0.5, y=0.45),
             name=f"Draw area: {pl['key']}"))
     elif focus is None:
-        fips, colors, hover = [], [], []
+        fips, colors, hover, owner = [], [], [], []
         for i in keep:
             tp, th = (int(P[i].argmax()) if n_p else 0), int(H[i].argmax())
             tot = float(P[i].sum() + H[i].sum())
@@ -1017,7 +1036,8 @@ def _render(crop):
             top_name = hubs[th] + " hub" if hub_wins else inp["plants"][tp]["key"]
             top_flow = H[i, th] if hub_wins else P[i, tp]
             fips.append(cty[i]["fips"])
-            colors.append(HUB_COLORS.get(hubs[th], RIVER_COLOR) if hub_wins else PLANT_COLOR)
+            owner.append(None if (hub_wins or tot <= 0) else inp["plants"][tp]["key"])
+            colors.append(None if tot <= 0 else HUB_COLORS.get(hubs[th], RIVER_COLOR) if hub_wins else color_of.get(inp["plants"][tp]["key"], PLANT_COLOR))
             hover.append(f'{cty[i]["name"]}, {cty[i]["state"]}<br>{cty[i]["supply_bu"] / 1e6:.1f} M bu<br>mostly to: {top_name} ({top_flow / max(tot, 1) * 100:.0f}%)'
                          f'<br>{P[i].sum() / max(tot, 1) * 100:.0f}% to {PLN}, {H[i].sum() / max(tot, 1) * 100:.0f}% to export hubs')
         order = {f: i for i, f in enumerate(fips)}
@@ -1025,15 +1045,24 @@ def _render(crop):
             geojson={"type": "FeatureCollection", "features": [f for f in geo["features"] if f["id"] in order]}, locations=fips,
             z=[order[f] for f in fips], colorscale=[[0, "#ffffff"], [1, "#ffffff"]], showscale=False, hovertext=hover, hoverinfo="text",
             marker=dict(opacity=0.0, line=dict(width=0.3, color="#888")), name="Counties", showlegend=False))
-        legend = [(PLN.capitalize(), PLANT_COLOR)] + [(h + " hub", HUB_COLORS.get(h, RIVER_COLOR)) for h in hubs]
-        for lab, col in legend:
-            sel = [f for f, c_ in zip(fips, colors) if c_ == col]
-            if not sel:
+        # one trace per plant, in its own shade (the legend names the biggest ones); one per export hub, in the hub's colour
+        n_by = {}
+        for o in owner:
+            if o is not None:
+                n_by[o] = n_by.get(o, 0) + 1
+        pdrawn = {p["key"]: float(P[:, j].sum()) for j, p in enumerate(inp["plants"])}
+        in_legend = set(sorted(n_by, key=lambda k: -pdrawn.get(k, 0.0))[:LEGEND_PLANTS])
+        legend = [(k, color_of.get(k, PLANT_COLOR), k, k in in_legend) for k in sorted(n_by, key=lambda k: -pdrawn.get(k, 0.0))]
+        legend += [(h + " hub", HUB_COLORS.get(h, RIVER_COLOR), None, True) for h in hubs]
+        for lab, col, own, shown in legend:
+            idx = [j for j, (o_, c_) in enumerate(zip(owner, colors)) if (o_ == own if own is not None else (o_ is None and c_ == col))]
+            if not idx:
                 continue
+            sel = [fips[j] for j in idx]
             fig.add_trace(go.Choroplethmap(
                 geojson={"type": "FeatureCollection", "features": [f for f in geo["features"] if f["id"] in set(sel)]}, locations=sel,
-                z=[1] * len(sel), colorscale=[[0, col], [1, col]], showscale=False, marker=dict(opacity=0.62, line=dict(width=0.3, color="#888")),
-                hovertext=[h for h, c_ in zip(hover, colors) if c_ == col], hoverinfo="text", name=lab, showlegend=True))
+                z=[1] * len(sel), colorscale=[[0, col], [1, col]], showscale=False, marker=dict(opacity=0.66, line=dict(width=0.3, color="#888")),
+                hovertext=[hover[j] for j in idx], hoverinfo="text", name=lab, showlegend=shown))
     else:
         k = hubs.index(focus)
         z = [float(H[i, k] / max(sup[i], 1.0) * 100) for i in keep]
@@ -1067,7 +1096,11 @@ def _render(crop):
         marker=dict(size=[8 + 14 * (p["need_bu"] / 1e8) ** 0.5 for p in pts], color="#222"),
         text=[p["city"] for p in pts], textposition="top right", textfont=dict(size=10), name=PLN.capitalize() + " (dots)", showlegend=False,
         hovertext=[f'{p["key"]}<br>need {p["need_bu"] / 1e6:,.1f} M bu/yr' for p in pts], hoverinfo="text"))
-    if plant_j is not None:                                            # the selected plant: a red ring under a black dot, with its name
+    if focus is None and plant_j is None and pts:                      # a dot in the plant's own shade, so each plant sits in its territory's colour
+        fig.add_trace(go.Scattermap(
+            lon=[p["lon"] for p in pts], lat=[p["lat"] for p in pts], mode="markers", name=PLN.capitalize() + " (shades)", showlegend=False, hoverinfo="skip",
+            marker=dict(size=[3 + 8 * (p["need_bu"] / 1e8) ** 0.5 for p in pts], color=[color_of.get(p["key"], PLANT_COLOR) for p in pts])))
+    if plant_j is not None:                                         # the selected plant: a red ring under a black dot, with its name
         pl = inp["plants"][plant_j]
         fig.add_trace(go.Scattermap(lon=[pl["lon"]], lat=[pl["lat"]], mode="markers", marker=dict(size=32, color="#c0392b"), hoverinfo="skip", showlegend=False))
         fig.add_trace(go.Scattermap(lon=[pl["lon"]], lat=[pl["lat"]], mode="markers+text", marker=dict(size=18, color="#111"), text=[pl["key"]], textposition="top right",
@@ -1138,7 +1171,8 @@ def _render(crop):
                                   itemsizing="constant", bgcolor="rgba(255,255,255,0)", tracegroupgap=0))
     st.plotly_chart(fig, use_container_width=True, key="draw_map", config=_img_config(f"draw {show_mode}", height=fig_h))
     st.caption("Save this map as a picture with the camera icon at the top right of the map (the title, legend and scenario line are part of the picture).")
-    st.caption(f"Fill = where most of a county's crop goes (one colour for every {PLN[:-1]}, a colour of its own for each export hub), or, in a hub's draw-area "
+    st.caption(f"Fill = where most of a county's crop goes (each {PLN[:-1]} in a shade of its own, so neighbouring territories differ and a colour repeats only between "
+               f"{PLN} far apart; the legend names the {LEGEND_PLANTS} biggest, hover for the rest; a colour of its own for each export hub), or, in a hub's draw-area "
                f"view (or a plant's), the share of each county's crop that goes to that hub or plant. Hub circles are sized by the {W} the hub loads a year under the export "
                "scenario above. The Pacific Northwest draws only from counties on BNSF or UP track; Texas Gulf and Mexico by rail from counties on BNSF, UP or "
                "CPKC track, the Great Lakes from OH, IN, MI and IL by truck and rail, Canada from the states behind each gateway (MI at Detroit, NY at Buffalo, ND at Pembina), Louisiana from UP, CPKC or CN track and Mobile from CSX, NS or CN track and the South Atlantic from CSX or NS track; Mexico's draw by state is held to FGIS rail inspections.")
