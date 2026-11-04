@@ -34,6 +34,12 @@ RUMINANTS = ("CATTLE ON FEED", "OTHER CATTLE", "MILK COWS")
 RAW_CORN_BU = {"CATTLE ON FEED": 85.0, "OTHER CATTLE": 6.0, "MILK COWS": 60.0, "HOGS": 19.0, "LAYERS": 1.1, "BROILERS": 0.12, "TURKEYS": 0.6}
 SBM_LB = {"CATTLE ON FEED": 0.0, "OTHER CATTLE": 0.0, "MILK COWS": 1450.0, "HOGS": 150.0, "LAYERS": 20.0, "BROILERS": 3.0, "TURKEYS": 22.0}
 
+# Where distillers grains are fed and what they replace depends on the animal. Dried product goes to the rations that take it (cattle and dairy most, hogs some, poultry little), and a pound
+# of it replaces more corn in a cattle ration (wet product is worth 120-140% of corn to a feedlot) than in a hog or poultry one. The national average is the corn credit below; these only
+# decide where it lands: per animal, DDGS use relative to its corn feed energy, and pounds of corn replaced per pound of DDGS relative to the others (rescaled so the average is unchanged).
+DDGS_FEED_WEIGHT = {"CATTLE ON FEED": 1.0, "OTHER CATTLE": 0.5, "MILK COWS": 1.0, "HOGS": 0.6, "LAYERS": 0.3, "BROILERS": 0.25, "TURKEYS": 0.25}
+DISPLACE_LB_PER_LB = {"CATTLE ON FEED": 0.72, "OTHER CATTLE": 0.65, "MILK COWS": 0.65, "HOGS": 0.50, "LAYERS": 0.45, "BROILERS": 0.45, "TURKEYS": 0.45}
+
 # Distillers grains. 15.5 lb DDGS-equivalent per 56-lb bushel x 0.55 lb corn displaced per lb = 0.152 bu of corn per bushel ground (range 0.12-0.20); soybean meal 0.07 lb per lb.
 CORN_CREDIT = 0.15
 SBM_CREDIT_LB = 0.07 * 15.5                                              # lb of soybean meal displaced per bushel ground (about 1.1)
@@ -280,7 +286,7 @@ def _miles(lat1, lon1, lat2, lon2):
 
 
 def ddgs_credit(plants, grind_bu, counties, gross_by_species, *, corn_credit=CORN_CREDIT, wet_share=None, dried_export=DRIED_EXPORT_SHARE, export_bu=None, wet_radius=WET_RADIUS_MI,
-                dried_scale=DRIED_SCALE_MI, cap=CREDIT_CAP, export_shares=None, export_max=EXPORT_STATE_MAX_SHARE, track_mi=None, river_mi=None):
+                dried_scale=DRIED_SCALE_MI, cap=CREDIT_CAP, export_shares=None, export_max=EXPORT_STATE_MAX_SHARE, track_mi=None, river_mi=None, by_animal=False):
     """Where each plant's distillers grains credit lands, in bushels of corn equivalent.
 
     Returns {"county": credit by county, "wet": ..., "dried": ..., "export": bu of dried product exported, "unplaced": bu above the county cap or with no one to feed it, "by_plant": credit by plant}.
@@ -331,16 +337,24 @@ def ddgs_credit(plants, grind_bu, counties, gross_by_species, *, corn_credit=COR
     else:
         export = dried_all * dried_export if export_bu is None else dried_all * min(float(export_bu) / max(float(dried_all.sum()), 1e-9), 1.0)
     dried_dom = dried_all - export
-    dried_w = gross[None, :] * np.exp(-dist / dried_scale)
+    use = sum(gross_by_species[sp] * DDGS_FEED_WEIGHT[sp] for sp in SPECIES) if by_animal else gross          # the dried product goes where the rations take it
+    dried_w = use[None, :] * np.exp(-dist / dried_scale)
     A_wet = wet_amt[:, None] * wet_w / np.maximum(wet_w.sum(axis=1, keepdims=True), 1e-300)
     A_dry = dried_dom[:, None] * dried_w / np.maximum(dried_w.sum(axis=1, keepdims=True), 1e-300)
     A = A_wet + A_dry
     col = A.sum(axis=0)
+    flat = corn_credit * 56.0 / 15.5                                                  # lb of corn a lb of DDGS replaces, on average
+    displace = np.full(len(counties), flat)
+    if by_animal and col.sum() > 0:                                                    # a pound of DDGS replaces more corn in cattle country than with hogs and poultry, averaging `corn_credit`
+        d_c = np.where(gross > 0, sum(gross_by_species[sp] * DISPLACE_LB_PER_LB[sp] for sp in SPECIES) / np.maximum(gross, 1e-300), float(np.mean(list(DISPLACE_LB_PER_LB.values()))))
+        m = d_c / float((col * d_c).sum() / col.sum())
+        A, A_wet, A_dry, col = A * m[None, :], A_wet * m[None, :], A_dry * m[None, :], col * m
+        displace = flat * m
     lim = cap * gross
     scale = np.where(col > lim, lim / np.maximum(col, 1e-300), 1.0)
     A = A * scale[None, :]
     return {"county": A.sum(axis=0), "wet": (A_wet * scale[None, :]).sum(axis=0), "dried": (A_dry * scale[None, :]).sum(axis=0), "export": float(export.sum()),
-            "unplaced": float(total.sum() - export.sum() - A.sum()), "by_plant": A.sum(axis=1), "export_state": export_state, "export_plant": export, "access": acc,
+            "unplaced": float(total.sum() - export.sum() - A.sum()), "by_plant": A.sum(axis=1), "displace_lb": displace, "export_state": export_state, "export_plant": export, "access": acc,
             "dried_state": ({s: v for s, v in dried_state.items()} if export_state is not None else None)}
 
 

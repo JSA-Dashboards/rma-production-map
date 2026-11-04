@@ -135,3 +135,28 @@ def test_state_export_goes_to_the_plants_with_access():
     cr = fd.ddgs_credit(plants, grind, counties, gross, wet_share={"IL": 0.0}, export_bu=want, export_shares={"IL": 1.0}, cap=10.0, track_mi=np.array([1.0, 40.0]), river_mi=np.array([80.0, 80.0]))
     ex = cr["export_plant"]
     assert ex.sum() == pytest.approx(want, rel=1e-6) and ex[0] > 4 * ex[1]
+
+
+def test_credit_depends_on_the_animals_but_keeps_its_average():
+    counties = [{"fips": "C", "state": "NE", "lat": 41.0, "lon": -97.0}, {"fips": "P", "state": "NE", "lat": 41.0, "lon": -97.1}]
+    gross = {sp: np.zeros(2) for sp in fd.SPECIES}
+    gross["CATTLE ON FEED"] = np.array([1e9, 0.0])
+    gross["BROILERS"] = np.array([0.0, 1e9])
+    plants = [{"lat": 41.0, "lon": -97.05, "state": "NE"}]
+    flat = fd.ddgs_credit(plants, [1e8], counties, gross, wet_share={"NE": 0.0}, dried_export=0.0, cap=10.0)
+    by = fd.ddgs_credit(plants, [1e8], counties, gross, wet_share={"NE": 0.0}, dried_export=0.0, cap=10.0, by_animal=True)
+    assert by["displace_lb"][0] > by["displace_lb"][1]                          # a pound of DDGS replaces more corn with cattle than with broilers
+    assert by["county"][0] > 5 * by["county"][1]                                 # and cattle country is where it is fed
+    assert by["county"].sum() == pytest.approx(flat["county"].sum(), rel=1e-9) or by["county"].sum() < flat["county"].sum() * 1.001
+    assert flat["displace_lb"][0] == pytest.approx(fd.CORN_CREDIT * 56 / 15.5)
+
+
+def test_average_corn_per_pound_of_ddgs_stays_at_the_slider():
+    import draw_model as dm
+    inp = dm.load(dm.INPUTS_CORN)
+    plants = inp["plants"]
+    grind = np.array([p["need_bu"] for p in plants], float) * 0.95
+    out = fd.county_feed(inp["counties"], 2024, plants, grind, 5.5e9, by_animal=True)
+    cr = out["credit"]
+    avg = float((cr["county"] * cr["displace_lb"]).sum() / cr["county"].sum())
+    assert avg == pytest.approx(fd.CORN_CREDIT * 56 / 15.5, rel=0.06)
