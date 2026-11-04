@@ -305,6 +305,28 @@ def solve(inputs: dict, *, rate=CENTS_PER_BU_MILE, tau=1.0, river_premium=0.0, p
     return out
 
 
+CIRCUITY = 1.244                                           # road miles per straight-line mile (the soybean model's median OSRM ratio), for a plant that is not in the inputs
+
+
+def with_new_plants(inputs: dict, new: list) -> dict:
+    """A copy of the inputs with new plants added: each is {key, state, lat, lon, need_bu, city, ...}. The new plants go after the existing ones and before the river pins, with road miles to
+    every county of straight-line x CIRCUITY (the built plants' miles come from the same ratio, or from OSRM for the soybean plants)."""
+    if not new:
+        return inputs
+    cty = inputs["counties"]
+    lat = np.array([c["lat"] for c in cty], float)
+    lon = np.array([c["lon"] for c in cty], float)
+    p = np.pi / 180.0
+    cols = []
+    for q in new:
+        a = np.sin((lat - q["lat"]) * p / 2) ** 2 + np.cos(q["lat"] * p) * np.cos(lat * p) * np.sin((lon - q["lon"]) * p / 2) ** 2
+        cols.append(np.rint(3959.0 * 2 * np.arcsin(np.sqrt(np.clip(a, 0.0, 1.0))) * CIRCUITY).astype(int).tolist())
+    n_p = len(inputs["plants"])
+    miles = [row[:n_p] + [c[i] for c in cols] + row[n_p:] for i, row in enumerate(inputs["miles"])]
+    full = [{"company": q.get("company", q["key"]), "city": q.get("city", ""), "river": "", "dmax": 0, "need_note": "A new plant added as a demand shock", **q} for q in new]
+    return {**inputs, "plants": inputs["plants"] + full, "miles": miles}
+
+
 def _fill(c, target, cap):
     """Scaling factors v for one group's pins so each pin's flow is v * c, the group adds to `target`, and no pin exceeds its cap.
     Capped pins are pinned at their cap and the balance is shared by the others in proportion to c."""

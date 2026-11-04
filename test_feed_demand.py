@@ -67,3 +67,15 @@ def test_credit_is_capped_at_a_share_of_the_county_feed():
     cr = fd.ddgs_credit([{"lat": 42.0, "lon": -93.0, "state": "IA"}], [1e9], counties, gross, wet_share={"IA": 0.0}, dried_export=0.0)
     assert cr["county"][0] == pytest.approx(fd.CREDIT_CAP * 1e6)
     assert cr["unplaced"] > 0
+
+
+def test_export_tonnage_ties_to_census():
+    assert 10.5e6 < fd.default_export_tonnes() < 12.5e6                        # Census HS 2303.30, 2023-25 average
+    counties = [{"fips": "A", "state": "IA", "lat": 42.0, "lon": -93.0}]
+    gross = {sp: np.zeros(1) for sp in fd.SPECIES}
+    gross["HOGS"] = np.array([1e10])
+    plants = [{"lat": 42.0, "lon": -93.0, "state": "IA"}]
+    want = fd.export_credit_bu(fd.default_export_tonnes())
+    cr = fd.ddgs_credit(plants, [5.6e9], counties, gross, wet_share={"IA": 0.0}, export_bu=want, cap=10.0)
+    assert cr["export"] == pytest.approx(want, rel=1e-9)
+    assert cr["county"][0] == pytest.approx(5.6e9 * fd.CORN_CREDIT - want, rel=1e-9)

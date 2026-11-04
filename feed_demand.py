@@ -37,7 +37,25 @@ SBM_LB = {"CATTLE ON FEED": 0.0, "OTHER CATTLE": 0.0, "MILK COWS": 1450.0, "HOGS
 # Distillers grains. 15.5 lb DDGS-equivalent per 56-lb bushel x 0.55 lb corn displaced per lb = 0.152 bu of corn per bushel ground (range 0.12-0.20); soybean meal 0.07 lb per lb.
 CORN_CREDIT = 0.15
 SBM_CREDIT_LB = 0.07 * 15.5                                              # lb of soybean meal displaced per bushel ground (about 1.1)
-DRIED_EXPORT_SHARE = 0.33                                                # of the dried product, the part that leaves the country (US DDGS exports are roughly a quarter of all production)
+DRIED_EXPORT_SHARE = 0.33                                                # used only when no export tonnage is given: the part of the dried product that leaves the country
+
+
+@lru_cache(maxsize=1)
+def census_ddgs_exports() -> dict:
+    """{year: metric tons} of US exports of distillers grains (HS 2303.30, Census, calendar years; data/feed/ddgs_exports_census.csv)."""
+    return {int(r["year"]): float(r["tonnes"]) for r in _read("ddgs_exports_census.csv")}
+
+
+def default_export_tonnes() -> float:
+    """The latest three Census years averaged: what the dried product exports are taken at when nothing else is set."""
+    ex = census_ddgs_exports()
+    yrs = sorted(ex)[-3:]
+    return sum(ex[y] for y in yrs) / len(yrs)
+
+
+def export_credit_bu(tonnes: float, corn_credit_per_lb: float = 0.55) -> float:
+    """Bushels of corn-equivalent feed that `tonnes` of exported distillers grains stand for (0.55 lb of corn displaced per lb of DDGS, 56-lb bushels)."""
+    return tonnes * 2204.62 * corn_credit_per_lb / 56.0
 WET_RADIUS_MI = 90.0                                                     # wet and modified distillers grains are fed within about this many miles of the plant
 DRIED_SCALE_MI = 300.0                                                   # dried product spreads with a distance decay of this scale
 CREDIT_CAP = 0.35                                                        # distillers grains never replace more than this share of a county's corn feed energy
@@ -159,13 +177,13 @@ def _miles(lat1, lon1, lat2, lon2):
     return 3959.0 * 2 * np.arcsin(np.sqrt(np.clip(a, 0.0, 1.0)))
 
 
-def ddgs_credit(plants, grind_bu, counties, gross_by_species, *, corn_credit=CORN_CREDIT, wet_share=None, dried_export=DRIED_EXPORT_SHARE, wet_radius=WET_RADIUS_MI,
+def ddgs_credit(plants, grind_bu, counties, gross_by_species, *, corn_credit=CORN_CREDIT, wet_share=None, dried_export=DRIED_EXPORT_SHARE, export_bu=None, wet_radius=WET_RADIUS_MI,
                 dried_scale=DRIED_SCALE_MI, cap=CREDIT_CAP):
     """Where each plant's distillers grains credit lands, in bushels of corn equivalent.
 
     Returns {"county": credit by county, "wet": ..., "dried": ..., "export": bu of dried product exported, "unplaced": bu above the county cap or with no one to feed it, "by_plant": credit by plant}.
     Wet and modified product goes to cattle and dairy within `wet_radius` miles of the plant (in proportion to their corn feed energy); dried goes to every kind of animal with a
-    distance decay of `dried_scale` miles; the exported part of the dried product is not placed. A county's credit is capped at `cap` of its corn feed energy."""
+    distance decay of `dried_scale` miles; the exported part of the dried product is not placed: `export_bu` (corn-equivalent bushels, from Census export tonnage) when given, taken from every plant's dried product pro rata, else the `dried_export` share. A county's credit is capped at `cap` of its corn feed energy."""
     ws = wet_share or {}
     gross = sum(gross_by_species.values())
     rum = sum(gross_by_species[sp] for sp in RUMINANTS)
@@ -181,7 +199,7 @@ def ddgs_credit(plants, grind_bu, counties, gross_by_species, *, corn_credit=COR
     no_wet = wet_w.sum(axis=1) <= 0                                         # no cattle in reach: that product is dried and moves like it
     dried_all = dried_all + np.where(no_wet, wet_amt, 0.0)
     wet_amt = np.where(no_wet, 0.0, wet_amt)
-    export = dried_all * dried_export
+    export = dried_all * dried_export if export_bu is None else dried_all * min(float(export_bu) / max(float(dried_all.sum()), 1e-9), 1.0)
     dried_dom = dried_all - export
     dried_w = gross[None, :] * np.exp(-dist / dried_scale)
     A_wet = wet_amt[:, None] * wet_w / np.maximum(wet_w.sum(axis=1, keepdims=True), 1e-300)
