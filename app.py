@@ -2455,6 +2455,10 @@ def _load_state_for_stat(crop: str, year: int, stat_type: str,
     """Wrapper that handles pct_harvested on top of load_nass_state."""
     if stat_type == "pct_harvested":
         return load_nass_state_pct_harvested(crop, year, cache_ver)
+    # Forecast year: NASS has no Annual Summary (reference_period_desc=YEAR) until January, so read
+    # the in-season forecast rows instead.
+    if year == FORECAST_YEAR:
+        return _load_nass_state_forecast(crop, stat_type, cache_ver)
     return load_nass_state(crop, year, stat_type, cache_ver)
 
 
@@ -2472,13 +2476,10 @@ def _load_nass_state_forecast_raw(crop: str, stat_type: str, cache_ver: str) -> 
     }
     params.update(NASS_STAT_BASE[stat_type])
     params.update(NASS_CROP_STAT_PARAMS[crop][stat_type])
-    try:
-        with urllib.request.urlopen(
-            NASS_BASE_URL + "?" + urllib.parse.urlencode(params), timeout=45
-        ) as r:
-            records = json.load(r).get("data", [])
-    except Exception:
-        return pd.DataFrame(columns=["State", "Value"])
+    _wc_class_param(params, crop, cache_ver, county=False)
+    # _nass_json rides out NASS throttling; a failure raises so it is not cached as "no data"
+    # (_load_nass_state_forecast catches it).
+    records = _nass_json(NASS_BASE_URL + "?" + urllib.parse.urlencode(params)).get("data", [])
     if not records:
         return pd.DataFrame(columns=["State", "Value"])
     df = pd.DataFrame(records)
@@ -2490,7 +2491,17 @@ def _load_nass_state_forecast_raw(crop: str, stat_type: str, cache_ver: str) -> 
     # The plain YEAR row is NASS's latest in-season estimate (it moves with each monthly Crop
     # Production report); the Jun/Mar Acreage rows are frozen snapshots. Preferring a snapshot
     # made harvested area stale, so ASD production didn't tie to the state total on the NASS tile.
-    _pref = {"YEAR": 0, "YEAR - JUN ACREAGE": 1, "YEAR - MAR ACREAGE": 2}
+    _pref = {
+        "YEAR": 0,
+        "YEAR - NOV FORECAST": 1,
+        "YEAR - OCT FORECAST": 2,
+        "YEAR - SEP FORECAST": 3,
+        "YEAR - AUG FORECAST": 4,
+        "YEAR - JUL FORECAST": 5,
+        "YEAR - JUN FORECAST": 6,
+        "YEAR - JUN ACREAGE": 7,
+        "YEAR - MAR ACREAGE": 8,
+    }
     if "reference_period_desc" in df.columns:
         df["_p"] = df["reference_period_desc"].map(lambda x: _pref.get(x, 99))
         df = df.sort_values("_p").drop_duplicates(subset=["State"], keep="first")
@@ -2500,38 +2511,12 @@ def _load_nass_state_forecast_raw(crop: str, stat_type: str, cache_ver: str) -> 
 
 
 def _load_nass_state_forecast(crop: str, stat_type: str, cache_ver: str) -> pd.DataFrame:
-    return _ho_adjust(_load_nass_state_forecast_raw(crop, stat_type, _base_ver(cache_ver)),
+    try:
+        raw = _load_nass_state_forecast_raw(crop, stat_type, _base_ver(cache_ver))
+    except Exception:
+        raw = pd.DataFrame(columns=["State", "Value"])
+    return _ho_adjust(_wc_adjust(raw, crop, FORECAST_YEAR, stat_type, ["Value"], cache_ver),
                       crop, stat_type, ["Value"])
-
-@st.cache_data(show_spinner=False)
-def _build_asd_hist_shares(crop: str, state: str, stat_type: str,
-                            history_years: tuple, cache_ver: str) -> dict:
-    """Olympic-average ASD share of state total per district. Returns {district: share}."""
-    yearly: dict = {}
-    for yr in history_years:
-        cdf = get_completed_county_data(crop, state, yr, stat_type, cache_ver)
-        if cdf.empty or "District" not in cdf.columns:
-            continue
-        sdf = _load_state_for_stat(crop, yr, stat_type, cache_ver)
-        if sdf.empty or state not in sdf["State"].values:
-            continue
-        srow = sdf[sdf["State"] == state]
-        st_val = float(srow["Value"].mean() if stat_type in ("yield", "pct_harvested")
-                       else srow["Value"].sum())
-        if st_val <= 0:
-            continue
-        dist_vals = (cdf.groupby("District")["Value"].mean()
-                     if stat_type in ("yield", "pct_harvested")
-                     else cdf.groupby("District")["Value"].sum())
-        for dist, dval in dist_vals.items():
-            yearly.setdefault(dist, []).append(float(dval) / st_val)
-    if not yearly:
-        return {}
-    def _olympic(vals):
-        v = sorted(vals)
-        return float(np.mean(v[1:-1] if len(v) >= 4 else v))
-    return {d: _olympic(v) for d, v in yearly.items() if v}
-
 
 def _default_yield_sources(crop: str, state: str, cache_ver: str) -> dict:
     """Reference yields for the forecast-year estimate box.
@@ -2555,58 +2540,127 @@ def _default_yield_sources(crop: str, state: str, cache_ver: str) -> dict:
 
 
 @st.cache_data(show_spinner=False)
-def get_asd_forecast_data(crop: str, state: str, yield_est: float,
-                           cache_ver: str) -> tuple:
+def _county_avg_shares(crop: str, state: str, stat_type: str, years: tuple,
+                       cache_ver: str) -> pd.DataFrame:
+    """Draw Territory's county basis: each county's average over `years` as a share of the
+    sum of those averages. Returns [fips, County, District, DistrictCode, share]."""
+    cols = ["fips", "County", "District", "DistrictCode", "share"]
+    frames = []
+    for yr in years:
+        df = _load_county_raw_for_est(crop, state, yr, stat_type, cache_ver)
+        if df.empty:
+            continue
+        named = df[(~df["ANSI"].isin(["998", "000", "999"])) &
+                   (~df["County"].str.lower().str.startswith("other", na=False))].copy()
+        if "prodn_practice_desc" in named.columns:
+            named = named[named["prodn_practice_desc"] == "ALL PRODUCTION PRACTICES"]
+        if named.empty:
+            continue
+        named = named.loc[named.groupby("fips")["Value_num"].idxmax()]
+        frames.append(named[["fips", "County", "District", "DistrictCode", "Value_num"]])
+    if not frames:
+        return pd.DataFrame(columns=cols)
+
+    def _mode(s):
+        s = s.dropna()
+        return s.mode().iloc[0] if len(s) else ""
+
+    g = (pd.concat(frames).groupby("fips")
+         .agg(County=("County", "first"), District=("District", _mode),
+              DistrictCode=("DistrictCode", _mode), avg=("Value_num", "mean"))
+         .reset_index())
+    tot = g["avg"].sum()
+    if tot <= 0:
+        return pd.DataFrame(columns=cols)
+    g["share"] = g["avg"] / tot
+    return g[cols]
+
+@st.cache_data(show_spinner=False)
+def get_forecast_county_data(crop: str, state: str, yield_est: float,
+                             cache_ver: str) -> tuple:
     """
-    Build FORECAST_YEAR ASD-level estimates for all metrics.
-    Uses NASS state planted/harvested (already published) and a manual yield input.
-    Returns (stats_dict, state_totals_dict).
-      stats_dict      = {stat_type: {district: value}}
-      state_totals    = {stat_type: state_total}
+    FORECAST_YEAR county estimates, built the way the Draw Territory tab builds supply: each
+    county's 2021-25 average share of its state times USDA's latest state figure (planted and
+    harvested from NASS, production = the yield estimate x harvested; total supply adds stocks).
+    Returns ({stat: DataFrame[fips, County, District, DistrictCode, Value, is_estimated]}, state_totals).
+    The "production_only" frame is production before any total-supply stocks, for yield.
     """
     _hist = tuple(range(FORECAST_YEAR - 5, FORECAST_YEAR))
-
-    # State anchors: NASS has 2026 planted + harvested
     p_df  = _load_nass_state_forecast(crop, "planted",   cache_ver)
     h_df  = _load_nass_state_forecast(crop, "harvested", cache_ver)
     st_pl = float(p_df[p_df["State"] == state]["Value"].iloc[0]) if state in p_df["State"].values else 0.0
     st_hv = float(h_df[h_df["State"] == state]["Value"].iloc[0]) if state in h_df["State"].values else 0.0
     st_pr = yield_est * st_hv if (yield_est and st_hv) else 0.0
+    _lab = _wc_of(cache_ver)
+    if crop == "Wheat" and _lab and _WC_CLASSES[_lab][1]:
+        # Market class: the NASS group's production (yield x group harvested) times the state's class share.
+        _f, _d = _wc_factors(FORECAST_YEAR, _lab)
+        st_pr *= _f.get(state, _d)
     st_sup = st_pr + (_ts_state_stocks(crop, FORECAST_YEAR).get(state, 0.0) if (_ts_on() and st_pr) else 0.0)
 
-    # Historical ASD shares
-    sh_pl = _build_asd_hist_shares(crop, state, "planted",    _hist, cache_ver)
-    sh_hv = _build_asd_hist_shares(crop, state, "harvested",  _hist, cache_ver)
-    sh_pr = _build_asd_hist_shares(crop, state, "production", _hist, cache_ver)
+    cols =["fips", "County", "District", "DistrictCode", "Value", "is_estimated"]
 
-    def _norm_shares(sh: dict) -> dict:
-        # Olympic-averaging each district separately leaves the shares summing to ~0.97-1.03;
-        # rescale so the districts add back to exactly the state figure.
-        tot = sum(sh.values())
-        return {d: v / tot for d, v in sh.items()} if tot > 0 else sh
-    sh_pl, sh_hv, sh_pr = _norm_shares(sh_pl), _norm_shares(sh_hv), _norm_shares(sh_pr)
+    def _alloc(stat: str, total: float) -> pd.DataFrame:
+        sh = _county_avg_shares(crop, state, stat, _hist, cache_ver)
+        if sh.empty or not total:
+            return pd.DataFrame(columns=cols)
+        out = sh[["fips", "County", "District", "DistrictCode"]].copy()
+        out["Value"] = sh["share"] * total
+        out["is_estimated"] = True
+        return out
 
-    stats: dict = {k: {} for k in ("planted", "harvested", "pct_harvested",
-                                    "production", "yield")}
-    for d in set(sh_pl) | set(sh_hv) | set(sh_pr):
-        apl = st_pl * sh_pl[d] if (d in sh_pl and st_pl) else None
-        ahv = st_hv * sh_hv[d] if (d in sh_hv and st_hv) else None
-        apr = st_pr * sh_pr[d] if (d in sh_pr and st_pr) else None
-        stats["planted"][d]    = apl
-        stats["harvested"][d]  = ahv
-        stats["production"][d] = (st_sup * sh_pr[d]) if (d in sh_pr and st_sup) else None
-        if apl and ahv and apl > 0:
-            stats["pct_harvested"][d] = ahv / apl * 100
-        if ahv and apr and ahv > 0:
-            stats["yield"][d] = apr / ahv
+    pl, hv = _alloc("planted", st_pl), _alloc("harvested", st_hv)
+    pr_only = _alloc("production", st_pr)
+    pr = pr_only if st_sup == st_pr else _alloc("production", st_sup)
 
+    def _ratio(num: pd.DataFrame, den: pd.DataFrame, scale: float) -> pd.DataFrame:
+        if num.empty or den.empty:
+            return pd.DataFrame(columns=cols)
+        m = num.merge(den[["fips", "Value"]].rename(columns={"Value": "_d"}), on="fips")
+        m = m[m["_d"] > 0]
+        m["Value"] = m["Value"] / m["_d"] * scale
+        return m[cols]
+
+    out = {"planted": pl, "harvested": hv, "production": pr, "production_only": pr_only,
+           "yield": _ratio(pr_only, hv, 1.0), "pct_harvested": _ratio(hv, pl, 100.0)}
     state_totals = {
-        "planted":       st_pl,
-        "harvested":     st_hv,
-        "production":    st_sup,
-        "yield":         yield_est if yield_est else 0.0,
+        "planted": st_pl, "harvested": st_hv, "production": st_sup,
+        "yield": yield_est if yield_est else 0.0,
         "pct_harvested": st_hv / st_pl * 100 if st_pl else 0.0,
     }
+    return out, state_totals
+
+@st.cache_data(show_spinner=False)
+def get_asd_forecast_data(crop: str, state: str, yield_est: float,
+                           cache_ver: str) -> tuple:
+    """
+    FORECAST_YEAR ASD estimates: the county estimates of get_forecast_county_data summed by
+    district, so the ASD and county views tie.
+    Returns (stats_dict, state_totals_dict).
+      stats_dict      = {stat_type: {district: value}}
+      state_totals    = {stat_type: state_total}
+    """
+    cty, state_totals = get_forecast_county_data(crop, state, yield_est, cache_ver)
+
+    def _by_dist(df: pd.DataFrame) -> pd.Series:
+        if df.empty:
+            return pd.Series(dtype=float)
+        d = df[df["District"].astype(str).str.strip().ne("")]
+        return d.groupby("District")["Value"].sum()
+
+    pl, hv = _by_dist(cty["planted"]), _by_dist(cty["harvested"])
+    pr, pr0 = _by_dist(cty["production"]), _by_dist(cty["production_only"])
+    stats: dict = {k: {} for k in ("planted", "harvested", "pct_harvested", "production", "yield")}
+    for d in set(pl.index) | set(hv.index) | set(pr.index):
+        apl, ahv = pl.get(d), hv.get(d)
+        apr0 = pr0.get(d)
+        stats["planted"][d]    = float(apl) if apl else None
+        stats["harvested"][d]  = float(ahv) if ahv else None
+        stats["production"][d] = float(pr[d]) if d in pr.index and pr[d] else None
+        if apl and ahv and apl > 0:
+            stats["pct_harvested"][d] = float(ahv / apl * 100)
+        if ahv and apr0 and ahv > 0:
+            stats["yield"][d] = float(apr0 / ahv)
     return stats, state_totals
 
 
@@ -4399,9 +4453,6 @@ def main():
                 _wc_col, _ = st.columns([1.3, 3])
                 with _wc_col:
                     nass_wc = st.selectbox("Wheat class", ["All classes"] + list(_WC_CLASSES), key="nass_wheat_class")
-                if nass_wc != "All classes" and nass_year == FORECAST_YEAR:
-                    st.info(f"{FORECAST_YEAR} is a forecast year with no class detail; showing all classes.")
-                    nass_wc = "All classes"
             _tls.wc = None if nass_wc == "All classes" else nass_wc
             nass_lbl = f"{nass_crop} ({_tls.wc})" if _tls.wc else nass_crop       # titles and captions only; the loaders take nass_crop
             if _tls.wc:
@@ -4653,6 +4704,7 @@ def main():
                     _is_forecast_year = (nass_year == FORECAST_YEAR)
                     _fc_stats: dict         = {}
                     _fc_state_totals: dict  = {}
+                    _fc_county: dict        = {}
                     if _is_forecast_year:
                         _yield_key = f"fc_yield_{nass_crop}_{nass_state}"
                         _ysrc = _default_yield_sources(nass_crop, nass_state, _session_ver())
@@ -4701,6 +4753,19 @@ def main():
                             _fc_stats, _fc_state_totals = get_asd_forecast_data(
                                 nass_crop, nass_state, _yield_input, _session_ver()
                             )
+                            _fc_county, _ = get_forecast_county_data(
+                                nass_crop, nass_state, _yield_input, _session_ver()
+                            )
+                            st.caption(
+                                f"County and ASD figures for {FORECAST_YEAR} use the Draw Territory method: "
+                                f"each county's {FORECAST_YEAR - 5}-{FORECAST_YEAR - 1} average share of the "
+                                "state times USDA's latest state planted, harvested and production. "
+                                "Districts are the sum of their counties."
+                            )
+                            _fc_prod = _fc_county.get("production")
+                            if state_df.empty and _fc_prod is not None and not _fc_prod.empty:
+                                state_df = _fc_prod.assign(State=nass_state).rename(
+                                    columns={"Value": "Production"})[["State", "County", "fips", "Production"]]
 
                     # Back button + map-view toggle on the same row
                     _back_col, _view_col, _ = st.columns([0.7, 2.2, 2])
@@ -4981,10 +5046,13 @@ def main():
                                 f"Building {ABBR_TO_NAME.get(nass_state, nass_state)} county map…"
                             ):
                                 if _use_est_county:
-                                    _comp_cty = get_completed_county_data(
-                                        nass_crop, nass_state, nass_year,
-                                        _cty_est_stat, _session_ver()
-                                    )
+                                    if _is_forecast_year and _fc_county:
+                                        _comp_cty = _fc_county.get(_cty_est_stat, pd.DataFrame())
+                                    else:
+                                        _comp_cty = get_completed_county_data(
+                                            nass_crop, nass_state, nass_year,
+                                            _cty_est_stat, _session_ver()
+                                        )
                                     nass_county_fig = build_nass_county_fig_with_est(
                                         _comp_cty, geo, nass_state, nass_lbl,
                                         nass_year, nass_metric, logo_50yr, centroids,
@@ -5072,7 +5140,10 @@ def main():
                                         _v = _fc_state_totals.get(_nc_stat)
                                     elif _htbl_scope == "ASD District" and _htbl_dist:
                                         _v = _fc_stats.get(_nc_stat, {}).get(_htbl_dist)
-                                    # County scope: no forecast at county level — leave None
+                                    elif _htbl_scope == "County" and _htbl_county:
+                                        _fcd = _fc_county.get(_nc_stat, pd.DataFrame())
+                                        _fcd = _fcd[_fcd["County"] == _htbl_county] if not _fcd.empty else _fcd
+                                        _v = float(_fcd["Value"].iloc[0]) if not _fcd.empty else None
                                     _nc_vals.append(_v)
                                     continue
                                 if _htbl_scope == "State":
@@ -5160,6 +5231,10 @@ def main():
                                             _hist[_hyr][_hst] = _fc_state_totals.get(_hst)
                                         elif _htbl_scope == "ASD District" and _htbl_dist:
                                             _hist[_hyr][_hst] = _fc_stats.get(_hst, {}).get(_htbl_dist)
+                                        elif _htbl_scope == "County" and _htbl_county:
+                                            _fcd = _fc_county.get(_hst, pd.DataFrame())
+                                            _fcd = _fcd[_fcd["County"] == _htbl_county] if not _fcd.empty else _fcd
+                                            _hist[_hyr][_hst] = float(_fcd["Value"].iloc[0]) if not _fcd.empty else None
                                         else:
                                             _hist[_hyr][_hst] = None
                                     _tbl_est_years.add(_hyr)
@@ -5552,6 +5627,10 @@ def main():
 
                         # ── Ranking Chart ─────────────────────────────────────────
                         state_county_v = county_vdf[county_vdf["State"] == nass_state].copy()
+                        if _is_forecast_year and _fc_county and nass_change == "Current Year":
+                            _fcv = _fc_county.get(_METRIC_TO_STAT.get(nass_metric, "production"))
+                            if _fcv is not None and not _fcv.empty:
+                                state_county_v = _fcv.assign(State=nass_state)[["State", "County", "fips", "Value"]]
                         if not state_county_v.empty:
                             if nass_map_view == "ASD District":
                                 ranking_nass = build_nass_asd_ranking_chart(
