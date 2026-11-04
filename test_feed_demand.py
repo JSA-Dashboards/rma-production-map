@@ -96,3 +96,42 @@ def test_census_state_shares_add_to_one_and_louisiana_is_big():
     assert sh["IL"] > 0.2 and sh["LA"] > 0.1
     rt = fd.export_routes()
     assert abs(rt["container_t"] + rt["bulk_vessel_t"] + rt["land_t"] - rt["total_t"]) < 1.0
+
+
+def test_big_plants_on_track_carry_the_export_and_small_remote_ones_stay_local():
+    plants = [{"key": "big", "state": "IL", "lat": 39.8, "lon": -88.9}, {"key": "small", "state": "IL", "lat": 40.5, "lon": -89.5}]
+    grind = np.array([300e6 / 2.9, 20e6 / 2.9])
+    counties = [{"fips": "A", "state": "IL", "lat": 40.0, "lon": -89.0}]
+    acc = fd.plant_export_propensity(plants, grind, counties, np.array([1e9]), track_mi=[1.0, 40.0], river_mi=[80.0, 80.0])
+    assert acc["propensity"][0] > 0.6 and acc["propensity"][1] < 0.12
+    assert acc["modes"][0, 0] > 0.8 and acc["modes"][1, 3] > 0.9                    # the big one ships by rail; the small one is local truck
+    np.testing.assert_allclose(acc["modes"].sum(axis=1), 1.0)
+
+
+def test_river_plants_lean_barge_and_chicago_plants_lean_containers():
+    plants = [{"key": "river", "state": "IL", "lat": 41.3, "lon": -89.3}, {"key": "chi", "state": "IL", "lat": 41.85, "lon": -87.7}]
+    grind = np.array([150e6 / 2.9, 150e6 / 2.9])
+    counties = [{"fips": "A", "state": "IL", "lat": 40.0, "lon": -89.0}]
+    acc = fd.plant_export_propensity(plants, grind, counties, np.array([1e9]), track_mi=[60.0, 60.0], river_mi=[0.5, 80.0])
+    assert acc["modes"][0, 1] > acc["modes"][0, 0] and acc["modes"][0, 1] > 0.5       # at a river terminal, away from track
+    assert acc["modes"][1, 2] > 0.5                                                  # in Chicago
+
+
+def test_less_livestock_around_a_plant_means_more_leaves():
+    plants = [{"key": "a", "state": "IA", "lat": 42.0, "lon": -93.0}, {"key": "b", "state": "IA", "lat": 45.0, "lon": -99.0}]
+    grind = np.array([150e6 / 2.9, 150e6 / 2.9])
+    counties = [{"fips": "1", "state": "IA", "lat": 42.0, "lon": -93.0}, {"fips": "2", "state": "SD", "lat": 45.0, "lon": -99.0}]
+    acc = fd.plant_export_propensity(plants, grind, counties, np.array([5e9, 1e7]), track_mi=[1.0, 1.0], river_mi=[90.0, 90.0])
+    assert acc["propensity"][1] > acc["propensity"][0]
+
+
+def test_state_export_goes_to_the_plants_with_access():
+    plants = [{"key": "big", "state": "IL", "lat": 39.8, "lon": -88.9}, {"key": "small", "state": "IL", "lat": 40.5, "lon": -89.5}]
+    grind = np.array([300e6 / 2.9, 100e6 / 2.9])
+    counties = [{"fips": "A", "state": "IL", "lat": 40.0, "lon": -89.0}]
+    gross = {sp: np.zeros(1) for sp in fd.SPECIES}
+    gross["HOGS"] = np.array([5e9])
+    want = 4e6
+    cr = fd.ddgs_credit(plants, grind, counties, gross, wet_share={"IL": 0.0}, export_bu=want, export_shares={"IL": 1.0}, cap=10.0, track_mi=np.array([1.0, 40.0]), river_mi=np.array([80.0, 80.0]))
+    ex = cr["export_plant"]
+    assert ex.sum() == pytest.approx(want, rel=1e-6) and ex[0] > 4 * ex[1]

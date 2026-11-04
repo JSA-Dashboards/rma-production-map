@@ -128,10 +128,19 @@ def _feed(year, fr_bu, util, credit, export_bu, wet_radius, cap, wet_items, shoc
     inp, add = _apply_shocks(dm.load(PATHS["corn"][0]), shocks)
     plants = inp["plants"]
     grind = np.array([p["need_bu"] for p in plants], float) * util + np.array([add.get(p["key"], 0.0) for p in plants], float) * 1e6
+    cty = inp["counties"]
+    rs = dm.load_rail_service()
+    p_lat, p_lon = np.array([p["lat"] for p in plants], float), np.array([p["lon"] for p in plants], float)
+    near = fd._miles(p_lat, p_lon, np.array([c["lat"] for c in cty], float), np.array([c["lon"] for c in cty], float)).argmin(axis=1)
+    track_mi = np.array([min(rs.get(cty[i]["fips"], [9999] * 6)) for i in near], float)               # miles from the plant's county to the nearest Class I track
+    barge_keys = {k for g in dm.load_nodes(PATHS["corn"][1])["groups"] if g["kind"] in ("lock", "area") for k in g["pins"]}
+    pins = [r for r in inp["river"] if r["key"] in barge_keys]
+    river_mi = fd._miles(p_lat, p_lon, np.array([r["lat"] for r in pins], float), np.array([r["lon"] for r in pins], float)).min(axis=1)
     out = fd.county_feed(inp["counties"], year, plants, grind, fr_bu, corn_credit=credit, wet_share=dict(wet_items), export_bu=export_bu, wet_radius=wet_radius, cap=cap,
-                         export_shares=fd.export_state_shares() if regional else None)
+                         export_shares=fd.export_state_shares() if regional else None, track_mi=track_mi, river_mi=river_mi)
     cr = out["credit"]
     return {"gross": out["gross"], "net": out["net"], "credit": cr["county"], "wet": cr["wet"], "dried": cr["dried"], "export": cr["export"], "unplaced": cr["unplaced"], "export_state": cr["export_state"], "dried_state": cr["dried_state"],
+            "export_plant": cr["export_plant"], "access": cr["access"], "track_mi": track_mi, "river_mi": river_mi,
             "by_plant": cr["by_plant"], "sbm_lb": out["sbm_lb"], "k": out["k"], "by_species": out["gross_by_species"], "grind": grind, "year": year, "credit_bu_per_bu": credit}
 
 
@@ -895,6 +904,7 @@ def _feed_panel(inp, res, feed_args):
         gen = float(f["grind"][pm].sum()) * f["credit_bu_per_bu"] if pm.any() else 0.0
         rows[s] = {"Corn grown": sup[m].sum() / 1e6, "Ethanol grind": f["grind"][pm].sum() / 1e6 if pm.any() else 0.0, "DDGS credit made": gen / 1e6,
                    "Livestock feed, gross": f["gross"][m].sum() / 1e6, "DDGS credit fed here": f["credit"][m].sum() / 1e6, "Livestock feed, net": f["net"][m].sum() / 1e6,
+                   "Feed displaced by DDGS (%)": f["credit"][m].sum() / max(f["gross"][m].sum(), 1.0) * 100,
                    "Soybean meal fed (M short tons)": f["sbm_lb"][m].sum() / 2000 / 1e6}
     df = pd.DataFrame(rows).T
     df["Net feed + ethanol vs grown"] = (df["Livestock feed, net"] + df["Ethanol grind"]) / df["Corn grown"].replace(0, np.nan)
@@ -910,7 +920,8 @@ def _feed_panel(inp, res, feed_args):
         fig.update_layout(barmode="stack", height=420, margin=dict(l=10, r=10, t=10, b=30), legend=dict(orientation="h", y=1.1, x=0), font=dict(color="#222"), paper_bgcolor="white", plot_bgcolor="white",
                           xaxis=dict(title="M bu a year", gridcolor="#e5e5e5"))
         st.plotly_chart(fig, use_container_width=True, key="draw_feed_chart", config=_img_config("corn demand by state", height=420))
-        st.dataframe(df.style.format({c: "{:,.0f}" for c in df.columns if c not in ("Soybean meal fed (M short tons)", "Net feed + ethanol vs grown")}
+        st.dataframe(df.style.format({c: "{:,.0f}" for c in df.columns if c not in ("Soybean meal fed (M short tons)", "Net feed + ethanol vs grown", "Feed displaced by DDGS (%)")}
+                                     | {"Feed displaced by DDGS (%)": "{:.0f}"}
                                      | {"Soybean meal fed (M short tons)": "{:,.2f}", "Net feed + ethanol vs grown": "{:.0%}"}, na_rep="-"), use_container_width=True, height=360)
         gen_t, placed, exp_, unp = tot["DDGS credit made"], tot["DDGS credit fed here"], f["export"] / 1e6, f["unplaced"] / 1e6
         st.caption(f"Nationally: ethanol grinds {tot['Ethanol grind']:,.0f}M bu and returns {gen_t:,.0f}M bu of corn-equivalent feed ({f['credit_bu_per_bu']:.2f} bu per bushel ground): {placed:,.0f}M is fed here, "
@@ -927,6 +938,24 @@ def _feed_panel(inp, res, feed_args):
                       "Share of its dried product exported (%)": es_.get(s_, 0.0) / ds_[s_] * 100} for s_ in sorted(ds_, key=lambda x: -es_.get(x, 0.0))[:15]]
             st.markdown("**Distillers grains exports by state**")
             st.dataframe(pd.DataFrame(rows_).style.format({c: "{:,.1f}" for c in rows_[0] if c != "State"}), hide_index=True, use_container_width=True)
+            if f.get("access") is not None:
+                ac, ep = f["access"], f["export_plant"]
+                t_per_bu_ = 56 / 0.55 / 2204.62
+                dr = np.array([f["dried_state"].get(p["state"], 0.0) for p in plants], float)
+                modes = (ep[:, None] * ac["modes"]).sum(axis=0) * t_per_bu_ / 1e6
+                st.markdown("**Which plants carry the exports**")
+                top = np.argsort(-ep)[:15]
+                pr = pd.DataFrame({"Plant": [plants[i]["key"] for i in top], "Capacity (M gal a year)": ac["mgy"][top], "Miles to Class I track": f["track_mi"][top],
+                                   "Miles to a barge terminal": f["river_mi"][top], "Miles to Chicago": ac["chicago_mi"][top], "Local feed demand (1 = typical)": ac["feed_pull"][top],
+                                   "Exported (M bu corn-equivalent)": ep[top] / 1e6, "Exported (thousand metric tons)": ep[top] * t_per_bu_ / 1e3,
+                                   "Fed locally (M bu corn-equivalent)": f["by_plant"][top] / 1e6,
+                                   "Rail (%)": ac["modes"][top, 0] * 100, "Barge (%)": ac["modes"][top, 1] * 100, "Container (%)": ac["modes"][top, 2] * 100, "Local truck (%)": ac["modes"][top, 3] * 100})
+                st.dataframe(pr.style.format({c: "{:,.0f}" for c in pr.columns if c != "Plant"} | {"Local feed demand (1 = typical)": "{:.2f}", "Exported (M bu corn-equivalent)": "{:,.1f}", "Fed locally (M bu corn-equivalent)": "{:,.1f}"}),
+                             hide_index=True, use_container_width=True)
+                st.caption(f"First-mile mode of the exported product: rail {modes[0]:.1f}, barge {modes[1]:.1f}, containers {modes[2]:.1f}, local truck {modes[3]:.1f} million metric tons. "
+                           f"A plant's share of its state's export grows with its size (none to speak of below {fd.SIZE_SMALL_MGY:.0f} M gal a year, full at {fd.SIZE_BIG_MGY:.0f}), with its distance to "
+                           "Class I track and to a barge terminal, with being near Chicago (containers) and with how little livestock is around it; a plant with none of those is nearly all local truck. "
+                           "Track miles are measured from the centre of the plant's county, so they are coarse.")
             rt = fd.export_routes()
             passed = sum(v for s_, v in sh_.items() if s_ not in ds_)
             big = ", ".join(f"{s_} {sh_[s_] * 100:.0f}%" for s_ in sorted((x for x in sh_ if x not in ds_), key=lambda x: -sh_[x])[:4])
