@@ -79,3 +79,20 @@ def test_export_tonnage_ties_to_census():
     cr = fd.ddgs_credit(plants, [5.6e9], counties, gross, wet_share={"IA": 0.0}, export_bu=want, cap=10.0)
     assert cr["export"] == pytest.approx(want, rel=1e-9)
     assert cr["county"][0] == pytest.approx(5.6e9 * fd.CORN_CREDIT - want, rel=1e-9)
+
+
+def test_regional_exports_pass_port_states_to_the_states_that_make_it():
+    shares = {"LA": 0.4, "IL": 0.3, "IA": 0.3}                                   # Louisiana loads the ships but has no plant
+    out = fd.allocate_exports(100.0, shares, {"IL": 1000.0, "IA": 1000.0}, max_frac=1.0)
+    assert out["IL"] == pytest.approx(50.0) and out["IA"] == pytest.approx(50.0)   # Louisiana's 40% goes to the others in proportion to their own shares
+    capped = fd.allocate_exports(100.0, shares, {"IL": 20.0, "IA": 1000.0}, max_frac=1.0)
+    assert capped["IL"] == pytest.approx(20.0) and capped["IA"] == pytest.approx(80.0)
+    assert sum(fd.allocate_exports(100.0, shares, {"IL": 10.0}, max_frac=0.5).values()) == pytest.approx(5.0)   # no room: what cannot be placed is left out
+
+
+def test_census_state_shares_add_to_one_and_louisiana_is_big():
+    sh = fd.export_state_shares()
+    assert abs(sum(sh.values()) - 1.0) < 1e-6
+    assert sh["IL"] > 0.2 and sh["LA"] > 0.1
+    rt = fd.export_routes()
+    assert abs(rt["container_t"] + rt["bulk_vessel_t"] + rt["land_t"] - rt["total_t"]) < 1.0

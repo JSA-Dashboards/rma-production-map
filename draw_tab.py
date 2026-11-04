@@ -123,14 +123,15 @@ FEED_LOCAL_MAX = 0.95                                  # a county never keeps mo
 
 
 @st.cache_data(show_spinner="Spreading livestock feed demand over the counties…")
-def _feed(year, fr_bu, util, credit, export_bu, wet_radius, cap, wet_items, shocks=None):
+def _feed(year, fr_bu, util, credit, export_bu, wet_radius, cap, wet_items, shocks=None, regional=True):
     """Corn livestock feed by county (Census herds x NASS inventories x feed per head, tied to USDA's feed and residual) net of the ethanol plants' distillers grains credit."""
     inp, add = _apply_shocks(dm.load(PATHS["corn"][0]), shocks)
     plants = inp["plants"]
     grind = np.array([p["need_bu"] for p in plants], float) * util + np.array([add.get(p["key"], 0.0) for p in plants], float) * 1e6
-    out = fd.county_feed(inp["counties"], year, plants, grind, fr_bu, corn_credit=credit, wet_share=dict(wet_items), export_bu=export_bu, wet_radius=wet_radius, cap=cap)
+    out = fd.county_feed(inp["counties"], year, plants, grind, fr_bu, corn_credit=credit, wet_share=dict(wet_items), export_bu=export_bu, wet_radius=wet_radius, cap=cap,
+                         export_shares=fd.export_state_shares() if regional else None)
     cr = out["credit"]
-    return {"gross": out["gross"], "net": out["net"], "credit": cr["county"], "wet": cr["wet"], "dried": cr["dried"], "export": cr["export"], "unplaced": cr["unplaced"],
+    return {"gross": out["gross"], "net": out["net"], "credit": cr["county"], "wet": cr["wet"], "dried": cr["dried"], "export": cr["export"], "unplaced": cr["unplaced"], "export_state": cr["export_state"], "dried_state": cr["dried_state"],
             "by_plant": cr["by_plant"], "sbm_lb": out["sbm_lb"], "k": out["k"], "by_species": out["gross_by_species"], "grind": grind, "year": year, "credit_bu_per_bu": credit}
 
 
@@ -917,6 +918,23 @@ def _feed_panel(inp, res, feed_args):
                    f"{tot['Livestock feed, net']:,.0f}M after it, tied to USDA's feed and residual for {es.label(f['year'])}. Heads: Census of Agriculture county shares (2012, 2017, 2022) spread over the NASS "
                    f"state inventory for {f['year']} (carried forward where NASS has not published the year). Feed per head is on file in feed_demand.py (scaled x{f['k']:.2f} to USDA's total); "
                    f"soybean meal is the same animals x pounds per head, and the distillers grains also displace about {fd.SBM_CREDIT_LB:.1f} lb of it per bushel ground.")
+        if f.get("export_state"):
+            es_, ds_ = f["export_state"], f["dried_state"]
+            sh_ = fd.export_state_shares()
+            t_per_bu = 56 / 0.55 / 2204.62                                    # metric tons of distillers grains one bushel of corn-equivalent credit stands for
+            rows_ = [{"State": s_, "Census origin share (%)": sh_.get(s_, 0.0) * 100, "Exported (M bu corn-equivalent)": es_.get(s_, 0.0) / 1e6,
+                      "Exported (thousand metric tons)": es_.get(s_, 0.0) * t_per_bu / 1e3, "Dried product made (M bu corn-equivalent)": ds_[s_] / 1e6,
+                      "Share of its dried product exported (%)": es_.get(s_, 0.0) / ds_[s_] * 100} for s_ in sorted(ds_, key=lambda x: -es_.get(x, 0.0))[:15]]
+            st.markdown("**Distillers grains exports by state**")
+            st.dataframe(pd.DataFrame(rows_).style.format({c: "{:,.1f}" for c in rows_[0] if c != "State"}), hide_index=True, use_container_width=True)
+            rt = fd.export_routes()
+            passed = sum(v for s_, v in sh_.items() if s_ not in ds_)
+            big = ", ".join(f"{s_} {sh_[s_] * 100:.0f}%" for s_ in sorted((x for x in sh_ if x not in ds_), key=lambda x: -sh_[x])[:4])
+            st.caption(f"Census {rt['year']}: {rt['total_t'] / 1e6:.1f} million metric tons left, {rt['bulk_vessel_t'] / rt['total_t']:.0%} as bulk by vessel, {rt['container_t'] / rt['total_t']:.0%} in containers "
+                       f"and {rt['land_t'] / rt['total_t']:.0%} by truck and rail to Mexico and Canada (weights are reported for the vessel and container shipments; land is the rest). Biggest ports by "
+                       f"value: " + ", ".join(f"{n.rsplit(', ', 1)[0].title()}, {n.rsplit(', ', 1)[-1]} ${v:,.0f}M" for n, v in rt["ports"][:6]) + f". Census's state of origin is where a shipment was loaded: {passed:.0%} of the value is in states with no ethanol "
+                       f"plant ({big}), product that came by rail and was transloaded, so that share is passed to the states that make the product in proportion to their own shares. No state exports more than "
+                       f"{fd.EXPORT_STATE_MAX_SHARE:.0%} of the dried product it makes, so Illinois, Ohio and the others at that limit hand the rest on.")
 
 
 def render():
@@ -1107,6 +1125,9 @@ def _render(crop):
                               help="Wet and modified distillers grains go to cattle and dairy this close to the plant. Dried product spreads with a distance decay of about 300 miles.")
             f_cap = f4.slider("Most feed energy replaced (%)", 15, 60, int(fd.CREDIT_CAP * 100), 1, key="drawc_feed_cap",
                               help="Distillers grains never replace more than this share of a county's corn feed energy.") / 100.0
+            f_regional = st.checkbox("Take exports from the states Census shows them leaving from", value=True, key="drawc_feed_regional",
+                                     help="On: the exported distillers grains come from each state in proportion to Census's state of origin (a port or transload state such as Louisiana passes its share to the "
+                                          "states that make the product), up to 60% of a state's dried product. Off: every plant exports the same share of its dried product.")
             wet_states = sorted({p["state"] for p in dm.load(PATHS["corn"][0])["plants"]})
             wet_df = st.data_editor(pd.DataFrame({"State": wet_states, "Wet / modified share (%)": [int(round(fd.WET_SHARE.get(s_, fd.WET_SHARE_DEFAULT) * 100)) for s_ in wet_states]}),
                                     hide_index=True, key="drawc_feed_wet", use_container_width=True, height=180, disabled=["State"],
@@ -1117,7 +1138,7 @@ def _render(crop):
             bal_f = scales["supply"]["bal"] or {}
             fr_ = float(bal_f.get("feed_residual") or es.balance("corn")[max(es.balance("corn"), key=int)]["feed_residual"]) * 1e6
             feed_args = (int(scales["supply"]["my"]), fr_, float(util), float(f_credit), float(fd.export_credit_bu(f_exp * 1e6)), float(f_rad), float(f_cap),
-                         tuple(sorted((r_["State"], r_["Wet / modified share (%)"] / 100.0) for r_ in wet_df.to_dict("records"))), shocks_t)
+                         tuple(sorted((r_["State"], r_["Wet / modified share (%)"] / 100.0) for r_ in wet_df.to_dict("records"))), shocks_t, bool(f_regional))
     if corn or wheat:
         barge_fed, dest_add, frac_items = {}, 0.0, {}                       # barge-fed crush plants and plant start-ups are soybean features
     else:
@@ -1167,7 +1188,7 @@ def _render(crop):
                  (("Bunge North America Destrehan LA", dest_add),), supply_info["total_bu"],
                  tuple(sorted(frac_items.items())), truck, 0.0, 0.0,
                  scales['wheat']['cls'] if wheat else None, scales['wheat']['period'] if wheat else 'avg', scales['wheat']['year'] if wheat else None, local_max,
-                      (feed_args[:-1] + (shk,)) if feed_args else None, shk)
+                      (feed_args[:-2] + (shk, feed_args[-1])) if feed_args else None, shk)
     res = _run(shocks_t)
     res0 = _run(None) if shocks_t else None
     plants_t, river_t, cty_t = dm.summarize(inp, res, state)

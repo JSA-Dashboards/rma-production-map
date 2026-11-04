@@ -255,12 +255,14 @@ def main(out_dir, locked, module=False):
             fail(f"{rel} is missing (run its builder first)")
         os.makedirs(os.path.dirname(os.path.join(out_dir, *rel.split("/"))), exist_ok=True)
         shutil.copy2(src, os.path.join(out_dir, *rel.split("/")))
+    shutil.copy2(os.path.join(HERE, "nass_cache_client.py"), os.path.join(out_dir, "nass_cache_client.py"))   # the tab reads NASS from the shared cache
     imports = {l.split()[1].split(".")[0] if l.startswith("import") else l.split()[1].split(".")[0] for l in code.split("\n") if l.startswith(("import ", "from "))}
     reqs = ["streamlit>=1.35.0", "pandas>=2.0.0", "numpy>=1.24.0", "plotly>=5.24.0"]
     if "geopandas" in imports:
         reqs.append("geopandas>=1.0.0")
     if "shapely" in imports:
         reqs.append("shapely>=2.0.0")
+    reqs += ["snowflake-connector-python>=3.12", "cryptography>=42"]                   # nass_cache_client's Snowflake backend
     for extra in ("openpyxl", "pydeck"):
         if extra in imports:
             reqs.append(extra + ">=0")
@@ -272,7 +274,7 @@ def main(out_dir, locked, module=False):
         fh.write("# JSA NASS Production\n\nUSDA NASS production by state, ASD district and county: the first tab of the RMA dashboard as its own app.\n\n"
                  "**This folder is generated.** `app.py` is produced by `sync_nass_mirror.py` in `JSA-Dashboards/rma-production-map` from that dashboard's `app.py`; "
                  "change the NASS tab there and run the sync, do not edit here.\n\n"
-                 "    streamlit run app.py\n\nSecret needed: `NASS_API_KEY` (Streamlit Cloud: Settings > Secrets). County boundaries come from a public URL; there is no database.\n")
+                 "    streamlit run app.py\n\nNASS data comes from the shared cache that `usda-nass-etl` fills, so the app needs the Snowflake secrets (`USE_SNOWFLAKE`, `SNOWFLAKE_ACCOUNT`, `SNOWFLAKE_USER`, `SNOWFLAKE_PRIVATE_KEY`, `SNOWFLAKE_ROLE`, `SNOWFLAKE_WAREHOUSE`; Streamlit Cloud: Settings > Secrets). `NASS_API_KEY` is only a fallback while the cache fills: leave it out and the app reads the cache alone. County boundaries come from a public URL.\n")
     kept_n = len(keep)
     print(f"wrote {out_dir}\n  app.py: {code.count(chr(10))} lines (dashboard app.py: {len(lines)}), {kept_n} module-level statements kept of {len(top) - 1}, gate {'kept' if locked else 'dropped'}")
     print("  requirements:", ", ".join(r.split('>')[0] for r in reqs))

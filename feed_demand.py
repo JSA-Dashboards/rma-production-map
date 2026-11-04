@@ -53,6 +53,56 @@ def default_export_tonnes() -> float:
     return sum(ex[y] for y in yrs) / len(yrs)
 
 
+EXPORT_STATE_MAX_SHARE = 0.6        # most of a state's dried product that can leave from there: the rest is fed at home (a state's exports are also loaded from other states' product)
+
+
+@lru_cache(maxsize=1)
+def export_state_shares() -> dict:
+    """{state: share of the value of US distillers grains exports} by Census state of origin of the movement, the latest three years averaged
+    (data/feed/ddgs_exports_by_state.csv). A port or transload state (Louisiana above all) is where the product was loaded, not made; allocate_exports() hands those shares to the states that make it."""
+    by: dict = {}
+    for r in _read("ddgs_exports_by_state.csv"):
+        by.setdefault(int(r["year"]), {})[r["state"]] = float(r["value_usd"])
+    yrs = sorted(by)[-3:]
+    tot = {y: sum(by[y].values()) for y in yrs}
+    out: dict = {}
+    for y in yrs:
+        for s, v in by[y].items():
+            out[s] = out.get(s, 0.0) + v / tot[y] / len(yrs)
+    return out
+
+
+@lru_cache(maxsize=1)
+def export_routes() -> dict:
+    """The latest year of Census export weights by route: {year, total_t, container_t, bulk_vessel_t, land_t} (vessel and container weights are reported; land is the rest), and the top ports by value."""
+    rows = _read("ddgs_exports_by_route.csv")
+    last = max(rows, key=lambda r: int(r["year"]))
+    ports = [r for r in _read("ddgs_exports_by_port.csv") if r["year"] == last["year"]]
+    ports = sorted(ports, key=lambda r: -float(r["value_usd"]))[:8]
+    return {"year": int(last["year"]), **{k: float(last[k]) for k in ("total_t", "container_t", "bulk_vessel_t", "land_t")},
+            "ports": [(r["port"], float(r["value_usd"]) / 1e6) for r in ports]}
+
+
+def allocate_exports(total, shares, dried_by_state, max_frac=EXPORT_STATE_MAX_SHARE) -> dict:
+    """Spread `total` (bushels of corn-equivalent) over the states that make dried product: each state's want is its Census origin share, a state can export at most `max_frac` of
+    the dried product it makes, and what a state cannot take (a port state with no plants, or a state whose share is more than it makes) goes to the states with room, in
+    proportion to their own shares. Returns {state: bu}; what no state has room for is left out."""
+    cap = {s: max_frac * v for s, v in dried_by_state.items() if v > 0}
+    alloc = {s: 0.0 for s in cap}
+    for _ in range(60):
+        left = total - sum(alloc.values())
+        room = {s: cap[s] - alloc[s] for s in cap if cap[s] - alloc[s] > 1e-6}
+        if left <= 1e-6 or not room:
+            break
+        w = {s: shares.get(s, 0.0) for s in room}
+        wt = sum(w.values())
+        if wt <= 0:
+            w, wt = dict(room), sum(room.values())
+        for s in room:
+            alloc[s] += min(left * w[s] / wt, room[s])
+    return alloc
+
+
 def export_credit_bu(tonnes: float, corn_credit_per_lb: float = 0.55) -> float:
     """Bushels of corn-equivalent feed that `tonnes` of exported distillers grains stand for (0.55 lb of corn displaced per lb of DDGS, 56-lb bushels)."""
     return tonnes * 2204.62 * corn_credit_per_lb / 56.0
@@ -178,7 +228,7 @@ def _miles(lat1, lon1, lat2, lon2):
 
 
 def ddgs_credit(plants, grind_bu, counties, gross_by_species, *, corn_credit=CORN_CREDIT, wet_share=None, dried_export=DRIED_EXPORT_SHARE, export_bu=None, wet_radius=WET_RADIUS_MI,
-                dried_scale=DRIED_SCALE_MI, cap=CREDIT_CAP):
+                dried_scale=DRIED_SCALE_MI, cap=CREDIT_CAP, export_shares=None, export_max=EXPORT_STATE_MAX_SHARE):
     """Where each plant's distillers grains credit lands, in bushels of corn equivalent.
 
     Returns {"county": credit by county, "wet": ..., "dried": ..., "export": bu of dried product exported, "unplaced": bu above the county cap or with no one to feed it, "by_plant": credit by plant}.
@@ -199,7 +249,16 @@ def ddgs_credit(plants, grind_bu, counties, gross_by_species, *, corn_credit=COR
     no_wet = wet_w.sum(axis=1) <= 0                                         # no cattle in reach: that product is dried and moves like it
     dried_all = dried_all + np.where(no_wet, wet_amt, 0.0)
     wet_amt = np.where(no_wet, 0.0, wet_amt)
-    export = dried_all * dried_export if export_bu is None else dried_all * min(float(export_bu) / max(float(dried_all.sum()), 1e-9), 1.0)
+    export_state = None
+    if export_bu is not None and export_shares:                              # where the dried product leaves from: Census origin shares, port states passed on to the states that make it
+        states = [p["state"] for p in plants]
+        dried_state: dict = {}
+        for s, v in zip(states, dried_all):
+            dried_state[s] = dried_state.get(s, 0.0) + float(v)
+        export_state = allocate_exports(float(export_bu), export_shares, dried_state, export_max)
+        export = np.array([export_state.get(s, 0.0) * float(v) / max(dried_state[s], 1e-9) for s, v in zip(states, dried_all)], float)
+    else:
+        export = dried_all * dried_export if export_bu is None else dried_all * min(float(export_bu) / max(float(dried_all.sum()), 1e-9), 1.0)
     dried_dom = dried_all - export
     dried_w = gross[None, :] * np.exp(-dist / dried_scale)
     A_wet = wet_amt[:, None] * wet_w / np.maximum(wet_w.sum(axis=1, keepdims=True), 1e-300)
@@ -210,7 +269,8 @@ def ddgs_credit(plants, grind_bu, counties, gross_by_species, *, corn_credit=COR
     scale = np.where(col > lim, lim / np.maximum(col, 1e-300), 1.0)
     A = A * scale[None, :]
     return {"county": A.sum(axis=0), "wet": (A_wet * scale[None, :]).sum(axis=0), "dried": (A_dry * scale[None, :]).sum(axis=0), "export": float(export.sum()),
-            "unplaced": float(total.sum() - export.sum() - A.sum()), "by_plant": A.sum(axis=1)}
+            "unplaced": float(total.sum() - export.sum() - A.sum()), "by_plant": A.sum(axis=1), "export_state": export_state,
+            "dried_state": ({s: v for s, v in dried_state.items()} if export_state is not None else None)}
 
 
 def county_feed(counties, year, plants, grind_bu, feed_residual_bu, **credit_kw):
