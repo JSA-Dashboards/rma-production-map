@@ -153,6 +153,10 @@ def _solve(crop, rate, tau, river_premium, util, lock_scale, area_items, cap_ite
         nodes = ws.nodes_for(nodes, wperiod, wcls, inp)
         extra = dict(other_local=ws.milling_local(inp, local_max), other_rest_weight=ws.rest_weight(inp))
         inp = dict(inp, counties=[dict(c, supply_bu=float(v)) for c, v in zip(inp['counties'], sup)])
+        mills = ws.mill_plants() if wcls is None else []
+        if mills:                                                 # the named flour mills take the milling; what is left of domestic use (feed, seed, stocks) is taken pro rata, lighter in the Northwest
+            inp = dm.with_new_plants(inp, mills)
+            extra = dict(other_local=np.zeros(len(inp['counties'])), other_rest_weight=ws.rest_weight(inp))
     if crop == 'corn' and feed:                                   # livestock feed stays in its own region (net of the distillers grains credit); the rest of domestic use is pro rata
         f_ = _feed(*feed)
         sup_ = np.array([c['supply_bu'] for c in inp['counties']], float) * ((float(supply_total) / sum(c['supply_bu'] for c in inp['counties'])) if supply_total else 1.0)
@@ -1008,6 +1012,13 @@ def _render(crop):
         base_inp = inp
         sup_w = ws.county_supply(base_inp, wsel["cls"], wsel["year"])
         inp = dict(base_inp, counties=[dict(c, supply_bu=float(v)) for c, v in zip(base_inp["counties"], sup_w)])
+        mills_ = ws.mill_plants() if wsel["cls"] is None else []
+        inp = dm.with_new_plants(inp, mills_)
+        if mills_:
+            st.caption(f"Flour mills: {len(mills_)} US mills from Sosland's Grain & Milling Annual 2027 (daily capacity by facility, together grinding USDA's food use of {ws.MILL_FOOD_USE_BU / 1e6:,.0f}M bu). "
+                       "They take all classes here; a single-class view still uses the regional milling capacity stand-in.")
+        elif wsel["cls"] is None:
+            st.caption("The flour mill list is not loaded here (it needs the MILLS_KEY secret), so milling uses the regional capacity stand-in.")
         nodes = ws.nodes_for(nodes, wsel["period"], wsel["cls"], base_inp)
         area_groups = [g for g in nodes["groups"] if g["kind"] in ("area", "pnw", "txgulf", "mexico", "lagulf", "mobile", "satl", "container", "cont_east", "lakes", "canada")]
     river_scale, pnw_scale, txg_scale, mex_scale, satl_scale, ctn_scale, lakes_scale, canada_scale = (

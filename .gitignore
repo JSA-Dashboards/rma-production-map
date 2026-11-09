@@ -7,3 +7,4 @@ investigate_asd_coverage.py
 test_ag_districts.py
 test_asd_estimation.py
 run_test.ps1
+private/
