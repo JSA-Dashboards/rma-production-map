@@ -51,8 +51,11 @@ def test_mills_grind_usdas_food_use_and_skip_what_has_no_capacity(tmp_path, monk
     fm.load.cache_clear()
     mills = ws.mill_plants()
     assert [m["state"] for m in mills] == ["KS", "OH"]                         # Gammaburg reports no capacity, Deltaville is in Puerto Rico
-    assert sum(m["need_bu"] for m in mills) == pytest.approx(ws.MILL_FOOD_USE_BU)
+    assert sum(m["need_bu"] for m in mills) == pytest.approx(sum(ws.mill_controls("avg").values()))   # USDA's food use less durum, not the mills' capacity
     assert mills[1]["need_bu"] / mills[0]["need_bu"] == pytest.approx(30000 / 20000)
+    hrw = ws.mill_plants("avg", "HRW")
+    assert sum(m["need_bu"] for m in hrw) == pytest.approx(ws.mill_controls("avg")["HRW"])
+    assert ws.mill_plants("avg", "Durum") == []
     assert len({m["key"] for m in mills}) == 2
     fm.load.cache_clear()
 
@@ -70,3 +73,29 @@ def test_plant_rail_makes_a_long_haul_cheaper_only_for_plants_on_a_railroad():
     assert with_rail[0, 0] < base[0, 0] and with_rail[0, 1] == base[0, 1]
     far = dict(pr, track=[200.0])                                              # a county 200 miles from track cannot load a railcar
     assert dm.solve(inputs, truck=truck, plant_rail=far)["cost"][0, 0] == base[0, 0]
+
+
+def test_class_controls_leave_out_durum_and_match_usda_food_use():
+    ctl = ws.mill_controls(2026)
+    assert set(ctl) == set(ws.MILL_CLASSES)                                    # durum is milled elsewhere
+    assert sum(ctl.values()) == pytest.approx(874e6, rel=1e-3)                  # WASDE 2026/27 food use 960 less durum 86
+    assert ctl["HRW"] == pytest.approx(370e6)
+    avg = ws.mill_controls("avg")
+    assert 850e6 < sum(avg.values()) < 900e6
+
+
+def test_mill_class_needs_add_up_to_the_class_controls_and_follow_capacity():
+    mills = [{"cap_cwt_day": 40000, "state": "KS", "classes": []}, {"cap_cwt_day": 20000, "state": "KS", "classes": []},
+             {"cap_cwt_day": 30000, "state": "OH", "classes": ["Soft red"]}, {"cap_cwt_day": 10000, "state": "WA", "classes": []}]
+    ctl = {"HRW": 400e6, "HRS": 250e6, "SRW": 150e6, "White": 100e6}
+    X = ws.mill_class_needs(mills, ctl)
+    np.testing.assert_allclose(X.sum(axis=0), [ctl[c] for c in ws.MILL_CLASSES], rtol=1e-6)
+    np.testing.assert_allclose(X.sum(axis=1), np.array([40, 20, 30, 10]) / 100 * 900e6, rtol=1e-3)
+    share = X / X.sum(axis=1, keepdims=True)
+    assert share[0, 0] > 0.6                                                    # a Kansas mill grinds mostly hard red winter
+    assert share[2, 2] > share[0, 2] and share[3, 3] > share[0, 3]               # the Ohio mill leans soft red, the Washington mill soft white
+
+
+def test_mills_that_list_no_railroad_are_on_one_when_big():
+    plants = [{"rail": [], "cap_cwt_day": 15000}, {"rail": [], "cap_cwt_day": 800}, {"rail": ["UP"], "cap_cwt_day": 800}]
+    assert ws.mill_plant_rail({"counties": [{"fips": "01001"}]}, plants)["mask"] == [True, False, True]

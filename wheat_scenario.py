@@ -179,36 +179,101 @@ def _region_index(inp: dict):
     return [named.get(c["state"], other_i) for c in inp["counties"]]
 
 
-MILL_FOOD_USE_BU = 956e6                         # USDA's food use of wheat a year: the bushels the named mills together grind (their run rate is whatever makes the list add to it)
+MILL_CLASSES = ["HRW", "HRS", "SRW", "White"]    # the classes the flour mills grind: durum is milled (semolina) at other plants, not in the flour mill list
+
+
+@lru_cache(maxsize=1)
+def _food_by_class() -> dict:
+    """{marketing year start: {class: M bu}} USDA's food use of wheat by class (WASDE 'U.S. Wheat by Class', build_wheat_food_by_class.py)."""
+    out: dict = {}
+    with open(os.path.join(HERE, "data", "wheat", "wheat_food_by_class_wasde.csv"), encoding="utf8", newline="") as fh:
+        for r in csv.DictReader(fh):
+            out.setdefault(int(r["marketing_year_start"]), {})[r["class"]] = float(r["food_mbu"])
+    return out
+
+
+def mill_controls(period) -> dict:
+    """{class: bushels} the flour mills together grind: USDA's food use by class, less durum, for a marketing year, or the average of the years on file inside 2021-25 ('avg'). A marketing year
+    with no file takes the nearest one."""
+    fb = _food_by_class()
+    if period == "avg":
+        yrs = [y for y in fb if BASE[0] <= y <= BASE[1]] or sorted(fb)
+        pick = {c: sum(fb[y][c] for y in yrs) / len(yrs) for c in MILL_CLASSES}
+    else:
+        y = min(fb, key=lambda k: abs(k - int(period)))
+        pick = {c: fb[y][c] for c in MILL_CLASSES}
+    return {c: v * 1e6 for c, v in pick.items()}
+
+
+# Which classes a flour mill buys, by where it is: the regional flour-type logic (hard-wheat bread flour on the Plains, spring wheat in the north, soft wheat for cookies, crackers and cakes in
+# the East and Midwest, soft white in the Northwest, a mix in California, hard and soft wheat in Texas). Shares of the mill's grind in (HRW, HRS, SRW, White). A PRIOR: large mills blend and
+# customer specs override geography, so the national class controls (USDA food use by class) pull these toward what the whole industry grinds (mill_class_needs).
+REGION_PRIOR = {"plains": (0.80, 0.07, 0.08, 0.05), "north": (0.30, 0.60, 0.05, 0.05), "mountain north": (0.45, 0.45, 0.02, 0.08), "midwest east": (0.28, 0.15, 0.45, 0.12),
+                "northwest": (0.25, 0.20, 0.00, 0.55), "utah": (0.45, 0.30, 0.00, 0.25), "west": (0.40, 0.20, 0.15, 0.25), "south central": (0.60, 0.20, 0.20, 0.00)}
+STATE_REGION = {**{s: "plains" for s in ("KS", "OK", "CO", "NE")}, **{s: "north" for s in ("ND", "SD", "MN")}, "MT": "mountain north",
+                **{s: "midwest east" for s in ("IL", "IN", "OH", "MI", "WI", "IA", "MO", "KY", "NY", "NJ", "MA", "ME", "PA", "VA", "NC", "SC", "GA", "FL", "AL", "TN", "MS")},
+                **{s: "northwest" for s in ("WA", "OR", "ID")}, "UT": "utah", **{s: "west" for s in ("CA", "AZ", "NV")}, **{s: "south central" for s in ("TX", "AR", "LA")}}
+LISTED_CLASS = {"Hard red winter": "HRW", "Hard spring": "HRS", "High gluten": "HRS", "Soft red": "SRW", "Soft white": "White", "Hard white": "White"}
+LISTED_OTHER = 0.15                              # a class a mill does not list still gets this share of its regional prior: mills blend more than they list
+
+
+def mill_class_prior(m: dict) -> np.ndarray:
+    """A mill's prior class shares (HRW, HRS, SRW, White): its region's, weighted toward the classes the mill itself lists (a blank list leaves the regional prior)."""
+    p = np.array(REGION_PRIOR[STATE_REGION.get(m["state"], "midwest east")], float)
+    listed = {LISTED_CLASS[c] for c in m.get("classes", []) if c in LISTED_CLASS}
+    if listed:
+        p = p * np.array([1.0 if c in listed else LISTED_OTHER for c in MILL_CLASSES])
+    return p / p.sum()
+
+
+def mill_class_needs(mills: list, controls: dict, iters: int = 200) -> np.ndarray:
+    """Bushels each mill grinds of each class (rows mills, columns MILL_CLASSES): a mill's total is its share of the capacity, the classes follow its prior, and the two are fitted together
+    so that every class adds up to USDA's food use of that class (iterative proportional fitting). `mills` carry cap_cwt_day, state and classes."""
+    cap = np.array([m["cap_cwt_day"] for m in mills], float)
+    ctl = np.array([controls[c] for c in MILL_CLASSES], float)
+    tot_m = cap / cap.sum() * ctl.sum()
+    X = cap[:, None] * np.array([mill_class_prior(m) for m in mills])
+    for _ in range(iters):
+        X *= (tot_m / np.maximum(X.sum(axis=1), 1e-9))[:, None]
+        X *= (ctl / np.maximum(X.sum(axis=0), 1e-9))[None, :]
+    X *= (tot_m / np.maximum(X.sum(axis=1), 1e-9))[:, None]
+    return X
 
 
 MILL_RAIL = {"rate": 0.12, "fixed": 15.0, "min_miles": 250.0}   # wheat to a mill on a railroad: cents per bushel-mile, cents of handling and switching, and the shortest haul that goes by rail
                                                                   # (a cheaper rate, 0.05, let a Wichita mill draw from 480 miles away; 0.12 keeps the local mills local)
 
 
+MILL_RAIL_MIN_CWT = 10000.0                      # a mill this big is on a railroad even when the book lists none (a blank is not a no); the small ones without one stay on trucks
+
+
 def mill_plant_rail(inp: dict, plants: list, rate: float = None) -> dict:
-    """The plant_rail argument of draw_model.solve for the flour mills: rail from counties within 60 miles of Class I track to a mill that lists a railroad, when it costs less than the truck."""
+    """The plant_rail argument of draw_model.solve for the flour mills: rail from counties within 60 miles of Class I track to a mill that lists a railroad, or one that grinds 10,000 cwt a day or more, when it costs less than the truck."""
     import draw_model as dm
     rs = dm.load_rail_service()
     track = [min(rs.get(c["fips"], [9999] * 6)) for c in inp["counties"]]
-    return {**MILL_RAIL, **({"rate": float(rate)} if rate is not None else {}), "reach": 60.0, "track": track, "mask": [bool(p.get("rail")) for p in plants]}
+    return {**MILL_RAIL, **({"rate": float(rate)} if rate is not None else {}), "reach": 60.0, "track": track, "mask": [bool(p.get("rail")) or p.get("cap_cwt_day", 0) >= MILL_RAIL_MIN_CWT for p in plants]}
 
 
-def mill_plants() -> list:
-    """The US flour mills as named plants for the model (flour_mills.py, Sosland's Grain & Milling Annual 2027): each with its daily capacity in cwt turned into the bushels it grinds a year,
-    scaled so the mills together grind USDA's food use. [] when the mill list is not available. Class-blind: a mill takes all classes here (its listed classes are kept in `classes`)."""
+def mill_plants(period="avg", cls=None) -> list:
+    """The US flour mills as named plants for the model (flour_mills.py, Sosland's Grain & Milling Annual 2027): each with its daily capacity in cwt, the bushels it grinds a year and how they
+    split by class. Together the mills grind USDA's food use of wheat less durum (mill_controls), class by class, so capacity alone does not set the demand. `cls` None = all classes (the
+    mill's total), a class key = that class's bushels at each mill. [] when the mill list is not available or the class is durum."""
     import flour_mills
+    if cls == "Durum":
+        return []
     ms = [m for m in flour_mills.load() if m["cap_cwt_day"] and m["state"] != "PR" and m["lat"] is not None]
     if not ms:
         return []
-    util = MILL_FOOD_USE_BU / (sum(m["cap_cwt_day"] for m in ms) * BU_PER_CWT_DAY)
+    need = mill_class_needs(ms, mill_controls(period))
     out, seen = [], {}
-    for m in ms:
+    for m, row in zip(ms, need):
         base = f"{m['company']}, {m['city']} {m['state']}"
         seen[base] = seen.get(base, 0) + 1
         key = base if seen[base] == 1 else f"{base} #{seen[base]}"
-        out.append({"key": key, "state": m["state"], "lat": m["lat"], "lon": m["lon"], "need_bu": m["cap_cwt_day"] * BU_PER_CWT_DAY * util, "city": m["city"],
-                    "company": m["company"], "cls": "Flour mill", "cap_cwt_day": m["cap_cwt_day"], "classes": m["classes"], "rail": m["rail"], "river": ""})
+        out.append({"key": key, "state": m["state"], "lat": m["lat"], "lon": m["lon"], "need_bu": float(row.sum() if cls is None else row[MILL_CLASSES.index(cls)]), "city": m["city"],
+                    "company": m["company"], "cls": "Flour mill", "cap_cwt_day": m["cap_cwt_day"], "classes": m["classes"], "rail": m["rail"], "river": "",
+                    "class_need": {c: float(v) for c, v in zip(MILL_CLASSES, row)}})
     return out
 
 

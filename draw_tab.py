@@ -153,7 +153,7 @@ def _solve(crop, rate, tau, river_premium, util, lock_scale, area_items, cap_ite
         nodes = ws.nodes_for(nodes, wperiod, wcls, inp)
         extra = dict(other_local=ws.milling_local(inp, local_max), other_rest_weight=ws.rest_weight(inp))
         inp = dict(inp, counties=[dict(c, supply_bu=float(v)) for c, v in zip(inp['counties'], sup)])
-        mills = ws.mill_plants() if wcls is None else []
+        mills = ws.mill_plants(wperiod, wcls)
         if mills:                                                 # the named flour mills take the milling; what is left of domestic use (feed, seed, stocks) is taken pro rata, lighter in the Northwest
             inp = dm.with_new_plants(inp, mills)
             extra = dict(other_local=np.zeros(len(inp['counties'])), other_rest_weight=ws.rest_weight(inp), plant_rail=ws.mill_plant_rail(inp, inp['plants'], mill_rail) if mill_rail > 0 else None)
@@ -895,6 +895,49 @@ def _shock_panel(crop, inp0, res0, inp1, res1, shocks, Wb):
         c2.dataframe(far.style.format({"Haul before (mi)": "{:,.0f}", "Haul after (mi)": "{:,.0f}", "Change (mi)": "{:+,.1f}"}), hide_index=True, use_container_width=True)
 
 
+def _wheat_modes_panel(inp, res, sup_scale=1.0):
+    """Where wheat moves by truck and where by rail, by state of origin, so the regional truck demand is not just the mills' capacity: wheat that goes by rail leaves on a truck for the loader only,
+    and the Pacific Northwest, Texas Gulf and Mexico hubs are rail-fed."""
+    cty, n_p = inp["counties"], len(inp["plants"])
+    F = res["flow"]
+    rail_pairs = res.get("plant_rail")
+    used = rail_pairs if rail_pairs is not None else np.zeros((len(cty), n_p), bool)
+    to_mill_truck = (F[:, :n_p] * ~used).sum(axis=1)
+    to_mill_rail = (F[:, :n_p] * used).sum(axis=1)
+    rail_cols = [c for g in res.get("groups", []) if g["kind"] in dm.RAIL_KINDS for c in g["cols"]]
+    river_cols = [c for g in res.get("groups", []) if g["kind"] not in dm.RAIL_KINDS for c in g["cols"]]
+    to_rail_hub = F[:, rail_cols].sum(axis=1) if rail_cols else np.zeros(len(cty))
+    to_other_hub = F[:, river_cols].sum(axis=1) if river_cols else np.zeros(len(cty))
+    grown = np.array([c["supply_bu"] for c in cty], float) * sup_scale
+    st_c = np.array([c["state"] for c in cty])
+    rows = {}
+    for s_ in sorted(set(st_c)):
+        m = st_c == s_
+        if grown[m].sum() < 1e5:
+            continue
+        rows[s_] = {"Grown": grown[m].sum() / 1e6, "Mills by truck": to_mill_truck[m].sum() / 1e6, "Mills by rail": to_mill_rail[m].sum() / 1e6,
+                    "Rail-fed export hubs": to_rail_hub[m].sum() / 1e6, "Other hubs (truck to the terminal)": to_other_hub[m].sum() / 1e6,
+                    "Feed, seed, stocks": (grown[m].sum() - F[m].sum()) / 1e6}
+    df = pd.DataFrame(rows).T
+    df["Truck (direct)"] = df["Mills by truck"] + df["Other hubs (truck to the terminal)"]
+    df["Rail (loaded by a short truck leg)"] = df["Mills by rail"] + df["Rail-fed export hubs"]
+    df = df.sort_values("Grown", ascending=False)
+    tot = df.sum()
+    mp = res["miles"][:, :n_p]
+    direct = F[:, :n_p] * ~used
+    haul = float(np.nansum(direct * mp) / max(direct.sum(), 1.0))
+    with st.expander("Wheat by truck and by rail, by state of origin (M bu)"):
+        t = st.columns(4)
+        t[0].metric("Direct by truck", f"{tot['Truck (direct)']:,.0f} M bu", help="To the mills that are not reached by rail, and to the river terminals.")
+        t[1].metric("By rail", f"{tot['Rail (loaded by a short truck leg)']:,.0f} M bu", help="To the mills reached by rail and to the Pacific Northwest, Texas Gulf and Mexico hubs. The county sends it by truck only as far as the loader.")
+        t[2].metric("Average direct truck haul to a mill", f"{haul:,.0f} mi")
+        t[3].metric("Feed, seed and stocks", f"{tot['Feed, seed, stocks']:,.0f} M bu")
+        show = df[["Grown", "Truck (direct)", "Rail (loaded by a short truck leg)", "Mills by truck", "Mills by rail", "Rail-fed export hubs", "Other hubs (truck to the terminal)", "Feed, seed, stocks"]]
+        st.dataframe(show.style.format("{:,.1f}"), use_container_width=True, height=380)
+        st.caption("Regional truck demand is what moves by truck, not what the mills could grind: the mills grind USDA's food use by class (not their capacity), and wheat that goes by rail only needs a truck "
+                   "from the farm or the country elevator to the loader. Rail is chosen over truck where it costs less on a haul of 250 miles or more.")
+
+
 def _feed_panel(inp, res, feed_args):
     """Corn demand by state with the distillers grains credit shown: what the ethanol plants grind, what comes back as feed, and what the animals still need."""
     f = _feed(*feed_args)
@@ -1012,11 +1055,14 @@ def _render(crop):
         base_inp = inp
         sup_w = ws.county_supply(base_inp, wsel["cls"], wsel["year"])
         inp = dict(base_inp, counties=[dict(c, supply_bu=float(v)) for c, v in zip(base_inp["counties"], sup_w)])
-        mills_ = ws.mill_plants() if wsel["cls"] is None else []
+        mills_ = ws.mill_plants(wsel["period"], wsel["cls"])
         inp = dm.with_new_plants(inp, mills_)
         if mills_:
-            st.caption(f"Flour mills: {len(mills_)} US mills from Sosland's Grain & Milling Annual 2027 (daily capacity by facility, together grinding USDA's food use of {ws.MILL_FOOD_USE_BU / 1e6:,.0f}M bu). "
-                       "They take all classes here; a single-class view still uses the regional milling capacity stand-in.")
+            ctl_ = ws.mill_controls(wsel["period"])
+            st.caption(f"Flour mills: {len(mills_)} US mills from Sosland's Grain & Milling Annual 2027 (daily capacity by facility). Together they grind USDA's food use of wheat less durum, "
+                       f"{sum(ctl_.values()) / 1e6:,.0f}M bu (" + ", ".join(f"{k} {v / 1e6:,.0f}" for k, v in ctl_.items()) + "), not their capacity. How a mill's grind splits by class follows its region "
+                       "(hard wheat for bread on the Plains, spring wheat in the north, soft wheat in the East and Midwest, soft white in the Northwest) and the classes it lists, fitted so each class adds up "
+                       "to USDA's: a prior to refine, since mills blend and buy classes from outside their region.")
         elif wsel["cls"] is None:
             st.caption("The flour mill list is not loaded here (it needs the MILLS_KEY secret), so milling uses the regional capacity stand-in.")
         nodes = ws.nodes_for(nodes, wsel["period"], wsel["cls"], base_inp)
@@ -1527,6 +1573,8 @@ def _render(crop):
                      hide_index=True, use_container_width=True)
     if corn and feed_args:
         _feed_panel(inp, res, feed_args)
+    if wheat:
+        _wheat_modes_panel(inp, res, res.get("supply_scale", 1.0))
     with st.expander("Terminal and node detail: a check on the hub volumes"):
         st.markdown(f"**Terminals drawing {label} {Wb}** (top 15, annual M bu)")
         rt = pd.DataFrame(river_t)

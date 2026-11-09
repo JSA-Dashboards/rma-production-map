@@ -186,12 +186,14 @@ def solve(inputs: dict, *, rate=CENTS_PER_BU_MILE, tau=1.0, river_premium=0.0, p
     for j, p in enumerate(plants):
         prem[j] = (plant_premium or {}).get(p["key"], 0.0)
     base = truck_cents(miles, truck) if truck else miles * rate
+    rail_used = None
     if plant_rail and truck:                                                                   # a plant on a railroad is reached by rail when that beats the truck on a long haul
         pm = miles[:, :len(plants)]
         rc = plant_rail["fixed"] + pm * plant_rail["rate"] + truck_cents(np.asarray(plant_rail["track"], float) * CIRC_TRACK, truck)[:, None]
         ok = (np.asarray(plant_rail["track"], float) <= plant_rail["reach"])[:, None] & np.asarray(plant_rail["mask"], bool)[None, :] & (pm >= plant_rail["min_miles"])
         base = base.copy()
-        base[:, :len(plants)] = np.where(ok & (rc < base[:, :len(plants)]), rc, base[:, :len(plants)])
+        rail_used = ok & (rc < base[:, :len(plants)])
+        base[:, :len(plants)] = np.where(rail_used, rc, base[:, :len(plants)])
     cost = base - prem[None, :]
     cost = np.where(np.isnan(cost), 1e6, cost)
     K = np.exp(-(cost - cost.min(axis=1, keepdims=True)) / max(tau, 1e-3))      # per-row shift cancels in the row scaling
@@ -307,7 +309,7 @@ def solve(inputs: dict, *, rate=CENTS_PER_BU_MILE, tau=1.0, river_premium=0.0, p
                 v[n_p:] = (river_total / max(rv, 1e-300)) if river_total > 0 else 0.0
     flow = u[:, None] * K * v[None, :]
     out = {"flow": flow, "supply": supply, "supply_scale": supply_scale, "need": need, "barge_in": barge_in, "scale": scale, "river_total": river_total, "other_total": other_total,
-           "miles": miles, "cost": cost}
+           "miles": miles, "cost": cost, "plant_rail": rail_used}
     if groups is not None:
         out["groups"] = [{"name": g["name"], "kind": g["kind"], "hub": g["hub"], "anchor": g.get("anchor"), "cols": g["cols"], "target_bu": g["target_bu"],
                           "drawn_bu": float(flow[:, g["cols"]].sum())} for g in groups]
