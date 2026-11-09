@@ -145,7 +145,7 @@ def _feed(year, fr_bu, util, credit, export_bu, wet_radius, cap, wet_items, shoc
 
 
 @st.cache_data(show_spinner="Solving the draw…")
-def _solve(crop, rate, tau, river_premium, util, lock_scale, area_items, cap_items, plant_premium_items, river_scale=1.0, scale_items=(), rate_items=(), pnw_reach=30.0, barge_items=(), tau_items=(), extra_items=(), supply_total=None, frac_items=(), truck=None, vol_resp=0.0, vol_band=0.10, wcls=None, wperiod='avg', wyear=None, local_max=0.70, feed=None, shocks=None):
+def _solve(crop, rate, tau, river_premium, util, lock_scale, area_items, cap_items, plant_premium_items, river_scale=1.0, scale_items=(), rate_items=(), pnw_reach=30.0, barge_items=(), tau_items=(), extra_items=(), supply_total=None, frac_items=(), truck=None, vol_resp=0.0, vol_band=0.10, wcls=None, wperiod='avg', wyear=None, local_max=0.70, feed=None, shocks=None, mill_rail=0.12):
     inp, shock_add = _apply_shocks(dm.load(PATHS[crop][0]), shocks)
     nodes, extra = dm.load_nodes(PATHS[crop][1]), {}
     if crop == 'wheat':                                           # the class's supply, the class's hub targets, and the regional domestic use
@@ -156,7 +156,7 @@ def _solve(crop, rate, tau, river_premium, util, lock_scale, area_items, cap_ite
         mills = ws.mill_plants() if wcls is None else []
         if mills:                                                 # the named flour mills take the milling; what is left of domestic use (feed, seed, stocks) is taken pro rata, lighter in the Northwest
             inp = dm.with_new_plants(inp, mills)
-            extra = dict(other_local=np.zeros(len(inp['counties'])), other_rest_weight=ws.rest_weight(inp))
+            extra = dict(other_local=np.zeros(len(inp['counties'])), other_rest_weight=ws.rest_weight(inp), plant_rail=ws.mill_plant_rail(inp, inp['plants'], mill_rail) if mill_rail > 0 else None)
     if crop == 'corn' and feed:                                   # livestock feed stays in its own region (net of the distillers grains credit); the rest of domestic use is pro rata
         f_ = _feed(*feed)
         sup_ = np.array([c['supply_bu'] for c in inp['counties']], float) * ((float(supply_total) / sum(c['supply_bu'] for c in inp['counties'])) if supply_total else 1.0)
@@ -1103,6 +1103,11 @@ def _render(crop):
         t_bu = t2.number_input("Bushels per truckload", 600.0, 1200.0, 950.0 if corn else 900.0 if wheat else 850.0, 10.0, key=f"draw_truck_bu_{crop}",
                                help="The standard load: 950 bushels of corn, 900 of wheat, 850 of soybeans.")
         t_mult = t3.number_input("Truck rate vs AMS (x)", 0.5, 2.0, 1.0, 0.05, key="draw_truck_mult", help="1.0 = the AMS rate, plus the fuel adjustment for the diesel price above.")
+        mill_rail_ = 0.0
+        if wheat:
+            mill_rail_ = st.number_input("Rail to flour mills (cents a bushel-mile, 0 = trucks only)", 0.0, 0.5, ws.MILL_RAIL["rate"], 0.01, key="draww_mill_rail",
+                                         help="A mill on a railroad is reached by rail instead of truck when that costs less on a haul of 250 miles or more, from a county within 60 miles of Class I track: "
+                                              f"truck to the loader, this rate for the rail miles and {ws.MILL_RAIL['fixed']:.0f} cents of handling. Without it the eastern mills could only buy by truck.")
         truck = dm.truck_curve(ams, t_region, diesel, t_bu, t_mult)
         st.caption("Trucking cost at 25 / 50 / 100 / 200 / 300 road miles, cents a bushel: " + " / ".join(f"{float(dm.truck_cents(m, truck)):.0f}" for m in (25, 50, 100, 200, 300))
                    + f" (AMS {', '.join(ams['quarters'][:1])} to {ams['quarters'][-1]} rates, diesel ${diesel:.2f}). The cost has a fixed part of about "
@@ -1232,7 +1237,7 @@ def _render(crop):
                  (("Bunge North America Destrehan LA", dest_add),), supply_info["total_bu"],
                  tuple(sorted(frac_items.items())), truck, 0.0, 0.0,
                  scales['wheat']['cls'] if wheat else None, scales['wheat']['period'] if wheat else 'avg', scales['wheat']['year'] if wheat else None, local_max,
-                      (feed_args[:-3] + (shk, feed_args[-2], feed_args[-1])) if feed_args else None, shk)
+                      (feed_args[:-3] + (shk, feed_args[-2], feed_args[-1])) if feed_args else None, shk, mill_rail_)
     res = _run(shocks_t)
     res0 = _run(None) if shocks_t else None
     plants_t, river_t, cty_t = dm.summarize(inp, res, state)

@@ -55,3 +55,18 @@ def test_mills_grind_usdas_food_use_and_skip_what_has_no_capacity(tmp_path, monk
     assert mills[1]["need_bu"] / mills[0]["need_bu"] == pytest.approx(30000 / 20000)
     assert len({m["key"] for m in mills}) == 2
     fm.load.cache_clear()
+
+
+def test_plant_rail_makes_a_long_haul_cheaper_only_for_plants_on_a_railroad():
+    import draw_model as dm
+    counties = [{"fips": "A", "state": "KS", "lat": 38.0, "lon": -98.0, "supply_bu": 1e8}]
+    inputs = {"counties": counties, "plants": [{"key": "rail", "state": "OH", "lat": 41.0, "lon": -83.0, "need_bu": 1e7}, {"key": "norail", "state": "OH", "lat": 41.0, "lon": -83.1, "need_bu": 1e7}],
+              "river": [], "miles": [[900, 900]]}
+    ams = dm.load_truck_rates()
+    truck = dm.truck_curve(ams, "North Central", ams["diesel_now"], 900)
+    pr = {"rate": 0.12, "fixed": 15.0, "min_miles": 250.0, "reach": 60.0, "track": [5.0], "mask": [True, False]}
+    base = dm.solve(inputs, truck=truck)["cost"]
+    with_rail = dm.solve(inputs, truck=truck, plant_rail=pr)["cost"]
+    assert with_rail[0, 0] < base[0, 0] and with_rail[0, 1] == base[0, 1]
+    far = dict(pr, track=[200.0])                                              # a county 200 miles from track cannot load a railcar
+    assert dm.solve(inputs, truck=truck, plant_rail=far)["cost"][0, 0] == base[0, 0]

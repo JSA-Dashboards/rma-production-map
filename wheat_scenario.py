@@ -182,6 +182,18 @@ def _region_index(inp: dict):
 MILL_FOOD_USE_BU = 956e6                         # USDA's food use of wheat a year: the bushels the named mills together grind (their run rate is whatever makes the list add to it)
 
 
+MILL_RAIL = {"rate": 0.12, "fixed": 15.0, "min_miles": 250.0}   # wheat to a mill on a railroad: cents per bushel-mile, cents of handling and switching, and the shortest haul that goes by rail
+                                                                  # (a cheaper rate, 0.05, let a Wichita mill draw from 480 miles away; 0.12 keeps the local mills local)
+
+
+def mill_plant_rail(inp: dict, plants: list, rate: float = None) -> dict:
+    """The plant_rail argument of draw_model.solve for the flour mills: rail from counties within 60 miles of Class I track to a mill that lists a railroad, when it costs less than the truck."""
+    import draw_model as dm
+    rs = dm.load_rail_service()
+    track = [min(rs.get(c["fips"], [9999] * 6)) for c in inp["counties"]]
+    return {**MILL_RAIL, **({"rate": float(rate)} if rate is not None else {}), "reach": 60.0, "track": track, "mask": [bool(p.get("rail")) for p in plants]}
+
+
 def mill_plants() -> list:
     """The US flour mills as named plants for the model (flour_mills.py, Sosland's Grain & Milling Annual 2027): each with its daily capacity in cwt turned into the bushels it grinds a year,
     scaled so the mills together grind USDA's food use. [] when the mill list is not available. Class-blind: a mill takes all classes here (its listed classes are kept in `classes`)."""
@@ -196,7 +208,7 @@ def mill_plants() -> list:
         seen[base] = seen.get(base, 0) + 1
         key = base if seen[base] == 1 else f"{base} #{seen[base]}"
         out.append({"key": key, "state": m["state"], "lat": m["lat"], "lon": m["lon"], "need_bu": m["cap_cwt_day"] * BU_PER_CWT_DAY * util, "city": m["city"],
-                    "company": m["company"], "cls": "Flour mill", "cap_cwt_day": m["cap_cwt_day"], "classes": m["classes"], "river": ""})
+                    "company": m["company"], "cls": "Flour mill", "cap_cwt_day": m["cap_cwt_day"], "classes": m["classes"], "rail": m["rail"], "river": ""})
     return out
 
 

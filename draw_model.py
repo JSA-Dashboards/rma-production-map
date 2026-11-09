@@ -115,7 +115,7 @@ def run_fraction(start_ym: str, ramp_months: int, my: int) -> float:
 
 def solve(inputs: dict, *, rate=CENTS_PER_BU_MILE, tau=1.0, river_premium=0.0, plant_premium=None, util=1.0, river_share=1.0, iters=400,
           nodes=None, lock_scale=1.0, area_mbu=None, pin_cap_mbu=None, river_scale=1.0, pnw_reach_miles=30.0, rail_scales=None, rail_rates=None, barge_fed=None, rail_tau=None, plant_extra_mbu=None, supply_total_bu=None, plant_run_fraction=None,
-          truck=None, volume_response=0.0, volume_band=0.10, other_local=None, other_rest_weight=None):
+          truck=None, volume_response=0.0, volume_band=0.10, other_local=None, other_rest_weight=None, plant_rail=None):
     """Flows (bu) county x buyer.
 
     rate           freight, cents per bushel-mile: used only when `truck` is None
@@ -128,6 +128,9 @@ def solve(inputs: dict, *, rate=CENTS_PER_BU_MILE, tau=1.0, river_premium=0.0, p
     other_local    per-county share (0-1) of its crop that stays for domestic use IN ITS OWN REGION ('other': milling, feed, seed, stocks). None = domestic use leaves every county pro
                    rata (corn, soybeans). Wheat passes each county's regional flour-milling share first (wheat_scenario.milling_local); whatever domestic use is left after that
                    is taken pro rata from what remains, in proportion to `other_rest_weight` (per county, default 1: a region that mostly exports gives up little of the rest).
+    plant_rail     {"rate": cents per bushel-mile, "fixed": cents of handling, "min_miles": shortest haul that goes by rail, "mask": bool per plant (has a railroad), "track": per-county miles to
+                   the nearest Class I track, "reach": most miles of truck to the loader}: a plant on a railroad is reached by rail instead of truck when that costs less (a haul of at least
+                   `min_miles` from a county within `reach` of track: truck to the loader, rail the rest, handling). The flour mills use it: wheat reaches the eastern mills by rail.
     tau            crossover softness, cents/bu: smaller = sharper territories, larger = more overlap
     river_premium  cents/bu the river terminals pay over the crush plants (net of their own basis), applied to every terminal
     plant_premium  {plant key: cents/bu} per-plant bid advantage
@@ -182,7 +185,14 @@ def solve(inputs: dict, *, rate=CENTS_PER_BU_MILE, tau=1.0, river_premium=0.0, p
     prem[n_p:] = river_premium
     for j, p in enumerate(plants):
         prem[j] = (plant_premium or {}).get(p["key"], 0.0)
-    cost = (truck_cents(miles, truck) if truck else miles * rate) - prem[None, :]
+    base = truck_cents(miles, truck) if truck else miles * rate
+    if plant_rail and truck:                                                                   # a plant on a railroad is reached by rail when that beats the truck on a long haul
+        pm = miles[:, :len(plants)]
+        rc = plant_rail["fixed"] + pm * plant_rail["rate"] + truck_cents(np.asarray(plant_rail["track"], float) * CIRC_TRACK, truck)[:, None]
+        ok = (np.asarray(plant_rail["track"], float) <= plant_rail["reach"])[:, None] & np.asarray(plant_rail["mask"], bool)[None, :] & (pm >= plant_rail["min_miles"])
+        base = base.copy()
+        base[:, :len(plants)] = np.where(ok & (rc < base[:, :len(plants)]), rc, base[:, :len(plants)])
+    cost = base - prem[None, :]
     cost = np.where(np.isnan(cost), 1e6, cost)
     K = np.exp(-(cost - cost.min(axis=1, keepdims=True)) / max(tau, 1e-3))      # per-row shift cancels in the row scaling
 
