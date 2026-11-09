@@ -6,11 +6,13 @@ from cryptography.fernet import Fernet
 import flour_mills as fm
 import wheat_scenario as ws
 
-CSV = ("state,city,company,multi_company,cap_cwt_day,storage_bu,classes,rail,page,lat,lon\n"
-       "KS,Wichita,Ardent Mills,1,27000,2500000,Hard red winter,BNSF;UP,129,37.69,-97.34\n"
-       "OH,Toledo,Toledo Flour Mill,1,40000,,Soft red,NS,134,41.66,-83.56\n"
-       "NE,Lincoln,ADM Milling Co.,1,,,Hard red winter,,131,40.81,-96.68\n"
-       "PR,San Juan,Ardent Mills,1,10000,3000000,,,135,18.47,-66.11\n")
+CSV = "\n".join([
+    "state,city,company,multi_company,cap_cwt_day,storage_bu,classes,rail,page,lat,lon",
+    "KS,Alphaville,Test Milling A,1,20000,900000,Hard red winter,BNSF;UP,1,38.00,-98.00",
+    "OH,Betaton,Test Milling B,1,30000,,Soft red,NS,2,40.50,-83.00",
+    "NE,Gammaburg,Test Milling C,1,,,Hard red winter,,3,41.00,-97.00",
+    "PR,Deltaville,Test Milling D,1,5000,100000,,,4,18.40,-66.00",
+]) + "\n"
 
 
 def test_encrypted_copy_round_trips(tmp_path, monkeypatch):
