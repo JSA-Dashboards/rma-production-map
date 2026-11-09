@@ -165,7 +165,12 @@ NASS_STAT_BASE = {
 }
 
 # ── Acreage Summary — principal crop params ─────────────────────────────────
-# Tuples so they're hashable for @st.cache_data
+# Tuples so they're hashable for @st.cache_data.
+# Sunflowers, DryBeans and Hay were wrong before 2026-11-09 (SUNFLOWERS, "BEANS, DRY EDIBLE" and hay AREA PLANTED match no NASS series, so those
+# columns were blank): the commodity is SUNFLOWER; dry beans are BEANS with class DRY EDIBLE, INCL CHICKPEAS; NASS publishes hay as AREA HARVESTED
+# only (a crop's own statisticcat_desc overrides AREA PLANTED in load_acreage_crop_hist). Checked against live NASS.
+# dry beans: NASS ended the INCL CHICKPEAS series in 2018 and started (EXCL CHICKPEAS) in 2019, no overlap, so both are pulled and
+# joined by year under DryBeans.
 _ACR_PARAMS: dict = {
     "Wheat":      (("commodity_desc","WHEAT"),("class_desc","ALL CLASSES")),
     "Corn":       (("commodity_desc","CORN"),),
@@ -173,14 +178,15 @@ _ACR_PARAMS: dict = {
     "Barley":     (("commodity_desc","BARLEY"),),
     "Oats":       (("commodity_desc","OATS"),),
     "Soybeans":   (("commodity_desc","SOYBEANS"),),
-    "Sunflowers": (("commodity_desc","SUNFLOWERS"),("class_desc","ALL CLASSES")),
+    "Sunflowers": (("commodity_desc","SUNFLOWER"),("class_desc","ALL CLASSES")),
     "Canola":     (("commodity_desc","CANOLA"),),
     "Cotton":     (("commodity_desc","COTTON"),("class_desc","ALL CLASSES")),
     "Rice":       (("commodity_desc","RICE"),),
     "Peanuts":    (("commodity_desc","PEANUTS"),),
     "SugarBeets": (("commodity_desc","SUGARBEETS"),),
-    "DryBeans":   (("commodity_desc","BEANS, DRY EDIBLE"),("class_desc","ALL CLASSES")),
-    "Hay":        (("commodity_desc","HAY"),("class_desc","ALL CLASSES")),
+    "DryBeans":   (("commodity_desc","BEANS"),("class_desc","DRY EDIBLE, INCL CHICKPEAS")),
+    "DryBeans2":  (("commodity_desc","BEANS"),("class_desc","DRY EDIBLE, (EXCL CHICKPEAS)")),   # 2019 on; joined to DryBeans by year
+    "Hay":        (("commodity_desc","HAY"),("class_desc","ALL CLASSES"),("statisticcat_desc","AREA HARVESTED")),
 }
 # crops that produce prevent-plant data through NASS
 _ACR_PP_CROPS = ("Corn","Soybeans","Wheat","Cotton","Sorghum","Rice","Peanuts","SugarBeets","DryBeans","Barley","Oats","Sunflowers","Canola")
@@ -6595,6 +6601,7 @@ def main():
                             _ck, _cp, _acr_start_yr, _acr_end_yr,
                             _acr_state_abbr, True, _session_ver()
                         )
+                _acr["DryBeans"] = {**_acr.get("DryBeans", {}), **_acr.pop("DryBeans2", {})}
 
             # ── RMA prevent-plant lookup (NASS QuickStats lacks PP data) ────────────
             _rma_pp_by_yr: dict = {}   # {yr: {crop_key: mil_ac}}
