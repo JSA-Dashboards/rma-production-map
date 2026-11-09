@@ -17,14 +17,14 @@ def test_encrypted_copy_round_trips(tmp_path, monkeypatch):
     key = Fernet.generate_key().decode()
     blob = tmp_path / "mills.enc"
     blob.write_bytes(fm.encrypt(CSV, key))
-    assert b"Wichita" not in blob.read_bytes()                                # nothing readable in the committed file
+    assert b"Alphaville" not in blob.read_bytes()                                # nothing readable in the committed file
     monkeypatch.setattr(fm, "PLAIN", str(tmp_path / "none.csv"))
     monkeypatch.setattr(fm, "BLOB", str(blob))
     monkeypatch.setenv("MILLS_KEY", key)
     fm.load.cache_clear()
     got = fm.load()
-    assert [m["city"] for m in got] == ["Wichita", "Toledo", "Lincoln", "San Juan"]
-    assert got[0]["cap_cwt_day"] == 27000 and got[2]["cap_cwt_day"] is None and got[0]["classes"] == ["Hard red winter"]
+    assert [m["city"] for m in got] == ["Alphaville", "Betaton", "Gammaburg", "Deltaville"]
+    assert got[0]["cap_cwt_day"] == 20000 and got[2]["cap_cwt_day"] is None and got[0]["classes"] == ["Hard red winter"]
     fm.load.cache_clear()
 
 
@@ -48,8 +48,8 @@ def test_mills_grind_usdas_food_use_and_skip_what_has_no_capacity(tmp_path, monk
     monkeypatch.setattr(fm, "PLAIN", str(plain))
     fm.load.cache_clear()
     mills = ws.mill_plants()
-    assert [m["state"] for m in mills] == ["KS", "OH"]                         # Lincoln reports no capacity, San Juan is not in the 48 states
+    assert [m["state"] for m in mills] == ["KS", "OH"]                         # Gammaburg reports no capacity, Deltaville is in Puerto Rico
     assert sum(m["need_bu"] for m in mills) == pytest.approx(ws.MILL_FOOD_USE_BU)
-    assert mills[1]["need_bu"] / mills[0]["need_bu"] == pytest.approx(40000 / 27000)
+    assert mills[1]["need_bu"] / mills[0]["need_bu"] == pytest.approx(30000 / 20000)
     assert len({m["key"] for m in mills}) == 2
     fm.load.cache_clear()
