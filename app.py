@@ -3001,7 +3001,7 @@ def load_echo_aquaculture(cache_ver: str = _CACHE_VERSION) -> pd.DataFrame:
 def _render_acreage_html(rows: list, years: list,
                           title: str, scope_label: str,
                           unit_mul: float = 1.0,
-                          unit_lbl: str = "mil ac") -> str:
+                          unit_lbl: str = "mil ac", logo_src: str = "") -> str:
     """
     Build PRX-style HTML table.
     rows: list of {col_key: value_or_None} dicts, one per year (oldest→newest).
@@ -3153,22 +3153,26 @@ def _render_acreage_html(rows: list, years: list,
     tbody += "</tbody>"
 
     scope_note = f" — {scope_label}" if scope_label and scope_label != "National" else ""
+    title_c = ACCENT
+    logo_html = (f'<img src="{logo_src}" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);height:60%;max-width:50%;object-fit:contain;'
+                 f'opacity:0.12;pointer-events:none;z-index:1;" />' if logo_src else "")
     html = f"""
+<div style="font-size:15px;font-weight:600;color:{title_c};margin:0 0 2px 0;text-align:left;font-family:sans-serif;">
+  US Major Field Crops Area Planted{scope_note}</div>
+<div style="font-size:0.72rem;color:{MUT};margin:0 0 8px 0;text-align:left;font-family:sans-serif;">
+  {title} &nbsp;|&nbsp; {unit_lbl}</div>
+<div style="position:relative;">
 <div style="overflow-x:auto;">
-<p style="font-size:0.9rem;font-weight:700;color:{TXT};margin:0 0 4px 0;text-align:center;">
-  US Major Field Crops Area Planted{scope_note}</p>
-<p style="font-size:0.72rem;color:{MUT};margin:0 0 8px 0;text-align:center;">
-  {title} &nbsp;|&nbsp; {unit_lbl}</p>
 <table style="border-collapse:collapse;width:100%;font-family:sans-serif;">
 {thead}{tbody}
 </table>
+</div>{logo_html}</div>
 <p style="font-size:0.7rem;color:{MUT};margin:4px 0 0 0;">
-  * CRP = Conservation Reserve Program (FSA). Prevent Plant from USDA RMA. Values in {unit_lbl}.</p>
-</div>"""
+  * CRP = Conservation Reserve Program (FSA). Prevent Plant from USDA RMA. Values in {unit_lbl}.</p>"""
     return html
 
 
-def _render_baseline_html(first_proj_year: int = 2026) -> str:
+def _render_baseline_html(first_proj_year: int = 2026, logo_src: str = "") -> str:
     """USDA's long-term baseline acreage (usda_baseline.py) as its own table: planted and harvested acres of the eight major crops, CRP and the total, one row per crop year, in million acres.
     Styled apart from the history table (slate headers) so a projection is never read as a survey number."""
     HDR1, HDR2, UNIT = "#475569", "#334155", "#eef2f6"
@@ -3203,17 +3207,21 @@ def _render_baseline_html(first_proj_year: int = 2026) -> str:
         cells += _td(f"{r['crp']:.1f}", bg) + _td(f"{r['total_crp']:.1f}", bg, bold=True)
         cells += "".join(_td(f"{r['harvested'][c]:.1f}", bg) for c in ub.CROPS) + _td(f"{r['harv_total']:.1f}", bg, bold=True)
         body += f"<tr>{cells}</tr>"
+    title_c = ACCENT
+    logo_html = (f'<img src="{logo_src}" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);height:60%;max-width:50%;object-fit:contain;'
+                 f'opacity:0.12;pointer-events:none;z-index:1;" />' if logo_src else "")
     return f"""
+<div style="font-size:15px;font-weight:600;color:{title_c};margin:0 0 2px 0;text-align:left;font-family:sans-serif;">
+  USDA Baseline: US Acreage Projections, 2025-2036</div>
+<div style="font-size:0.72rem;color:{MUTED};margin:0 0 8px 0;text-align:left;font-family:sans-serif;">
+  National, million acres &nbsp;|&nbsp; projections completed October 2026 &nbsp;|&nbsp; 25-26 is the base year</div>
+<div style="position:relative;">
 <div style="overflow-x:auto;">
-<p style="font-size:0.9rem;font-weight:700;color:{TEXT};margin:0 0 4px 0;text-align:center;">
-  USDA Baseline: US Acreage Projections, 2025-2036</p>
-<p style="font-size:0.72rem;color:{MUTED};margin:0 0 8px 0;text-align:center;">
-  National, million acres &nbsp;|&nbsp; projections completed October 2026 &nbsp;|&nbsp; 25-26 is the base year</p>
 <table style="border-collapse:collapse;width:100%;font-family:sans-serif;">
 <thead><tr>{h1}</tr><tr>{h2}</tr><tr>{h3}</tr></thead><tbody>{body}</tbody>
 </table>
-<p style="font-size:0.7rem;color:{MUTED};margin:4px 0 0 0;">* CRP = Conservation Reserve Program, an assumption of the baseline. Crop years are the calendar planting year.</p>
-</div>"""
+</div>{logo_html}</div>
+<p style="font-size:0.7rem;color:{MUTED};margin:4px 0 0 0;">* CRP = Conservation Reserve Program, an assumption of the baseline. Crop years are the calendar planting year.</p>"""
 
 
 def _state_pct_change(cur_df: pd.DataFrame, cmp_df: pd.DataFrame) -> pd.DataFrame:
@@ -6777,7 +6785,7 @@ def main():
 
             _html = _render_acreage_html(
                 _acr_rows, _acr_cal_yrs, _tbl_title, _scope_lbl,
-                unit_mul=_tbl_mul, unit_lbl=_tbl_unit,
+                unit_mul=_tbl_mul, unit_lbl=_tbl_unit, logo_src=logo_50yr,
             )
             st.markdown(_html, unsafe_allow_html=True)
 
@@ -6801,7 +6809,7 @@ def main():
                     "assumptions, and are not a forecast of any single year.</p></div>",
                     unsafe_allow_html=True,
                 )
-                st.markdown(_render_baseline_html(), unsafe_allow_html=True)
+                st.markdown(_render_baseline_html(logo_src=logo_50yr), unsafe_allow_html=True)
                 st.markdown(
                     f"<p style='font-size:0.72rem;color:{MUTED};margin-top:8px;'>Source: {ub.SOURCE} "
                     "The baseline's cotton is upland cotton only and its total is the eight crops shown (it has no sunflower, canola or hay), "
