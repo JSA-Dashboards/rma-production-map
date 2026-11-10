@@ -18,6 +18,7 @@ import geopandas as gpd
 from shapely.geometry import shape
 from demand_module import load_asd_demand, load_canola_asd, livestock_carried
 import heat_map
+import usda_baseline as ub
 
 _HERE = Path(__file__).parent
 st.set_page_config(
@@ -3165,6 +3166,54 @@ def _render_acreage_html(rows: list, years: list,
   * CRP = Conservation Reserve Program (FSA). Prevent Plant from USDA RMA. Values in {unit_lbl}.</p>
 </div>"""
     return html
+
+
+def _render_baseline_html(first_proj_year: int = 2026) -> str:
+    """USDA's long-term baseline acreage (usda_baseline.py) as its own table: planted and harvested acres of the eight major crops, CRP and the total, one row per crop year, in million acres.
+    Styled apart from the history table (slate headers) so a projection is never read as a survey number."""
+    HDR1, HDR2, UNIT = "#475569", "#334155", "#eef2f6"
+    BASE_BG, PROJ_BG, PROJ_BG2 = "#f1f5f9", "#ffffff", "#f8fafc"
+    W = "white"
+    short = {"Corn": "Corn", "Sorghum": "Sorg", "Barley": "Barley", "Oats": "Oats", "Wheat": "Wheat", "Rice": "Rice", "Upland cotton": "Upl.<br>Cotton", "Soybeans": "Soy"}
+
+    def _th(text, bg, rowspan=1, colspan=1):
+        rs = f' rowspan="{rowspan}"' if rowspan > 1 else ""
+        cs = f' colspan="{colspan}"' if colspan > 1 else ""
+        return (f'<th{rs}{cs} style="background:{bg};color:{W};padding:4px 6px;text-align:center;font-size:0.72rem;'
+                f'border:1px solid #cbd5e1;white-space:nowrap;">{text}</th>')
+
+    def _td(text, bg, bold=False, align="right", fg=TEXT):
+        b = "font-weight:600;" if bold else ""
+        return (f'<td style="background:{bg};color:{fg};{b}padding:3px 7px;text-align:{align};font-size:0.72rem;'
+                f'border:1px solid #dde4ec;white-space:nowrap;">{text}</td>')
+
+    n = len(ub.CROPS)
+    h1 = (_th("Crop<br>Year", HDR1, rowspan=3) + _th("Planted acreage, eight major crops", HDR2, colspan=n + 1) + _th("CRP", HDR2, colspan=2)
+          + _th("Harvested acreage, eight major crops", HDR2, colspan=n + 1))
+    h2 = ("".join(_th(short[c], HDR1) for c in ub.CROPS) + _th("Total", HDR1) + _th("CRP*", HDR1) + _th("Planted<br>+ CRP", HDR1)
+          + "".join(_th(short[c], HDR1) for c in ub.CROPS) + _th("Total", HDR1))
+    h3 = "".join(_td("mil ac", UNIT, align="center", fg=MUTED) for _ in range(2 * (n + 1) + 2))
+    body = ""
+    for i, r in enumerate(ub.rows()):
+        proj = r["year"] >= first_proj_year
+        bg = (PROJ_BG2 if i % 2 else PROJ_BG) if proj else BASE_BG
+        lab = f"{str(r['year'])[2:]}-{str(r['year'] + 1)[2:]}" + ("" if proj else " (base)")
+        cells = _td(lab, bg, bold=True, align="center")
+        cells += "".join(_td(f"{r['planted'][c]:.1f}", bg) for c in ub.CROPS) + _td(f"{r['total']:.1f}", bg, bold=True)
+        cells += _td(f"{r['crp']:.1f}", bg) + _td(f"{r['total_crp']:.1f}", bg, bold=True)
+        cells += "".join(_td(f"{r['harvested'][c]:.1f}", bg) for c in ub.CROPS) + _td(f"{r['harv_total']:.1f}", bg, bold=True)
+        body += f"<tr>{cells}</tr>"
+    return f"""
+<div style="overflow-x:auto;">
+<p style="font-size:0.9rem;font-weight:700;color:{TEXT};margin:0 0 4px 0;text-align:center;">
+  USDA Baseline: US Acreage Projections, 2025-2036</p>
+<p style="font-size:0.72rem;color:{MUTED};margin:0 0 8px 0;text-align:center;">
+  National, million acres &nbsp;|&nbsp; projections completed October 2026 &nbsp;|&nbsp; 25-26 is the base year</p>
+<table style="border-collapse:collapse;width:100%;font-family:sans-serif;">
+<thead><tr>{h1}</tr><tr>{h2}</tr><tr>{h3}</tr></thead><tbody>{body}</tbody>
+</table>
+<p style="font-size:0.7rem;color:{MUTED};margin:4px 0 0 0;">* CRP = Conservation Reserve Program, an assumption of the baseline. Crop years are the calendar planting year.</p>
+</div>"""
 
 
 def _state_pct_change(cur_df: pd.DataFrame, cmp_df: pd.DataFrame) -> pd.DataFrame:
@@ -6578,6 +6627,14 @@ def main():
                     "Years shown", [10, 15, 20],
                     horizontal=True, key="acr_n_yrs", index=1,
                 )
+            with _ac3:
+                _acr_show_bl = st.toggle(
+                    "Show USDA baseline projections", value=True, key="acr_baseline",
+                    disabled=(_acr_state != "National"),
+                    help="USDA's long-term baseline acreage to 2036, shown apart from the history below and as dashed lines on the trend chart. "
+                         "National only: the baseline has no state detail.",
+                )
+                _acr_show_bl = bool(_acr_show_bl) and _acr_state == "National"
 
             _acr_state_abbr = "" if _acr_state == "National" else _acr_state
             _acr_end_yr   = max(NASS_YEARS[-1], FORECAST_YEAR)
@@ -6721,6 +6778,27 @@ def main():
                 unsafe_allow_html=True,
             )
 
+            # ── USDA baseline: forward-looking projections, apart from the history above ──
+            if _acr_show_bl:
+                st.markdown(
+                    f"<div style='margin-top:28px;border-top:3px solid #475569;padding-top:10px;'>"
+                    f"<h4 style='color:#475569;margin:0 0 2px 0;font-size:1rem;font-weight:600;'>"
+                    "USDA Baseline: forward-looking projections</h4>"
+                    f"<p style='color:{MUTED};font-size:0.78rem;margin:0 0 10px 0;'>"
+                    "These are not survey numbers. They are USDA's long-term projections of planted and harvested acres, made with its macroeconomic and policy "
+                    "assumptions, and are not a forecast of any single year.</p></div>",
+                    unsafe_allow_html=True,
+                )
+                st.markdown(_render_baseline_html(), unsafe_allow_html=True)
+                st.markdown(
+                    f"<p style='font-size:0.72rem;color:{MUTED};margin-top:8px;'>Source: {ub.SOURCE} "
+                    "The baseline's cotton is upland cotton only and its total is the eight crops shown (it has no sunflower, canola or hay), "
+                    "so those columns are not the same as the history table's.</p>",
+                    unsafe_allow_html=True,
+                )
+            elif _acr_state != "National":
+                st.caption("The USDA baseline projections are national only; choose National to show them.")
+
             # ── Acreage Trend Chart ───────────────────────────────────────────────
             st.markdown(
                 f"<div style='margin-top:28px;'>"
@@ -6787,6 +6865,17 @@ def main():
                             "%{x}: %{y:.2f}M ac<extra></extra>"
                         ),
                     ))
+                    if _acr_show_bl and _ckey in ub.CHART_MATCH:           # USDA baseline: dashed, from the last year of history on
+                        _bl = ub.series(ub.CHART_MATCH[_ckey])
+                        _last_hist = max((y for y, v in zip(_acr_cal_yrs, _ys) if v is not None), default=_acr_end_yr)
+                        _bl_yrs = [y for y in ub.YEARS if y >= _last_hist]
+                        _cfig.add_trace(go.Scatter(
+                            x=[_mkt_yr(y) for y in _bl_yrs], y=[_bl[y] for y in _bl_yrs],
+                            mode="lines+markers", name=f"{_clbl} (USDA baseline)",
+                            line=dict(color=_cc, width=2, dash="dash"),
+                            marker=dict(color="#ffffff", size=6, line=dict(color=_cc, width=1.5)),
+                            hovertemplate=(f"<b>{_clbl}, USDA baseline projection</b><br>" "%{x}: %{y:.2f}M ac<extra></extra>"),
+                        ))
                 _cfig.update_layout(
                     yaxis_title="Million Acres",
                     xaxis_title="Marketing Year",
@@ -6812,6 +6901,8 @@ def main():
                     ),
                 )
                 _chart(_cfig, use_container_width=True)
+                if _acr_show_bl and any(_CHART_COLS[c] in ub.CHART_MATCH for c in _acr_chart_sel):
+                    st.caption("Dashed lines are the USDA baseline projections (national, from the last year of history on). Series without a matching baseline definition are not projected.")
 
     # ══════════════════════════════════════════════════════════════════════════
     # LIVESTOCK INVENTORY TAB

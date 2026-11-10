@@ -99,3 +99,38 @@ def test_mill_class_needs_add_up_to_the_class_controls_and_follow_capacity():
 def test_mills_that_list_no_railroad_are_on_one_when_big():
     plants = [{"rail": [], "cap_cwt_day": 15000}, {"rail": [], "cap_cwt_day": 800}, {"rail": ["UP"], "cap_cwt_day": 800}]
     assert ws.mill_plant_rail({"counties": [{"fips": "01001"}]}, plants)["mask"] == [True, False, True]
+
+
+def test_imported_spring_wheat_is_credited_to_the_states_it_is_delivered_to_and_capped():
+    states = ["NY", "NY", "OH", "ND", "KS"]
+    hrs = np.array([10e6, 30e6, 20e6, 100e6, 5e6])                                # hard red spring grind of each mill
+    shares = {"NY": 0.5, "OH": 0.3, "ND": 0.1, "MN": 0.1}                        # MN has no mill: its share goes on to the others
+    cr = ws.mill_import_credit(states, hrs, 60e6, shares)
+    assert cr.sum() == pytest.approx(60e6)                                        # all of it is placed
+    assert cr[0] / cr[1] == pytest.approx(10 / 30)                               # inside a state, by the mill's spring wheat grind
+    assert cr[4] == 0                                                              # Kansas is not on the list of delivery states
+    assert (cr <= 0.9 * hrs + 1).all()                                             # no mill takes more than the cap
+    assert cr[2] == pytest.approx(0.9 * 20e6)                                      # Ohio is full, so the surplus moves to New York and North Dakota
+    small = ws.mill_import_credit(states, hrs, 1e12, shares)
+    assert small.sum() == pytest.approx(0.9 * (hrs[:4].sum()))                    # more than the mills can use is not credited
+
+
+def test_mills_take_their_credit_off_what_they_draw_from_counties(tmp_path, monkeypatch):
+    plain = tmp_path / "m.csv"
+    plain.write_text(CSV, encoding="utf-8")
+    monkeypatch.setattr(fm, "PLAIN", str(plain))
+    fm.load.cache_clear()
+    gross = ws.mill_plants("avg", "HRS")
+    net = ws.mill_plants("avg", "HRS", 20e6)
+    assert sum(m["import_bu"] for m in net) == pytest.approx(20e6)
+    for g, n in zip(gross, net):
+        assert n["need_bu"] == pytest.approx(g["need_bu"] - n["import_bu"]) and n["class_need"] == g["class_need"]      # the gross grind is unchanged
+    hrw = ws.mill_plants("avg", "HRW", 20e6)
+    assert [m["need_bu"] for m in hrw] == pytest.approx([m["need_bu"] for m in ws.mill_plants("avg", "HRW")])            # only the spring wheat need is reduced
+    fm.load.cache_clear()
+
+
+def test_hrs_imports_follow_usda_by_class():
+    assert 50e6 < ws.hrs_imports("avg") < 80e6
+    assert ws.hrs_imports(2024) == pytest.approx(79e6)
+    assert sum(ws.import_state_shares().values()) == pytest.approx(1.0)

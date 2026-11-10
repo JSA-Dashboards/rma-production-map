@@ -144,14 +144,14 @@ def _feed(year, fr_bu, util, credit, export_bu, wet_radius, cap, wet_items, shoc
             "by_plant": cr["by_plant"], "sbm_lb": out["sbm_lb"], "k": out["k"], "by_species": out["gross_by_species"], "grind": grind, "year": year, "credit_bu_per_bu": credit}
 
 
-def _solve_wheat_combined(inp0, nodes0, kw, wperiod, wyear, mill_rail):
+def _solve_wheat_combined(inp0, nodes0, kw, wperiod, wyear, mill_rail, import_bu=0.0):
     """The all-classes wheat draw as one solve built from the class runs. Each class (HRW, SRW, White, HRS, Durum) is solved on its own supply, its own FGIS hub targets and the bushels the mills
     grind of it (USDA food use by class), over the same counties, mills and hubs; the flows are then added. So a hard red spring bushel cannot fill a soft red mill and the class controls hold in
     the total. Durum has no flour mills here (it is milled elsewhere), so it only goes to hubs and the rest."""
     runs = []
     for cls in ws.CLASSES:
         sup = ws.county_supply(inp0, cls, wyear)
-        mills = ws.mill_plants(wperiod, cls) or [dict(m, need_bu=0.0) for m in ws.mill_plants(wperiod, None)]
+        mills = ws.mill_plants(wperiod, cls, import_bu) or [dict(m, need_bu=0.0) for m in ws.mill_plants(wperiod, None, import_bu)]
         inp = dict(inp0, counties=[dict(c, supply_bu=float(v)) for c, v in zip(inp0['counties'], sup)])
         inp = dm.with_new_plants(inp, mills)
         plant_rail = ws.mill_plant_rail(inp, inp['plants'], mill_rail) if mill_rail > 0 else None
@@ -170,20 +170,20 @@ def _solve_wheat_combined(inp0, nodes0, kw, wperiod, wyear, mill_rail):
 
 
 @st.cache_data(show_spinner="Solving the draw…")
-def _solve(crop, rate, tau, river_premium, util, lock_scale, area_items, cap_items, plant_premium_items, river_scale=1.0, scale_items=(), rate_items=(), pnw_reach=30.0, barge_items=(), tau_items=(), extra_items=(), supply_total=None, frac_items=(), truck=None, vol_resp=0.0, vol_band=0.10, wcls=None, wperiod='avg', wyear=None, local_max=0.70, feed=None, shocks=None, mill_rail=0.12):
+def _solve(crop, rate, tau, river_premium, util, lock_scale, area_items, cap_items, plant_premium_items, river_scale=1.0, scale_items=(), rate_items=(), pnw_reach=30.0, barge_items=(), tau_items=(), extra_items=(), supply_total=None, frac_items=(), truck=None, vol_resp=0.0, vol_band=0.10, wcls=None, wperiod='avg', wyear=None, local_max=0.70, feed=None, shocks=None, mill_rail=0.12, import_bu=0.0):
     inp, shock_add = _apply_shocks(dm.load(PATHS[crop][0]), shocks)
     nodes, extra = dm.load_nodes(PATHS[crop][1]), {}
-    if crop == 'wheat' and wcls is None and ws.mill_plants(wperiod, None):     # all classes: one solve made of the class runs, so each class stays in its own lane
+    if crop == 'wheat' and wcls is None and ws.mill_plants(wperiod, None, import_bu):     # all classes: one solve made of the class runs, so each class stays in its own lane
         return _solve_wheat_combined(inp, nodes, dict(rate=rate, tau=tau, river_premium=river_premium, util=util, lock_scale=lock_scale, area_mbu=dict(area_items), pin_cap_mbu=dict(cap_items),
                                                       plant_premium=dict(plant_premium_items), river_scale=river_scale, rail_scales=dict(scale_items), rail_rates=dict(rate_items),
                                                       pnw_reach_miles=pnw_reach, barge_fed=dict(barge_items), rail_tau=dict(tau_items), plant_extra_mbu={**dict(extra_items), **shock_add},
-                                                      plant_run_fraction=dict(frac_items), truck=truck, volume_response=vol_resp, volume_band=vol_band), wperiod, wyear, mill_rail)
+                                                      plant_run_fraction=dict(frac_items), truck=truck, volume_response=vol_resp, volume_band=vol_band), wperiod, wyear, mill_rail, import_bu)
     if crop == 'wheat':                                           # the class's supply, the class's hub targets, and the regional domestic use
         sup = ws.county_supply(inp, wcls, wyear)
         nodes = ws.nodes_for(nodes, wperiod, wcls, inp)
         extra = dict(other_local=ws.milling_local(inp, local_max), other_rest_weight=ws.rest_weight(inp))
         inp = dict(inp, counties=[dict(c, supply_bu=float(v)) for c, v in zip(inp['counties'], sup)])
-        mills = ws.mill_plants(wperiod, wcls)
+        mills = ws.mill_plants(wperiod, wcls, import_bu)
         if mills:                                                 # the named flour mills take the milling; what is left of domestic use (feed, seed, stocks) is taken pro rata, lighter in the Northwest
             inp = dm.with_new_plants(inp, mills)
             extra = dict(other_local=np.zeros(len(inp['counties'])), other_rest_weight=ws.rest_weight(inp), plant_rail=ws.mill_plant_rail(inp, inp['plants'], mill_rail) if mill_rail > 0 else None)
@@ -957,7 +957,15 @@ def _wheat_modes_panel(inp, res, sup_scale=1.0):
     direct = F[:, :n_p] * ~used
     haul = float(np.nansum(direct * mp) / max(direct.sum(), 1.0))
     with st.expander("Wheat by truck and by rail, by state of origin (M bu)"):
-        t = st.columns(4)
+        imp_by_state: dict = {}
+        for p_ in inp["plants"]:
+            if p_.get("import_bu"):
+                imp_by_state[p_["state"]] = imp_by_state.get(p_["state"], 0.0) + p_["import_bu"] / 1e6
+        t = st.columns(5 if imp_by_state else 4)
+        if imp_by_state:
+            t[4].metric("Canadian spring wheat credited to mills", f"{sum(imp_by_state.values()):,.0f} M bu",
+                        help="Imported wheat the mills grind, credited by state: " + ", ".join(f"{s} {v:,.1f}" for s, v in sorted(imp_by_state.items(), key=lambda x: -x[1])[:8]) + " M bu. "
+                             "It is not drawn from US counties.")
         t[0].metric("Direct by truck", f"{tot['Truck (direct)']:,.0f} M bu", help="To the mills that are not reached by rail, and to the river terminals.")
         t[1].metric("By rail", f"{tot['Rail (loaded by a short truck leg)']:,.0f} M bu", help="To the mills reached by rail and to the Pacific Northwest, Texas Gulf and Mexico hubs. The county sends it by truck only as far as the loader.")
         t[2].metric("Average direct truck haul to a mill", f"{haul:,.0f} mi")
@@ -1080,12 +1088,20 @@ def _render(crop):
     shocks_t = None if wheat else _shock_controls(crop, inp)
     inp, _ = _apply_shocks(inp, shocks_t)
     scales, scenario_text = _export_panel_wheat() if wheat else _export_panel_corn() if corn else _export_panel()
+    import_bu_ = 0.0
     if wheat:                                                                  # this class's supply and hub targets replace the all-wheat averages for everything below
         wsel = scales["wheat"]
         base_inp = inp
         sup_w = ws.county_supply(base_inp, wsel["cls"], wsel["year"])
         inp = dict(base_inp, counties=[dict(c, supply_bu=float(v)) for c, v in zip(base_inp["counties"], sup_w)])
-        mills_ = ws.mill_plants(wsel["period"], wsel["cls"])
+        if ws.mill_plants(wsel["period"], None):
+            imp_default = ws.hrs_imports(wsel["period"]) / 1e6
+            import_bu_ = 1e6 * st.number_input(
+                "Canadian spring wheat milled in the US (M bu a year, 0 = not credited)", 0.0, 300.0, round(imp_default, 1), 1.0, key=f"draww_imp_{wsel['period']}",
+                help="USDA's imports of hard red spring wheat (WASDE, by class), nearly all of it Canadian and nearly all of it milled. It is credited to the mills, in the states Census says Canadian "
+                     "wheat is delivered to (New York, Ohio, Wisconsin, Minnesota, North Dakota, Pennsylvania and others), in proportion to each mill's spring wheat grind and at most 90% of a "
+                     "state's: those mills then draw less from US counties, which frees the US spring wheat for the export hubs. Set 0 to leave imports out.")
+        mills_ = ws.mill_plants(wsel["period"], wsel["cls"], import_bu_)
         inp = dm.with_new_plants(inp, mills_)
         if mills_:
             ctl_ = ws.mill_controls(wsel["period"])
@@ -1313,7 +1329,7 @@ def _render(crop):
                  (("Bunge North America Destrehan LA", dest_add),), supply_info["total_bu"],
                  tuple(sorted(frac_items.items())), truck, 0.0, 0.0,
                  scales['wheat']['cls'] if wheat else None, scales['wheat']['period'] if wheat else 'avg', scales['wheat']['year'] if wheat else None, local_max,
-                      (feed_args[:-3] + (shk, feed_args[-2], feed_args[-1])) if feed_args else None, shk, mill_rail_)
+                      (feed_args[:-3] + (shk, feed_args[-2], feed_args[-1])) if feed_args else None, shk, mill_rail_, import_bu_)
     res = _run(shocks_t)
     res0 = _run(None) if shocks_t else None
     plants_t, river_t, cty_t = dm.summarize(inp, res, state)
@@ -1326,7 +1342,8 @@ def _render(crop):
     if wheat and res.get("by_class") and res.get("target_scale", 1.0) < 0.999:
         short = ", ".join(f"{c} {d['target_scale']:.0%}" for c, d in res["by_class"].items() if d["target_scale"] < 0.999)
         st.warning(f"All classes are solved together, class by class. After the mills take their USDA food use, the US crop of some classes is short of what FGIS inspected for export, so their hub "
-                   f"targets were cut to: {short}. Canadian spring wheat and stocks are not added to supply yet.")
+                   f"targets were cut to: {short}. " + ("Canadian spring wheat is credited to the mills only; stocks are not added to supply." if import_bu_ > 0
+                                                         else "Canadian spring wheat and stocks are not added to supply."))
     elif res.get("target_scale", 1.0) < 0.999:
         st.warning(f"The hub targets add up to more than the {Wb} left after {'ethanol' if corn else 'milling' if wheat else 'crush'}, so they were scaled to {res['target_scale']:.0%}. "
                    "Lower the hub targets or raise plant run rates.")

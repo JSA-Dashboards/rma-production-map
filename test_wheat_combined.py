@@ -44,3 +44,21 @@ def test_class_runs_add_up_to_usda_food_use_and_fgis_hub_targets(mills):
     assert 0.0 < res["target_scale"] <= 1.0
     grown = sum(sum(ws.county_supply(inp, c, None)) for c in ws.CLASSES)
     assert flow.sum() + res["other_total"] == pytest.approx(grown, rel=1e-3)                           # every bushel grown is placed or left to feed, seed and stocks
+
+
+def test_spring_wheat_imports_credit_the_mills_and_free_us_spring_wheat_for_the_hubs(mills):
+    ams = dm.load_truck_rates()
+    truck = dm.truck_curve(ams, "North Central", ams["diesel_now"], 900)
+    inp = dm.load(dt.PATHS["wheat"][0])
+    nodes = dm.load_nodes(dt.PATHS["wheat"][1])
+    kw = dict(rate=0.0, tau=20.0, river_premium=0.0, util=1.0, lock_scale=1.0, area_mbu={}, pin_cap_mbu={}, plant_premium={}, river_scale=1.0, rail_scales={}, rail_rates={},
+              pnw_reach_miles=60.0, barge_fed={}, rail_tau={}, plant_extra_mbu={}, plant_run_fraction={}, truck=truck, volume_response=0.0, volume_band=0.10)
+    n_p = len(ws.mill_plants("avg", None))
+    base = dt._solve_wheat_combined(inp, nodes, kw, "avg", None, 0.12, 0.0)
+    imp = 40e6
+    with_imp = dt._solve_wheat_combined(inp, nodes, kw, "avg", None, 0.12, imp)
+    drawn0, drawn1 = base["flow"][:, :n_p].sum(), with_imp["flow"][:, :n_p].sum()
+    assert drawn0 - drawn1 == pytest.approx(imp, rel=1e-3)                                             # the mills draw that much less from US counties
+    assert with_imp["by_class"]["HRS"]["flow"][:, :n_p].sum() == pytest.approx(ws.mill_controls("avg")["HRS"] - imp, rel=1e-3)
+    assert with_imp["by_class"]["HRS"]["target_scale"] >= base["by_class"]["HRS"]["target_scale"]       # US spring wheat freed for the export hubs
+    assert with_imp["flow"][:, n_p:].sum() >= base["flow"][:, n_p:].sum() - 1.0
