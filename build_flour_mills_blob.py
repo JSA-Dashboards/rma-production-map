@@ -31,13 +31,16 @@ def get_key() -> str:
 
 
 def main():
-    if not os.path.exists(fm.PLAIN):
-        sys.exit(f"{fm.PLAIN} is missing")
-    text = open(fm.PLAIN, encoding="utf-8", newline="").read()
-    blob = fm.encrypt(text, get_key())
-    with open(fm.BLOB, "wb") as fh:
-        fh.write(blob)
-    print(f"wrote {fm.BLOB}: {len(blob):,} bytes, {text.count(chr(10))} lines")
+    key = get_key()
+    for plain, blob in ((fm.PLAIN, fm.BLOB), (fm.DURUM_PLAIN, fm.DURUM_BLOB)):
+        if not os.path.exists(plain):
+            print(f"{plain} is missing, skipped")
+            continue
+        text = open(plain, encoding="utf-8", newline="").read()
+        data = fm.encrypt(text, key)
+        with open(blob, "wb") as fh:
+            fh.write(data)
+        print(f"wrote {blob}: {len(data):,} bytes, {text.count(chr(10))} lines")
 
 
 if __name__ == "__main__":

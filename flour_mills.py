@@ -18,6 +18,8 @@ from functools import lru_cache
 HERE = os.path.dirname(os.path.abspath(__file__))
 PLAIN = os.path.join(HERE, "private", "flour_mills_gma2027.csv")          # on the machine that transcribed it; git-ignored
 BLOB = os.path.join(HERE, "data", "wheat", "flour_mills.enc")
+DURUM_PLAIN = os.path.join(HERE, "private", "durum_mills_gma2027.csv")       # Sosland's "Durum Mills" (printed page 148), US mills; git-ignored
+DURUM_BLOB = os.path.join(HERE, "data", "wheat", "durum_mills.enc")
 
 
 def _key() -> str:
@@ -46,18 +48,28 @@ def encrypt(text: str, key: str) -> bytes:
     return Fernet(key.encode()).encrypt(text.encode("utf-8"))
 
 
-@lru_cache(maxsize=1)
-def load() -> list:
-    """The mills, or [] when neither the local transcription nor the encrypted copy plus its key is available."""
-    if os.path.exists(PLAIN):
-        with open(PLAIN, encoding="utf-8", newline="") as fh:
+def _read(plain: str, blob: str) -> list:
+    if os.path.exists(plain):
+        with open(plain, encoding="utf-8", newline="") as fh:
             return _parse(fh.read())
     k = _key()
-    if k and os.path.exists(BLOB):
+    if k and os.path.exists(blob):
         try:
             from cryptography.fernet import Fernet
-            with open(BLOB, "rb") as fh:
+            with open(blob, "rb") as fh:
                 return _parse(Fernet(k.encode()).decrypt(fh.read()).decode("utf-8"))
         except Exception:
             return []
     return []
+
+
+@lru_cache(maxsize=1)
+def load() -> list:
+    """The mills, or [] when neither the local transcription nor the encrypted copy plus its key is available."""
+    return _read(PLAIN, BLOB)
+
+
+@lru_cache(maxsize=1)
+def load_durum() -> list:
+    """The US durum (semolina) mills, from the same book and kept the same way as the flour mills: [] without the local file or the key."""
+    return _read(DURUM_PLAIN, DURUM_BLOB)

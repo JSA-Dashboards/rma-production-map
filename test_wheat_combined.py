@@ -62,3 +62,30 @@ def test_spring_wheat_imports_credit_the_mills_and_free_us_spring_wheat_for_the_
     assert with_imp["by_class"]["HRS"]["flow"][:, :n_p].sum() == pytest.approx(ws.mill_controls("avg")["HRS"] - imp, rel=1e-3)
     assert with_imp["by_class"]["HRS"]["target_scale"] >= base["by_class"]["HRS"]["target_scale"]       # US spring wheat freed for the export hubs
     assert with_imp["flow"][:, n_p:].sum() >= base["flow"][:, n_p:].sum() - 1.0
+
+
+def test_durum_goes_to_the_durum_mills_and_imported_durum_is_credited_to_them(mills, tmp_path, monkeypatch):
+    durum = tmp_path / "d.csv"
+    durum.write_text("state,city,company,multi_company,cap_cwt_day,storage_bu,classes,rail,page,lat,lon\n"
+                     "ND,Pastaville,Test Durum A,1,20000,,Durum,BNSF,1,47.40,-99.10\n"
+                     "MO,Semolina City,Test Durum B,1,30000,,Durum,UP,2,38.60,-90.20\n", encoding="utf-8")
+    monkeypatch.setattr(fm, "DURUM_PLAIN", str(durum))
+    fm.load_durum.cache_clear()
+    ams = dm.load_truck_rates()
+    truck = dm.truck_curve(ams, "North Central", ams["diesel_now"], 900)
+    inp = dm.load(dt.PATHS["wheat"][0])
+    nodes = dm.load_nodes(dt.PATHS["wheat"][1])
+    kw = dict(rate=0.0, tau=20.0, river_premium=0.0, util=1.0, lock_scale=1.0, area_mbu={}, pin_cap_mbu={}, plant_premium={}, river_scale=1.0, rail_scales={}, rail_rates={},
+              pnw_reach_miles=60.0, barge_fed={}, rail_tau={}, plant_extra_mbu={}, plant_run_fraction={}, truck=truck, volume_response=0.0, volume_band=0.10)
+    plants = ws.mill_plants("avg", None)
+    n_p = len(plants)
+    is_durum = np.array([p["cls"] == "Durum mill" for p in plants])
+    assert is_durum.sum() == 2
+    imp = 35e6
+    res = dt._solve_wheat_combined(inp, nodes, kw, "avg", None, 0.12, (("Durum", imp),))
+    dflow = res["by_class"]["Durum"]["flow"][:, :n_p]
+    assert dflow[:, ~is_durum].sum() == 0                                                                  # flour mills grind no durum
+    assert dflow[:, is_durum].sum() == pytest.approx(ws.durum_control("avg") - imp, rel=1e-3)               # the durum mills draw what is left after the imports
+    for cls in ws.MILL_CLASSES:
+        assert res["by_class"][cls]["flow"][:, :n_p][:, is_durum].sum() == 0                                # and the durum mills grind no flour wheat
+    fm.load_durum.cache_clear()

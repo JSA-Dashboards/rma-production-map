@@ -1,8 +1,9 @@
 """
-US imports of Canadian wheat (HS 1001.99, wheat other than durum and seed: Canada's red spring wheat above all) by state of destination, from the Census international trade API.
-It says where in the US the Canadian spring wheat is delivered, which is where the flour mills that grind it are.
+US imports of Canadian wheat by state of destination, from the Census international trade API: HS 1001.99 (wheat other than durum and seed: Canada's red spring wheat above all) and
+HS 1001.19 (durum). It says where in the US the Canadian wheat is delivered, which is where the mills that grind it are.
 
-  data/wheat/wheat_imports_canada_by_state.csv   year, state, value_usd   (calendar years; Census reports the state the shipment is destined for)
+  data/wheat/wheat_imports_canada_by_state.csv         year, state, value_usd   (HS 1001.99; calendar years; Census reports the state the shipment is destined for)
+  data/wheat/wheat_imports_canada_durum_by_state.csv   year, state, value_usd   (HS 1001.19)
 
 The Census key is not on this machine: run it where CENSUS_API_KEY is set (the droplet has it in /root/corn-exporter-dashboard/.env) and copy the file back.
 
@@ -42,23 +43,27 @@ def get(params):
     raise RuntimeError(err)
 
 
+FILES = (("100199", "wheat_imports_canada_by_state.csv"), ("100119", "wheat_imports_canada_durum_by_state.csv"))
+
+
 def main():
     os.makedirs(OUT, exist_ok=True)
-    out = []
-    for y in YEARS:
-        rows = get(dict(get="STATE,GEN_VAL_YR", COMM_LVL="HS6", I_COMMODITY="100199", CTY_CODE="1220", time=f"{y}-12"))
-        for r in rows:
-            if r["STATE"] not in ("-", "") and float(r["GEN_VAL_YR"] or 0) > 0:
-                out.append((y, r["STATE"], float(r["GEN_VAL_YR"])))
-        time.sleep(1)
-    with open(os.path.join(OUT, "wheat_imports_canada_by_state.csv"), "w", newline="", encoding="utf-8") as fh:
-        w = csv.writer(fh)
-        w.writerow(["year", "state", "value_usd"])
-        w.writerows(sorted(out))
-    for y in YEARS:
-        tot = sum(v for yy, s, v in out if yy == y)
-        top = sorted([(v, s) for yy, s, v in out if yy == y], reverse=True)[:6]
-        print(y, f"${tot / 1e6:,.0f}M", [(s, round(v / 1e6)) for v, s in top])
+    for hs, name in FILES:
+        out = []
+        for y in YEARS:
+            rows = get(dict(get="STATE,GEN_VAL_YR", COMM_LVL="HS6", I_COMMODITY=hs, CTY_CODE="1220", time=f"{y}-12"))
+            for r in rows:
+                if r["STATE"] not in ("-", "") and float(r["GEN_VAL_YR"] or 0) > 0:
+                    out.append((y, r["STATE"], float(r["GEN_VAL_YR"])))
+            time.sleep(1)
+        with open(os.path.join(OUT, name), "w", newline="", encoding="utf-8") as fh:
+            w = csv.writer(fh)
+            w.writerow(["year", "state", "value_usd"])
+            w.writerows(sorted(out))
+        for y in YEARS:
+            tot = sum(v for yy, s, v in out if yy == y)
+            top = sorted([(v, s) for yy, s, v in out if yy == y], reverse=True)[:6]
+            print(hs, y, f"${tot / 1e6:,.0f}M", [(s, round(v / 1e6)) for v, s in top])
 
 
 if __name__ == "__main__":

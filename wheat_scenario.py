@@ -280,11 +280,29 @@ def _import_dict(import_bu) -> dict:
     return {c: float(v) for c, v in dict(import_bu).items() if v}
 
 
-@lru_cache(maxsize=1)
-def import_state_shares() -> dict:
-    """{state: share} of the value of US wheat imports from Canada (HS 1001.99), 2021-25, by the state it is delivered to (Census; build_wheat_imports.py). Where the Canadian wheat goes."""
+def durum_control(period) -> float:
+    """Bushels of durum the semolina mills grind: USDA's food use of durum (WASDE by class), for a marketing year or the 2021-25 average ('avg')."""
+    fb = _food_by_class()
+    if period == "avg":
+        yrs = [y for y in fb if BASE[0] <= y <= BASE[1]] or sorted(fb)
+        return sum(fb[y]["Durum"] for y in yrs) / len(yrs) * 1e6
+    return fb[min(fb, key=lambda k: abs(k - int(period)))]["Durum"] * 1e6
+
+
+def durum_imports(period) -> float:
+    """Bushels of durum the US imports (Canadian, nearly all of it): USDA's WASDE by-class imports for a marketing year or the 2021-25 average ('avg')."""
+    ib = _imports_by_class()
+    if period == "avg":
+        yrs = [y for y in ib if BASE[0] <= y <= BASE[1]] or sorted(ib)
+        return sum(ib[y]["Durum"] for y in yrs) / len(yrs) * 1e6
+    return ib[min(ib, key=lambda k: abs(k - int(period)))]["Durum"] * 1e6
+
+
+@lru_cache(maxsize=2)
+def import_state_shares(durum: bool = False) -> dict:
+    """{state: share} of the value of US wheat imports from Canada (HS 1001.99, or durum HS 1001.19), 2021-25, by the state it is delivered to (Census; build_wheat_imports.py). Where the Canadian wheat goes."""
     tot: dict = {}
-    with open(os.path.join(HERE, "data", "wheat", "wheat_imports_canada_by_state.csv"), encoding="utf8", newline="") as fh:
+    with open(os.path.join(HERE, "data", "wheat", "wheat_imports_canada_durum_by_state.csv" if durum else "wheat_imports_canada_by_state.csv"), encoding="utf8", newline="") as fh:
         for r in csv.DictReader(fh):
             tot[r["state"]] = tot.get(r["state"], 0.0) + float(r["value_usd"])
     s = sum(tot.values())
@@ -338,32 +356,54 @@ def mill_plant_rail(inp: dict, plants: list, rate: float = None) -> dict:
     return {**MILL_RAIL, **({"rate": float(rate)} if rate is not None else {}), "reach": 60.0, "track": track, "mask": [bool(p.get("rail")) or p.get("cap_cwt_day", 0) >= MILL_RAIL_MIN_CWT for p in plants]}
 
 
-def mill_plants(period="avg", cls=None, import_bu=None) -> list:
-    """The US flour mills as named plants for the model (flour_mills.py, Sosland's Grain & Milling Annual 2027): each with its daily capacity in cwt, the bushels it grinds a year and how they
-    split by class. Together the mills grind USDA's food use of wheat less durum (mill_controls), class by class, so capacity alone does not set the demand. `cls` None = all classes (the
-    mill's total), a class key = that class's bushels at each mill. [] when the mill list is not available or the class is durum.
-    `import_bu` is the imported wheat to credit to the mills (class_imports; a number is spring wheat only): mill_import_credit places each class's imports, a mill's need from US counties is net of
-    it (need_bu), the credit is `import_bu` on each mill (`import_by_class` by class) and its gross grind stays in `class_need`."""
+def mill_plants(period="avg", cls=None, import_bu=None, union=False) -> list:
+    """The US mills as named plants for the model (flour_mills.py, Sosland's Grain & Milling Annual 2027): the flour mills, each with its daily capacity in cwt, the bushels it grinds a year and
+    how they split by class (together USDA's food use of wheat less durum, mill_controls, class by class, so capacity alone does not set the demand), and the durum mills, which share USDA's
+    food use of durum by capacity. `cls` None = every mill with its total, a class key = the mills that grind that class with that class's bushels (the flour mills for HRW, HRS, SRW and White,
+    the durum mills for Durum), and with `union` every mill in the list, 0 where it does not grind the class (the same plants in every class run). [] when no mill list is available.
+    `import_bu` is the imported wheat to credit to the mills (class_imports, durum_imports; a number is spring wheat only, a dict or (class, bushels) pairs by class): mill_import_credit places each
+    class's imports, a mill's need from US counties is net of it (need_bu), the credit is `import_bu` on each mill (`import_by_class` by class) and its gross grind stays in `class_need`."""
     import flour_mills
-    if cls == "Durum":
-        return []
+    imp = _import_dict(import_bu)
     ms = [m for m in flour_mills.load() if m["cap_cwt_day"] and m["state"] != "PR" and m["lat"] is not None]
-    if not ms:
-        return []
-    need = mill_class_needs(ms, mill_controls(period))
-    credit = np.zeros(need.shape)                                           # rows mills, columns MILL_CLASSES
-    for c, bu in _import_dict(import_bu).items():
-        if c in MILL_CLASSES:
-            credit[:, MILL_CLASSES.index(c)] = mill_import_credit([m["state"] for m in ms], need[:, MILL_CLASSES.index(c)], bu)
-    out, seen = [], {}
-    for m, row, crow in zip(ms, need, credit):
-        cr = float(crow.sum() if cls is None else crow[MILL_CLASSES.index(cls)])
-        base = f"{m['company']}, {m['city']} {m['state']}"
+    dm_ = [m for m in flour_mills.load_durum() if m["cap_cwt_day"] and m["lat"] is not None]
+    allc = MILL_CLASSES + ["Durum"]
+    recs, seen = [], {}
+
+    def _key(m, suffix=""):
+        base = f"{m['company']}, {m['city']} {m['state']}{suffix}"
         seen[base] = seen.get(base, 0) + 1
-        key = base if seen[base] == 1 else f"{base} #{seen[base]}"
-        out.append({"key": key, "state": m["state"], "lat": m["lat"], "lon": m["lon"], "need_bu": float((row.sum() if cls is None else row[MILL_CLASSES.index(cls)]) - cr), "city": m["city"],
-                    "company": m["company"], "cls": "Flour mill", "cap_cwt_day": m["cap_cwt_day"], "classes": m["classes"], "rail": m["rail"], "river": "",
-                    "class_need": {c: float(v) for c, v in zip(MILL_CLASSES, row)}, "import_bu": cr, "import_by_class": {c: float(v) for c, v in zip(MILL_CLASSES, crow)}})
+        return base if seen[base] == 1 else f"{base} #{seen[base]}"
+
+    if ms:
+        need = mill_class_needs(ms, mill_controls(period))
+        credit = np.zeros(need.shape)                                       # rows mills, columns MILL_CLASSES
+        for c, bu in imp.items():
+            if c in MILL_CLASSES:
+                credit[:, MILL_CLASSES.index(c)] = mill_import_credit([m["state"] for m in ms], need[:, MILL_CLASSES.index(c)], bu)
+        for m, row, crow in zip(ms, need, credit):
+            recs.append({"key": _key(m), "state": m["state"], "lat": m["lat"], "lon": m["lon"], "city": m["city"], "company": m["company"], "cls": "Flour mill", "cap_cwt_day": m["cap_cwt_day"],
+                         "classes": m["classes"], "rail": m["rail"], "river": "", "class_need": {**{c: float(v) for c, v in zip(MILL_CLASSES, row)}, "Durum": 0.0},
+                         "import_by_class": {**{c: float(v) for c, v in zip(MILL_CLASSES, crow)}, "Durum": 0.0}})
+    if dm_:
+        cap = np.array([m["cap_cwt_day"] for m in dm_], float)
+        dneed = cap / cap.sum() * durum_control(period)
+        dcredit = mill_import_credit([m["state"] for m in dm_], dneed, imp["Durum"], import_state_shares(True)) if imp.get("Durum") else np.zeros(len(dm_))
+        for m, n_, c_ in zip(dm_, dneed, dcredit):
+            recs.append({"key": _key(m, " (durum)"), "state": m["state"], "lat": m["lat"], "lon": m["lon"], "city": m["city"], "company": m["company"], "cls": "Durum mill",
+                         "cap_cwt_day": m["cap_cwt_day"], "classes": ["Durum"], "rail": m["rail"], "river": "",
+                         "class_need": {**{c: 0.0 for c in MILL_CLASSES}, "Durum": float(n_)}, "import_by_class": {**{c: 0.0 for c in MILL_CLASSES}, "Durum": float(c_)}})
+    if not recs:
+        return []
+    out = []
+    for r in recs:
+        if cls is None:
+            gross, cr = sum(r["class_need"].values()), sum(r["import_by_class"].values())
+        else:
+            gross, cr = r["class_need"].get(cls, 0.0), r["import_by_class"].get(cls, 0.0)
+            if not union and (r["cls"] == "Durum mill") != (cls == "Durum"):
+                continue                                                    # a class view keeps the mills that grind that class
+        out.append({**r, "need_bu": float(gross - cr), "import_bu": float(cr)})
     return out
 
 

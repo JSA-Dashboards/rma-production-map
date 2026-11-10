@@ -147,11 +147,11 @@ def _feed(year, fr_bu, util, credit, export_bu, wet_radius, cap, wet_items, shoc
 def _solve_wheat_combined(inp0, nodes0, kw, wperiod, wyear, mill_rail, import_bu=0.0):
     """The all-classes wheat draw as one solve built from the class runs. Each class (HRW, SRW, White, HRS, Durum) is solved on its own supply, its own FGIS hub targets and the bushels the mills
     grind of it (USDA food use by class), over the same counties, mills and hubs; the flows are then added. So a hard red spring bushel cannot fill a soft red mill and the class controls hold in
-    the total. Durum has no flour mills here (it is milled elsewhere), so it only goes to hubs and the rest."""
+    the total. Durum goes to the durum mills (Sosland's list, USDA's durum food use), the hubs and the rest."""
     runs = []
     for cls in ws.CLASSES:
         sup = ws.county_supply(inp0, cls, wyear)
-        mills = ws.mill_plants(wperiod, cls, import_bu) or [dict(m, need_bu=0.0) for m in ws.mill_plants(wperiod, None, import_bu)]
+        mills = ws.mill_plants(wperiod, cls, import_bu, union=True)           # the same flour and durum mills in every run, each grinding only its own classes
         inp = dict(inp0, counties=[dict(c, supply_bu=float(v)) for c, v in zip(inp0['counties'], sup)])
         inp = dm.with_new_plants(inp, mills)
         plant_rail = ws.mill_plant_rail(inp, inp['plants'], mill_rail) if mill_rail > 0 else None
@@ -1095,24 +1095,29 @@ def _render(crop):
         sup_w = ws.county_supply(base_inp, wsel["cls"], wsel["year"])
         inp = dict(base_inp, counties=[dict(c, supply_bu=float(v)) for c, v in zip(base_inp["counties"], sup_w)])
         if ws.mill_plants(wsel["period"], None):
-            imp_default = ws.class_imports(wsel["period"])
+            imp_default = {**ws.class_imports(wsel["period"]), "Durum": ws.durum_imports(wsel["period"])}
             with st.expander("Imported wheat milled in the US, credited to the mills (M bu a year, by class)"):
-                imp_cols = st.columns(len(ws.MILL_CLASSES))
+                imp_cols = st.columns(len(imp_default))
                 vals_ = {c: col.number_input(f"{c}", 0.0, 300.0, round(imp_default[c] / 1e6, 1), 1.0, key=f"draww_imp_{c}_{wsel['period']}",
-                                             help="USDA's imports of this class (WASDE, by class), 0 to leave it out.") for c, col in zip(ws.MILL_CLASSES, imp_cols)}
+                                             help="USDA's imports of this class (WASDE, by class), 0 to leave it out." + (" Credited to the durum mills." if c == "Durum" else "")) for c, col in zip(imp_default, imp_cols)}
                 st.caption("USDA's imports by class, nearly all of them milled and most of them Canadian (spring wheat above all; Ontario soft red and soft white, Alberta winter wheat). They are credited to the "
                            "mills in the states Census says Canadian wheat is delivered to (New York, Ohio, Wisconsin, Minnesota, North Dakota, Pennsylvania and others), in proportion to each mill's grind "
-                           "of that class and at most 90% of a state's. Those mills then draw less from US counties, which frees US wheat of the class for the export hubs. Durum imports are left out "
-                           "(durum is not milled in these mills).")
+                           "of that class and at most 90% of a state's. Those mills then draw less from US counties, which frees US wheat of the class for the export hubs. Durum imports go to the durum mills "
+                           "(Missouri, Iowa, North Dakota, Minnesota, South Carolina and Virginia, where Census says Canadian durum is delivered).")
             import_bu_ = tuple((c, 1e6 * v) for c, v in vals_.items() if v > 0)
         mills_ = ws.mill_plants(wsel["period"], wsel["cls"], import_bu_)
         inp = dm.with_new_plants(inp, mills_)
         if mills_:
             ctl_ = ws.mill_controls(wsel["period"])
-            st.caption(f"Flour mills: {len(mills_)} US mills from Sosland's Grain & Milling Annual 2027 (daily capacity by facility). Together they grind USDA's food use of wheat less durum, "
-                       f"{sum(ctl_.values()) / 1e6:,.0f}M bu (" + ", ".join(f"{k} {v / 1e6:,.0f}" for k, v in ctl_.items()) + "), not their capacity. How a mill's grind splits by class follows its region "
-                       "(hard wheat for bread on the Plains, spring wheat in the north, soft wheat in the East and Midwest, soft white in the Northwest) and the classes it lists, fitted so each class adds up "
-                       "to USDA's: a prior to refine, since mills blend and buy classes from outside their region.")
+            n_dur = sum(1 for m_ in mills_ if m_["cls"] == "Durum mill")
+            if n_dur:
+                st.caption(f"Durum mills: {n_dur} US semolina mills from the same book (Durum Mills, daily capacity by facility). Together they grind USDA's food use of durum, "
+                           f"{ws.durum_control(wsel['period']) / 1e6:,.0f}M bu, shared by capacity; imported durum is credited to them.")
+            if len(mills_) > n_dur:
+                st.caption(f"Flour mills: {len(mills_) - n_dur} US mills from Sosland's Grain & Milling Annual 2027 (daily capacity by facility). Together they grind USDA's food use of wheat less durum, "
+                           f"{sum(ctl_.values()) / 1e6:,.0f}M bu (" + ", ".join(f"{k} {v / 1e6:,.0f}" for k, v in ctl_.items()) + "), not their capacity. How a mill's grind splits by class follows its region "
+                           "(hard wheat for bread on the Plains, spring wheat in the north, soft wheat in the East and Midwest, soft white in the Northwest) and the classes it lists, fitted so each class adds up "
+                           "to USDA's: a prior to refine, since mills blend and buy classes from outside their region.")
         elif wsel["cls"] is None:
             st.caption("The flour mill list is not loaded here (it needs the MILLS_KEY secret), so milling uses the regional capacity stand-in.")
         nodes = ws.nodes_for(nodes, wsel["period"], wsel["cls"], base_inp)

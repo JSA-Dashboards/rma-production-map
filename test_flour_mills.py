@@ -151,3 +151,53 @@ def test_every_mill_class_can_take_its_imports(tmp_path, monkeypatch):
     assert sum(m["import_bu"] for m in srw) == pytest.approx(6e6)                                       # a class view only sees its own credit
     assert set(ws.class_imports("avg")) == set(ws.MILL_CLASSES)                                        # durum is not milled here
     fm.load.cache_clear()
+
+
+DURUM_CSV = "\n".join([
+    "state,city,company,multi_company,cap_cwt_day,storage_bu,classes,rail,page,lat,lon",
+    "ND,Pastaville,Test Durum A,1,20000,,Durum,BNSF,1,47.40,-99.10",
+    "MO,Semolina City,Test Durum B,1,30000,,Durum,UP,2,38.60,-90.20",
+    "SC,Noodleton,Test Durum C,0,10000,,Durum,,3,34.00,-80.90",
+]) + "\n"
+
+
+def _with_durum(tmp_path, monkeypatch):
+    flour, durum = tmp_path / "m.csv", tmp_path / "d.csv"
+    flour.write_text(CSV, encoding="utf-8")
+    durum.write_text(DURUM_CSV, encoding="utf-8")
+    monkeypatch.setattr(fm, "PLAIN", str(flour))
+    monkeypatch.setattr(fm, "DURUM_PLAIN", str(durum))
+    fm.load.cache_clear()
+    fm.load_durum.cache_clear()
+
+
+def test_durum_mills_grind_usdas_durum_food_use_and_get_the_durum_imports(tmp_path, monkeypatch):
+    _with_durum(tmp_path, monkeypatch)
+    dur = ws.mill_plants("avg", "Durum")
+    assert [m["state"] for m in dur] == ["ND", "MO", "SC"] and all(m["cls"] == "Durum mill" for m in dur)
+    assert sum(m["need_bu"] for m in dur) == pytest.approx(ws.durum_control("avg"))                      # by capacity, USDA's durum food use
+    assert dur[1]["need_bu"] / dur[0]["need_bu"] == pytest.approx(30000 / 20000)
+    imp = 30e6
+    net = ws.mill_plants("avg", "Durum", (("Durum", imp),))
+    assert sum(m["import_bu"] for m in net) == pytest.approx(imp)
+    assert net[1]["import_bu"] > net[0]["import_bu"]                                                      # Missouri is where Census says most Canadian durum goes
+    assert all(m["need_bu"] == pytest.approx(g["need_bu"] - m["import_bu"]) for m, g in zip(net, dur))
+    assert ws.durum_imports("avg") > 30e6
+    flour = ws.mill_plants("avg", "HRW")
+    assert all(m["cls"] == "Flour mill" for m in flour)                                                    # a flour class view does not carry the durum mills
+    fm.load.cache_clear()
+    fm.load_durum.cache_clear()
+
+
+def test_union_lists_every_mill_in_every_class_run_with_zero_where_it_does_not_grind_it(tmp_path, monkeypatch):
+    _with_durum(tmp_path, monkeypatch)
+    keys = [m["key"] for m in ws.mill_plants("avg", None)]
+    assert len(keys) == 2 + 3                                                                                # two flour mills with capacity, three durum mills
+    for cls in ws.CLASSES:
+        run = ws.mill_plants("avg", cls, None, union=True)
+        assert [m["key"] for m in run] == keys                                                              # the same plants in the same order in every run
+        assert all(m["need_bu"] == 0 for m in run if (m["cls"] == "Durum mill") != (cls == "Durum"))
+    total = ws.mill_plants("avg", None)
+    assert sum(m["need_bu"] for m in total) == pytest.approx(sum(ws.mill_controls("avg").values()) + ws.durum_control("avg"))
+    fm.load.cache_clear()
+    fm.load_durum.cache_clear()
