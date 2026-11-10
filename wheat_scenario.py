@@ -260,6 +260,26 @@ def hrs_imports(period) -> float:
     return ib[min(ib, key=lambda k: abs(k - int(period)))]["HRS"] * 1e6
 
 
+def class_imports(period) -> dict:
+    """{class: bushels} of wheat the US imports for each class the mills grind (HRW, HRS, SRW, White), USDA's WASDE by-class imports for a marketing year or the 2021-25 average ('avg').
+    Canada supplies nearly all of the spring wheat and most of the rest. Durum is left out: it is not milled in the flour mills."""
+    ib = _imports_by_class()
+    if period == "avg":
+        yrs = [y for y in ib if BASE[0] <= y <= BASE[1]] or sorted(ib)
+        return {c: sum(ib[y][c] for y in yrs) / len(yrs) * 1e6 for c in MILL_CLASSES}
+    y = min(ib, key=lambda k: abs(k - int(period)))
+    return {c: ib[y][c] * 1e6 for c in MILL_CLASSES}
+
+
+def _import_dict(import_bu) -> dict:
+    """The import credit as {class: bushels}: a number is hard red spring wheat only, a dict or a tuple of (class, bushels) pairs (hashable, for the cache) is by class."""
+    if not import_bu:
+        return {}
+    if isinstance(import_bu, (int, float)):
+        return {"HRS": float(import_bu)}
+    return {c: float(v) for c, v in dict(import_bu).items() if v}
+
+
 @lru_cache(maxsize=1)
 def import_state_shares() -> dict:
     """{state: share} of the value of US wheat imports from Canada (HS 1001.99), 2021-25, by the state it is delivered to (Census; build_wheat_imports.py). Where the Canadian wheat goes."""
@@ -275,7 +295,7 @@ IMPORT_CAP = 0.90          # at most this share of a state's hard red spring gri
 
 
 def mill_import_credit(states: list, hrs_need: np.ndarray, total_bu: float, shares: dict = None, cap: float = IMPORT_CAP) -> np.ndarray:
-    """Bushels of imported hard red spring wheat credited to each mill. The imports go to the states Census says they are delivered to, where the mills are, in proportion to those states'
+    """Bushels of imported wheat of one class credited to each mill (`hrs_need` is the mills' grind of that class). The imports go to the states Census says they are delivered to, where the mills are, in proportion to those states'
     shares; inside a state, to each mill by its hard red spring grind. A state takes no more than `cap` of its hard red spring grind, so what a state cannot use (a delivery to a state with
     no mill that grinds spring wheat, or more than its mills need) goes on to the other states in proportion to their shares. That fills the gaps where the US crop is short and leaves a
     region that grows its own (the Dakotas, Montana) mostly to its own farms."""
@@ -322,8 +342,8 @@ def mill_plants(period="avg", cls=None, import_bu=None) -> list:
     """The US flour mills as named plants for the model (flour_mills.py, Sosland's Grain & Milling Annual 2027): each with its daily capacity in cwt, the bushels it grinds a year and how they
     split by class. Together the mills grind USDA's food use of wheat less durum (mill_controls), class by class, so capacity alone does not set the demand. `cls` None = all classes (the
     mill's total), a class key = that class's bushels at each mill. [] when the mill list is not available or the class is durum.
-    `import_bu` is the imported hard red spring wheat to credit to the mills (mill_import_credit): their need from US counties is net of it (need_bu), the credit is `import_bu` on each mill and
-    its gross grind stays in `class_need`."""
+    `import_bu` is the imported wheat to credit to the mills (class_imports; a number is spring wheat only): mill_import_credit places each class's imports, a mill's need from US counties is net of
+    it (need_bu), the credit is `import_bu` on each mill (`import_by_class` by class) and its gross grind stays in `class_need`."""
     import flour_mills
     if cls == "Durum":
         return []
@@ -331,16 +351,19 @@ def mill_plants(period="avg", cls=None, import_bu=None) -> list:
     if not ms:
         return []
     need = mill_class_needs(ms, mill_controls(period))
-    hrs = MILL_CLASSES.index("HRS")
-    credit = mill_import_credit([m["state"] for m in ms], need[:, hrs], import_bu) if import_bu else np.zeros(len(ms))
+    credit = np.zeros(need.shape)                                           # rows mills, columns MILL_CLASSES
+    for c, bu in _import_dict(import_bu).items():
+        if c in MILL_CLASSES:
+            credit[:, MILL_CLASSES.index(c)] = mill_import_credit([m["state"] for m in ms], need[:, MILL_CLASSES.index(c)], bu)
     out, seen = [], {}
-    for m, row, cr in zip(ms, need, credit):
+    for m, row, crow in zip(ms, need, credit):
+        cr = float(crow.sum() if cls is None else crow[MILL_CLASSES.index(cls)])
         base = f"{m['company']}, {m['city']} {m['state']}"
         seen[base] = seen.get(base, 0) + 1
         key = base if seen[base] == 1 else f"{base} #{seen[base]}"
-        out.append({"key": key, "state": m["state"], "lat": m["lat"], "lon": m["lon"], "need_bu": float((row.sum() if cls is None else row[MILL_CLASSES.index(cls)]) - (cr if cls in (None, "HRS") else 0.0)), "city": m["city"],
+        out.append({"key": key, "state": m["state"], "lat": m["lat"], "lon": m["lon"], "need_bu": float((row.sum() if cls is None else row[MILL_CLASSES.index(cls)]) - cr), "city": m["city"],
                     "company": m["company"], "cls": "Flour mill", "cap_cwt_day": m["cap_cwt_day"], "classes": m["classes"], "rail": m["rail"], "river": "",
-                    "class_need": {c: float(v) for c, v in zip(MILL_CLASSES, row)}, "import_bu": float(cr)})
+                    "class_need": {c: float(v) for c, v in zip(MILL_CLASSES, row)}, "import_bu": cr, "import_by_class": {c: float(v) for c, v in zip(MILL_CLASSES, crow)}})
     return out
 
 

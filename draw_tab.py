@@ -963,7 +963,7 @@ def _wheat_modes_panel(inp, res, sup_scale=1.0):
                 imp_by_state[p_["state"]] = imp_by_state.get(p_["state"], 0.0) + p_["import_bu"] / 1e6
         t = st.columns(5 if imp_by_state else 4)
         if imp_by_state:
-            t[4].metric("Canadian spring wheat credited to mills", f"{sum(imp_by_state.values()):,.0f} M bu",
+            t[4].metric("Imported wheat credited to mills", f"{sum(imp_by_state.values()):,.0f} M bu",
                         help="Imported wheat the mills grind, credited by state: " + ", ".join(f"{s} {v:,.1f}" for s, v in sorted(imp_by_state.items(), key=lambda x: -x[1])[:8]) + " M bu. "
                              "It is not drawn from US counties.")
         t[0].metric("Direct by truck", f"{tot['Truck (direct)']:,.0f} M bu", help="To the mills that are not reached by rail, and to the river terminals.")
@@ -1095,12 +1095,16 @@ def _render(crop):
         sup_w = ws.county_supply(base_inp, wsel["cls"], wsel["year"])
         inp = dict(base_inp, counties=[dict(c, supply_bu=float(v)) for c, v in zip(base_inp["counties"], sup_w)])
         if ws.mill_plants(wsel["period"], None):
-            imp_default = ws.hrs_imports(wsel["period"]) / 1e6
-            import_bu_ = 1e6 * st.number_input(
-                "Canadian spring wheat milled in the US (M bu a year, 0 = not credited)", 0.0, 300.0, round(imp_default, 1), 1.0, key=f"draww_imp_{wsel['period']}",
-                help="USDA's imports of hard red spring wheat (WASDE, by class), nearly all of it Canadian and nearly all of it milled. It is credited to the mills, in the states Census says Canadian "
-                     "wheat is delivered to (New York, Ohio, Wisconsin, Minnesota, North Dakota, Pennsylvania and others), in proportion to each mill's spring wheat grind and at most 90% of a "
-                     "state's: those mills then draw less from US counties, which frees the US spring wheat for the export hubs. Set 0 to leave imports out.")
+            imp_default = ws.class_imports(wsel["period"])
+            with st.expander("Imported wheat milled in the US, credited to the mills (M bu a year, by class)"):
+                imp_cols = st.columns(len(ws.MILL_CLASSES))
+                vals_ = {c: col.number_input(f"{c}", 0.0, 300.0, round(imp_default[c] / 1e6, 1), 1.0, key=f"draww_imp_{c}_{wsel['period']}",
+                                             help="USDA's imports of this class (WASDE, by class), 0 to leave it out.") for c, col in zip(ws.MILL_CLASSES, imp_cols)}
+                st.caption("USDA's imports by class, nearly all of them milled and most of them Canadian (spring wheat above all; Ontario soft red and soft white, Alberta winter wheat). They are credited to the "
+                           "mills in the states Census says Canadian wheat is delivered to (New York, Ohio, Wisconsin, Minnesota, North Dakota, Pennsylvania and others), in proportion to each mill's grind "
+                           "of that class and at most 90% of a state's. Those mills then draw less from US counties, which frees US wheat of the class for the export hubs. Durum imports are left out "
+                           "(durum is not milled in these mills).")
+            import_bu_ = tuple((c, 1e6 * v) for c, v in vals_.items() if v > 0)
         mills_ = ws.mill_plants(wsel["period"], wsel["cls"], import_bu_)
         inp = dm.with_new_plants(inp, mills_)
         if mills_:
@@ -1342,8 +1346,8 @@ def _render(crop):
     if wheat and res.get("by_class") and res.get("target_scale", 1.0) < 0.999:
         short = ", ".join(f"{c} {d['target_scale']:.0%}" for c, d in res["by_class"].items() if d["target_scale"] < 0.999)
         st.warning(f"All classes are solved together, class by class. After the mills take their USDA food use, the US crop of some classes is short of what FGIS inspected for export, so their hub "
-                   f"targets were cut to: {short}. " + ("Canadian spring wheat is credited to the mills only; stocks are not added to supply." if import_bu_ > 0
-                                                         else "Canadian spring wheat and stocks are not added to supply."))
+                   f"targets were cut to: {short}. " + ("Imported wheat is credited to the mills only; stocks are not added to supply." if import_bu_
+                                                         else "Imports and stocks are not added to supply."))
     elif res.get("target_scale", 1.0) < 0.999:
         st.warning(f"The hub targets add up to more than the {Wb} left after {'ethanol' if corn else 'milling' if wheat else 'crush'}, so they were scaled to {res['target_scale']:.0%}. "
                    "Lower the hub targets or raise plant run rates.")

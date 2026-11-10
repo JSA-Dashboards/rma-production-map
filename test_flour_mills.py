@@ -134,3 +134,20 @@ def test_hrs_imports_follow_usda_by_class():
     assert 50e6 < ws.hrs_imports("avg") < 80e6
     assert ws.hrs_imports(2024) == pytest.approx(79e6)
     assert sum(ws.import_state_shares().values()) == pytest.approx(1.0)
+
+
+def test_every_mill_class_can_take_its_imports(tmp_path, monkeypatch):
+    plain = tmp_path / "m.csv"
+    plain.write_text(CSV, encoding="utf-8")
+    monkeypatch.setattr(fm, "PLAIN", str(plain))
+    fm.load.cache_clear()
+    imp = {"HRS": 10e6, "SRW": 6e6, "HRW": 4e6}
+    net = ws.mill_plants("avg", None, tuple(imp.items()))
+    assert sum(m["import_bu"] for m in net) == pytest.approx(20e6)                                     # all classes together
+    assert {c: sum(m["import_by_class"][c] for m in net) for c in imp} == pytest.approx(imp)
+    gross = ws.mill_plants("avg", None)
+    assert sum(g["need_bu"] - n["need_bu"] for g, n in zip(gross, net)) == pytest.approx(20e6)
+    srw = ws.mill_plants("avg", "SRW", tuple(imp.items()))
+    assert sum(m["import_bu"] for m in srw) == pytest.approx(6e6)                                       # a class view only sees its own credit
+    assert set(ws.class_imports("avg")) == set(ws.MILL_CLASSES)                                        # durum is not milled here
+    fm.load.cache_clear()
