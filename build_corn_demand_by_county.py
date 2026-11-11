@@ -1,7 +1,8 @@
 """
 Corn demand located by county, for the net exportable supply on the ASD & County Level tab.
 
-  data/corn_demand_by_county.csv   year, fips, state, ethanol_bu, feed_gross_bu, ddgs_credit_bu, feed_net_bu
+  data/corn_demand_by_county.csv   year, fips, state, ethanol_bu, feed_gross_bu, ddgs_credit_bu, feed_net_bu,
+                                   feed_dairy_bu, feed_beef_bu, feed_hogs_bu, feed_poultry_bu, residual_bu
 
 For each marketing year (the crop year's NASS year) with a USDA balance on file:
   * ethanol_bu   the corn the ethanol and processing plants of the Draw Territory model grind, in the county the plant stands in (point in the county's outline), the plants' nameplate need
@@ -10,6 +11,11 @@ For each marketing year (the crop year's NASS year) with a USDA balance on file:
                  (feed_demand.py: the same logic as the Draw Territory tab, at its default settings);
   * ddgs_credit_bu  the corn the plants' distillers grains replace in the livestock rations (it stays near the plants that make it, so it lowers that region's corn feed need);
   * feed_net_bu  feed less that credit: the corn the region's animals still need from the grain supply.
+  * feed_dairy / beef / hogs / poultry_bu  the per-head feed by kind of animal (milk cows; cattle on feed and other cattle; hogs; layers, broilers and turkeys), from feeding budgets and the
+                 county herds, BEFORE tying to USDA;
+  * residual_bu  what is left of feed_gross_bu once those are taken out: USDA's "feed and residual" is bigger than the per-head budgets add up to (the budgets cover 75-80% of it), and the gap
+                 is the residual (shrink, waste, feeding rations the budgets miss, error in production and stocks). Here it sits in each county in proportion to its animals' feed, which is
+                 what scaling the budgets to USDA does; corn_net_export can spread it by production instead.
 Not located: food, seed and other industrial use outside these plants (about 1.3 billion bushels), which has no plant list here.
 
     python build_corn_demand_by_county.py
@@ -69,21 +75,26 @@ def main():
         for p, n_ in zip(plants, need):
             eth[where[p["key"]]] = eth.get(where[p["key"]], 0.0) + n_ * util
         gross, credit, net = np.asarray(f["gross"], float), np.asarray(f["credit"], float), np.asarray(f["net"], float)
+        k = float(f["k"])
+        sp = {a: np.asarray(v, float) / k for a, v in f["by_species"].items()}                      # the per-head feed, before the scaling to USDA
+        grp = {"dairy": sp["MILK COWS"], "beef": sp["CATTLE ON FEED"] + sp["OTHER CATTLE"], "hogs": sp["HOGS"], "poultry": sp["LAYERS"] + sp["BROILERS"] + sp["TURKEYS"]}
+        resid = gross - sum(grp.values())
         n_out = 0
         for i, c in enumerate(counties):
             e = eth.get(c["fips"], 0.0)
             if e or gross[i] or net[i]:
-                rows.append((y, c["fips"], c["state"], round(e), round(gross[i]), round(credit[i]), round(net[i])))
+                rows.append((y, c["fips"], c["state"], round(e), round(gross[i]), round(credit[i]), round(net[i]), round(grp["dairy"][i]), round(grp["beef"][i]), round(grp["hogs"][i]),
+                             round(grp["poultry"][i]), round(resid[i])))
                 n_out += 1
         missing = set(eth) - {c["fips"] for c in counties}
         st_of = {where[p["key"]]: p["state"] for p in plants}
         for fp in sorted(missing):                                           # a plant in a county the model has no crop for: its grind still counts where it stands
-            rows.append((y, fp, st_of[fp], round(eth[fp]), 0, 0, 0))
+            rows.append((y, fp, st_of[fp], round(eth[fp]), 0, 0, 0, 0, 0, 0, 0, 0))
         print(y, f"ethanol {sum(eth.values()) / 1e6:,.0f}  feed gross {gross.sum() / 1e6:,.0f}  credit {credit.sum() / 1e6:,.0f}  net {net.sum() / 1e6:,.0f} M bu  (WASDE feed+residual {b['feed_residual']:,.0f})",
               "(plant counties with no modeled crop added: %d)" % len(missing))
     with open(OUT, "w", newline="", encoding="utf-8") as fh:
         w = csv.writer(fh, lineterminator="\n")
-        w.writerow(["year", "fips", "state", "ethanol_bu", "feed_gross_bu", "ddgs_credit_bu", "feed_net_bu"])
+        w.writerow(["year", "fips", "state", "ethanol_bu", "feed_gross_bu", "ddgs_credit_bu", "feed_net_bu", "feed_dairy_bu", "feed_beef_bu", "feed_hogs_bu", "feed_poultry_bu", "residual_bu"])
         w.writerows(rows)
     print("wrote", OUT, len(rows), "rows")
 
