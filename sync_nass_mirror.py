@@ -25,7 +25,9 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 APP = os.path.join(HERE, "app.py")
 LOGOS = ["50 Year logo JSA.png", "Transparent Smal logo.png", "logo-full.png"]
-DATA_FILES = ["data/wheat/county_class_prior.csv"]      # build_wheat_county_prior.py writes it
+DATA_FILES = ["data/wheat/county_class_prior.csv",      # build_wheat_county_prior.py writes it
+              "data/corn_demand_by_county.csv"]         # build_corn_demand_by_county.py writes it: the net exportable corn section
+PY_MODULES = ["corn_net_export.py"]                     # helper modules the NASS tab imports, copied next to the generated file
 
 # visible texts changed for the mirror: (old, new). Each must be found exactly once or the sync stops, so a change in app.py is noticed, not silently skipped.
 SWAPS = [
@@ -218,6 +220,8 @@ def main(out_dir, locked, module=False):
                 fail(f"{rel} is missing (run its builder first)")
             os.makedirs(os.path.dirname(os.path.join(out_dir, *rel.split("/"))), exist_ok=True)
             shutil.copy2(src, os.path.join(out_dir, *rel.split("/")))
+        for mod in PY_MODULES:
+            shutil.copy2(os.path.join(HERE, mod), os.path.join(out_dir, mod))
         imports = sorted({l.split()[1].split(".")[0] for l in code.split("\n") if l.startswith(("import ", "from "))})
         print(f"wrote {os.path.join(out_dir, 'asd_county_tab.py')}: {code.count(chr(10))} lines; imports: {', '.join(imports)}")
         if missing:
@@ -256,6 +260,8 @@ def main(out_dir, locked, module=False):
         os.makedirs(os.path.dirname(os.path.join(out_dir, *rel.split("/"))), exist_ok=True)
         shutil.copy2(src, os.path.join(out_dir, *rel.split("/")))
     shutil.copy2(os.path.join(HERE, "nass_cache_client.py"), os.path.join(out_dir, "nass_cache_client.py"))   # the tab reads NASS from the shared cache
+    for mod in PY_MODULES:
+        shutil.copy2(os.path.join(HERE, mod), os.path.join(out_dir, mod))
     imports = {l.split()[1].split(".")[0] if l.startswith("import") else l.split()[1].split(".")[0] for l in code.split("\n") if l.startswith(("import ", "from "))}
     reqs = ["streamlit>=1.35.0", "pandas>=2.0.0", "numpy>=1.24.0", "plotly>=5.24.0"]
     if "geopandas" in imports:

@@ -1255,6 +1255,109 @@ def _ts_adjust(df, crop: str, year: int, stat_type: str, cols):
     return out
 
 
+def _net_export_section(year: int, sel_state, geo=None):
+    """Net exportable corn supply: the supply of each state (or each district and county of the selected state) less the corn used there for processing and livestock feed, so a negative
+    number is an area that uses more than it grows. Demand is placed by corn_net_export.py (ethanol where the plant stands, feed where the animals are, net of distillers grains)."""
+    import corn_net_export as cnx
+    st.markdown(
+        f"<div style='margin-top:24px;border-top:3px solid #475569;padding-top:10px;'><h4 style='color:#475569;margin:0 0 2px 0;font-size:1rem;font-weight:600;'>"
+        f"Net exportable corn supply, {year}/{str(year + 1)[2:]}</h4><p style='color:{MUTED};font-size:0.78rem;margin:0 0 10px 0;'>"
+        "Supply (NASS production plus the state's Sep 1 stocks) less the corn used in the area for ethanol and other processing and for livestock feed (net of distillers grains). "
+        "A negative number is an area that uses more corn than it grows.</p></div>",
+        unsafe_allow_html=True,
+    )
+    if year not in cnx.years():
+        st.info(f"Corn demand by area is built for {cnx.years()[0]}-{cnx.years()[-1]} (the years with a USDA balance on file); choose one of those years.")
+        return
+    saved = getattr(_tls, "ts", False)
+    _tls.ts = False                                   # raw production and stocks: the Total Supply view scales them, and this table adds the stocks itself
+    try:
+        st_raw = _load_nass_state_raw("Corn", year, "production", _BASE_CACHE_VERSION)
+        stocks = _ts_state_stocks("Corn", year)
+        cty = get_completed_county_data("Corn", sel_state, year, "production", _BASE_CACHE_VERSION) if sel_state else pd.DataFrame()
+        fc_note = ""
+        if sel_state and (cty is None or cty.empty) and year == FORECAST_YEAR:        # no county survey yet: the tab's own forecast counties, at the yield set above
+            y_est = float(st.session_state.get(f"fc_yield_Corn_{sel_state}") or 0.0)
+            if y_est <= 0:
+                ys = _default_yield_sources("Corn", sel_state, _BASE_CACHE_VERSION)
+                y_est = float(ys["usda"] or ys["ly"] or 0.0)
+            if y_est > 0:
+                fc, _ = get_forecast_county_data("Corn", sel_state, y_est, _BASE_CACHE_VERSION)
+                cty = fc.get("production", pd.DataFrame())
+                fc_note = f"{year} county production is the forecast above ({y_est:g} bu/ac), not a survey."
+    finally:
+        _tls.ts = saved
+    if st_raw is None or st_raw.empty:
+        st.info(f"NASS has no {year} state corn production yet, so there is no supply to net the demand against.")
+        return
+    prod = dict(zip(st_raw["State"], st_raw["Value"]))
+    if not stocks:
+        st.caption("No Sep 1 stocks are published for this year yet, so supply is production only.")
+
+    def _style(df, net_col):
+        def _c(v):
+            return f"color:{'#166534' if v > 0 else '#991b1b' if v < 0 else '#6b7280'};font-weight:600"
+        return df.style.map(_c, subset=[net_col])
+
+    if sel_state is None:
+        t = cnx.state_table(prod, stocks, year).sort_values("Net", ascending=False)
+        tot = t[["Production", "Stocks", "Supply", "Ethanol", "Feed", "Demand", "Net"]].sum()
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Supply", f"{tot['Supply'] / 1e6:,.0f} M bu", help="NASS production plus Sep 1 stocks.")
+        c2.metric("Ethanol and processing", f"{tot['Ethanol'] / 1e6:,.0f} M bu")
+        c3.metric("Livestock feed, net of distillers grains", f"{tot['Feed'] / 1e6:,.0f} M bu")
+        c4.metric("Net exportable", f"{tot['Net'] / 1e6:+,.0f} M bu", help="What is left for exports, food, seed and other industrial use outside these plants, and ending stocks: none of those is placed by area.")
+        show = pd.DataFrame({"State": t["State"].map(lambda a: f"{a}  {ABBR_TO_NAME.get(a, '')}".strip()),
+                             "Production (M bu)": t["Production"] / 1e6, "Sep 1 stocks (M bu)": t["Stocks"] / 1e6, "Supply (M bu)": t["Supply"] / 1e6,
+                             "Ethanol and processing (M bu)": t["Ethanol"] / 1e6, "Feed, net (M bu)": t["Feed"] / 1e6, "Demand (M bu)": t["Demand"] / 1e6,
+                             "Net exportable (M bu)": t["Net"] / 1e6, "Net % of supply": t["Net % of supply"]})
+        fmt = {c: "{:,.1f}" for c in show.columns if c.endswith("(M bu)")}
+        fmt["Net % of supply"] = "{:+.0f}%"
+        _table(_style(show, "Net exportable (M bu)").format(fmt, na_rep="-"), title=f"Net exportable corn supply by state, {year}/{str(year + 1)[2:]} (M bu)",
+               use_container_width=True, hide_index=True)
+    else:
+        if cty is None or cty.empty:
+            st.info(f"No {year} county corn production for {ABBR_TO_NAME.get(sel_state, sel_state)} yet.")
+            return
+        if fc_note:
+            st.caption(fc_note)
+        dist_of, name_of = {}, {}
+        if geo is not None:                                    # place a plant's county that has no crop row in its district, by name
+            try:
+                dist_of = {f: v[0] for f, v in load_boundary_fips_map("Corn", STATE_FIPS_ALL.get(sel_state, ""), _BASE_CACHE_VERSION, geo).items()}
+                name_of = {f["properties"]["STATE"] + f["properties"]["COUNTY"]: f["properties"].get("NAME", "") for f in geo["features"] if f["properties"]["STATE"] == STATE_FIPS_ALL.get(sel_state, "")}
+            except Exception:
+                dist_of, name_of = {}, {}
+        ct = cnx.county_table(cty, sel_state, stocks.get(sel_state, 0.0), year, dist_of, name_of)
+        at = cnx.asd_table(ct).sort_values("Net", ascending=False)
+        name = ABBR_TO_NAME.get(sel_state, sel_state)
+        tot = ct[["Supply", "Ethanol", "Feed", "Net"]].sum()
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric(f"{sel_state} supply", f"{tot['Supply'] / 1e6:,.1f} M bu")
+        c2.metric("Ethanol and processing", f"{tot['Ethanol'] / 1e6:,.1f} M bu")
+        c3.metric("Livestock feed, net", f"{tot['Feed'] / 1e6:,.1f} M bu")
+        c4.metric("Net exportable", f"{tot['Net'] / 1e6:+,.1f} M bu")
+        sa = pd.DataFrame({"ASD district": at["District"], "Production (M bu)": at["Production"] / 1e6, "Sep 1 stocks (M bu)": at["Stocks"] / 1e6, "Supply (M bu)": at["Supply"] / 1e6,
+                           "Ethanol and processing (M bu)": at["Ethanol"] / 1e6, "Feed, net (M bu)": at["Feed"] / 1e6, "Demand (M bu)": at["Demand"] / 1e6,
+                           "Net exportable (M bu)": at["Net"] / 1e6, "Net % of supply": at["Net % of supply"]})
+        fmt = {c: "{:,.2f}" for c in sa.columns if c.endswith("(M bu)")}
+        fmt["Net % of supply"] = "{:+.0f}%"
+        _table(_style(sa, "Net exportable (M bu)").format(fmt, na_rep="-"), title=f"Net exportable corn supply by ASD district: {name} {year}/{str(year + 1)[2:]} (M bu)",
+               use_container_width=True, hide_index=True)
+        with st.expander(f"Net exportable corn supply by county: {name}", expanded=False):
+            ctt = ct.sort_values("Net", ascending=False)
+            sc = pd.DataFrame({"County": ctt["County"], "ASD district": ctt["District"], "Supply (K bu)": ctt["Supply"] / 1e3, "Ethanol and processing (K bu)": ctt["Ethanol"] / 1e3,
+                               "Feed, net (K bu)": ctt["Feed"] / 1e3, "Demand (K bu)": ctt["Demand"] / 1e3, "Net exportable (K bu)": ctt["Net"] / 1e3, "Net % of supply": ctt["Net % of supply"]})
+            fmt = {c: "{:,.0f}" for c in sc.columns if c.endswith("(K bu)")}
+            fmt["Net % of supply"] = "{:+.0f}%"
+            _table(_style(sc, "Net exportable (K bu)").format(fmt, na_rep="-"), title=f"Net exportable corn supply by county: {name} {year}/{str(year + 1)[2:]} (K bu)",
+                   use_container_width=True, hide_index=True)
+    st.caption("Ethanol and processing: the Draw Territory plants' grind in the county each stands in, scaled to USDA's ethanol corn use for the year. Feed: Census county herds spread over NASS state "
+               "inventories, times feed per head, tied to USDA's feed and residual, less the distillers grains credit, which stays near the plants. Stocks are published by state, so counties and districts "
+               "share their state's in proportion to production (a state with none published counts production only). Not placed by area: exports, food, seed and other industrial use outside these plants, and ending stocks. A plant's county with no crop "
+               "data is listed as its own row so its demand still counts.")
+
+
 def _cache_ready() -> bool:
     """True when this app has a NASS cache backend configured (Snowflake or DATABASE_URL)."""
     try:
@@ -5794,6 +5897,10 @@ def main():
                             _table(show_tbl,
                                    title=f"County data table: {ABBR_TO_NAME.get(nass_state, nass_state)} {nass_year} {nass_lbl} ({col_label})",
                                    use_container_width=True, hide_index=True)
+
+                # ── Net exportable supply (corn): supply less processing and feed, by state or by district and county ──
+                if nass_crop == "Corn":
+                    _net_export_section(nass_year, sel_st, geo)
 
     # ══════════════════════════════════════════════════════════════════════════
     # RMA TAB
