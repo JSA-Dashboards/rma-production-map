@@ -1,6 +1,6 @@
 {
  "units": "M bu",
- "built": "2026-10-30",
+ "built": "2026-11-12",
  "source": "USDA WASDE monthly report CSV (oce-wasde-report-data), US soybeans; each year from the latest report that carries it",
  "years": {
   "2019": {
@@ -84,7 +84,7 @@
    "seed": 70.0,
    "supply_total": 4746.0,
    "use_total": 4421.0,
-   "as_of": "2026-10",
+   "as_of": "2026-11",
    "status": ""
   },
   "2025": {
@@ -98,21 +98,21 @@
    "seed": 75.0,
    "supply_total": 4608.0,
    "use_total": 4293.0,
-   "as_of": "2026-10",
+   "as_of": "2026-11",
    "status": ""
   },
   "2026": {
    "beginning_stocks": 315.0,
    "crush": 2780.0,
-   "ending_stocks": 315.0,
-   "exports": 1695.0,
+   "ending_stocks": 300.0,
+   "exports": 1720.0,
    "imports": 25.0,
-   "production": 4562.0,
-   "residual": 39.0,
-   "seed": 73.0,
-   "supply_total": 4902.0,
-   "use_total": 4587.0,
-   "as_of": "2026-10",
+   "production": 4574.0,
+   "residual": 38.0,
+   "seed": 76.0,
+   "supply_total": 4914.0,
+   "use_total": 4614.0,
+   "as_of": "2026-11",
    "status": ""
   }
  }
